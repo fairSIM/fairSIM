@@ -1,0 +1,7 @@
+.*.swp
+*.class
+doc/
+*.jar
+test*.xml
+*.tar.bz2
+org/fairsim/git-version.txt
