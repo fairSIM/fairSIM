@@ -371,6 +371,22 @@ public class OtfProvider {
 	otfToVector( vec, band, kx, ky, false, true ) ; 
     }
     
+    /** Create a 2-dimension, radial symmetric vector of the OTF, centered at kx,ky.
+     *  The desired vector pixel size has to be set (via {@link #setPixelSize}) first.
+     *  Attenuation is applied if set via {@link #switchAttenuation}. 
+     *  @param vec  Vector to write to
+     *	@param band OTF band 
+     *	@param kx Position / offset kx
+     *	@param ky Poistion / offset ky
+     *	*/
+    public void writeOtfWithAttVector(final Vec2d.Cplx vec, final int band, 
+	final double kx, final double ky) {
+	otfToVector( vec, band, kx, ky, useAttenuation, true ) ; 
+    }
+
+
+
+
     // ------ Other vectors ------
 
     /** Creates an apotization vector.

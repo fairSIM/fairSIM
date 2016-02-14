@@ -1,0 +1,2 @@
+# Always keep the ReadMe of the current branch intact (do not merge)
+README.md merge=ours

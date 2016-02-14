@@ -31,28 +31,7 @@ public class SimUtils {
      *  @param outV Output vector, of doubled size
      *  */
     static public void placeFreq( Vec2d.Cplx inV, Vec2d.Cplx outV ) {
-
-	final int w = inV.vectorWidth();
-	final int h = inV.vectorHeight();
-	
-	if (((w*2)!=outV.vectorWidth())||((h*2)!=outV.vectorHeight()))
-	    throw new IndexOutOfBoundsException(
-		"Vector size mismatch, out size should be 2* insize");
-
-	final float [] out = outV.vectorData();
-	final float [] in  =  inV.vectorData();
-
-	outV.zero();
-	
-	// loop output
-	for (int y= 0;y<h;y++)
-	for (int x= 0;x<w;x++) {
-	    int xo = (x<w/2)?(x):(x+w);
-	    int yo = (y<h/2)?(y):(y+h);
-	    out[ (xo + (w*2*yo))*2+0 ] = in[ (x + w*y)*2+0];
-	    out[ (xo + (w*2*yo))*2+1 ] = in[ (x + w*y)*2+1];
-	}
-
+	outV.pasteFreq(inV);
     }
 
 
@@ -134,6 +113,8 @@ public class SimUtils {
 	for (int y=0; y<h; y++)
 	    for (int x=w-px; x<w ; x++)
 		dat[x + y * w] *= Math.pow( Math.sin( (w-x-1) * fac ) , 2 );
+	
+	img.syncBuffer();
     }
 
 
@@ -158,6 +139,8 @@ public class SimUtils {
 		double v = Math.cos( 2*Math.PI* (-kx*x + ky*y)/(len) + pha );
 		dat[ x + y*len ] = dat[ x + y*len]*(float)(v+2)*0.6f ;
 	    }
+
+	    cntrl.syncBuffer();
     }
 
 
@@ -179,6 +162,8 @@ public class SimUtils {
 		zCount++;
 	    }
 	}
+	
+	vec.syncBuffer();
 
 	return ((double)zCount) / dat.length;
 
@@ -208,6 +193,7 @@ public class SimUtils {
 		if (dat[i]<0) dat[i]=0;
 	}
 
+	vec.syncBuffer();
     }
 
 
