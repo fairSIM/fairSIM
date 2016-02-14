@@ -144,13 +144,16 @@ public class FairSim_ImageJplugin implements PlugIn {
 	}
 
 	// get the version information
-	String version = "not found";
+	String gitCommit = "not found";
+	String version   = "not found";
 	if ( is2 != null ) {
 	    BufferedReader br2 = new BufferedReader( new InputStreamReader( is2 ) );
 	    try {
-		version = br2.readLine();
+		gitCommit = br2.readLine();
+		version   = br2.readLine();
 	    } catch ( java.io.IOException e ) {
-		version = "n/a";   
+		gitCommit = "n/a";   
+		version = "unknown";
 	    }
 	}
 
@@ -158,8 +161,10 @@ public class FairSim_ImageJplugin implements PlugIn {
 	//String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
 
 	JOptionPane.showMessageDialog( IJ.getInstance(),
-	    "<html>"+text+"<br /><p>git build id: "+
-	    version.substring(0, Math.min(10, version.length()))+
+	    "<html>"+text+"<br /><p>"+
+	    "version: "+version.substring(0, Math.min(12, version.length()))+
+	    "<br />git build id: "+
+	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+
 	    "</html>", "About fairSIM",
 	    JOptionPane.INFORMATION_MESSAGE);
     

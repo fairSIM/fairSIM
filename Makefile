@@ -19,7 +19,7 @@ JFLAGS+= -target 1.6 -source 1.6
 # remove command to clean up
 RM = rm -vf
 
-.PHONY:	all
+.PHONY:	all org/fairsim/git-version.txt
 
 all:	jtrans
 	$(JC) $(JFLAGS) org/fairsim/*/*.java
@@ -47,8 +47,14 @@ org/fairsim/extern/jtransforms/FloatFFT_2D.class: $(wildcard org/fairsim/extern/
 
 # misc rules
 
-jarsrc	: 
-	git rev-parse HEAD > org/fairsim/git-version.txt ; \
+
+git-version :
+	git rev-parse HEAD > org/fairsim/git-version.txt  ; \
+	git tag --contains >> org/fairsim/git-version.txt ; \
+	echo "n/a" >> org/fairsim/git-version.txt
+	 	
+
+jarsrc	: git-verison
 	$(JAR) -cvfm fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).jar \
 	Manifest.txt plugins.config \
 	org/fairsim/git-version.txt \
@@ -56,8 +62,7 @@ jarsrc	:
 	org/fairsim/resources/* \
 	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
 
-tarsrc	:
-	git rev-parse HEAD > org/fairsim/git-version.txt ; \
+tarsrc	: git-version
 	tar -cvjf fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).tar.bz2 \
 	Manifest.txt plugins.config \
 	org/fairsim/git-version.txt \
@@ -65,8 +70,7 @@ tarsrc	:
 	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
     
 
-jar:	
-	git rev-parse HEAD > org/fairsim/git-version.txt ; \
+jar:	git-version	
 	$(JAR) -cvfm fairSIM_plugin_$(shell head -c 10 org/fairsim/git-version.txt).jar \
 	Manifest.txt plugins.config \
 	org/fairsim/git-version.txt \
@@ -83,7 +87,7 @@ doc/index.html : $(wildcard org/fairsim/*/*.java)
 
 clean :
 	$(RM) fairSIM_*.jar fairSIM_*.tar.bz2
-	$(RM) org/fairsim/*/*.class
+	$(RM) org/fairsim/*/*.class org/fairsim/git-version.txt
 	$(RM) -r doc/*
 
 clean-all: clean

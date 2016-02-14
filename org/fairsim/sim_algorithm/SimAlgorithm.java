@@ -19,8 +19,6 @@ along with ESI.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.sim_algorithm;
 
 import org.fairsim.linalg.*;
-import org.fairsim.fiji.ImageVector;
-import org.fairsim.fiji.DisplayWrapper;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageDisplay;
@@ -107,7 +105,7 @@ public class SimAlgorithm {
 	    
 	    // fit the peak to sub-pixel precision by cross-correlation of
 	    // Fourier-shifted components
-	    ImageVector cntrl    = ImageVector.create(30,10);
+	    Vec2d.Real cntrl    = Vec2d.createReal(30,10);
 	    peak = Correlation.fitPeak( separate[0], separate[fb], 0, fitBand, otfPr,
 		-peak[0], -peak[1], 0.05, 2.5, cntrl );
 
