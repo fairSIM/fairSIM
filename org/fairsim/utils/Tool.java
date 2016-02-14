@@ -42,10 +42,12 @@ public final class Tool {
 	currentLogger = new Tool.Logger() {
 	    public void writeTrace(String message) {
 		System.out.println( "[fairSIM] "+message);
+		System.out.flush();
 	    }
     
 	    public void writeShortMessage(String message) {
 		System.out.println( "-fairSIM- "+message);
+		System.out.flush();
 	    }
 	};
 	// want to catch exceptions
@@ -88,25 +90,35 @@ public final class Tool {
     /** A simple timer */
     public static class Timer {
 	long start, stop, runtime, outtime;
-	Timer() { start =  System.currentTimeMillis(); }
+	Timer() { 
+	    //start =  System.currentTimeMillis(); 
+	    start =  System.nanoTime(); 
+	}
 	/** start the timer */
-	public void start() { start = System.currentTimeMillis(); };
+	public void start() { 
+	    //start = System.currentTimeMillis(); 
+	    start =  System.nanoTime(); 
+	};
 	/** stop the timer */
 	public void stop() { 
-	    stop = System.currentTimeMillis(); 
+	    //stop = System.currentTimeMillis(); 
+	    stop = System.nanoTime(); 
 	    runtime += stop-start;
 	    outtime=runtime;
 	    runtime=0;
 	    }
 	/** pause the timer */
 	public void hold(){
-	    stop = System.currentTimeMillis();
+	    //stop = System.currentTimeMillis();
+	    stop = System.nanoTime(); 
 	    runtime += stop-start;
 	    outtime  = runtime;
 	    start =stop;
 	}
 	/** output the amount of milliseconds counted */
-	@Override public String toString(){ return("ms: "+(outtime));}
+	@Override public String toString(){ 
+	    return String.format("%10.3f ms",(outtime/1000000.));
+	}
     }
 
 }

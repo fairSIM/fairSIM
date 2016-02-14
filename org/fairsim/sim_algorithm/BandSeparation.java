@@ -152,8 +152,8 @@ public class BandSeparation {
 	Tool.trace(lg);
 
 	// zero output vector
-	for ( int i=0; i<bands; i++) 
-	     out[i].zero();
+	for ( int b=0; b<(bands*2-1); b++)
+	     out[b].zero();
 
 	// multiply, output 0 .. bands*2-1
 	for ( int p=0; p<phases.length; p++) 
