@@ -19,6 +19,7 @@ along with ESI.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.fiji;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.AbstractVectorReal;
 
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
@@ -27,13 +28,51 @@ import ij.process.ImageProcessor;
  * An extension of {@link org.fairsim.linalg.Vec2d.Real},
  * backed by an ImageJ FloatProcessor.
  */
-public class ImageVector extends Vec2d.Real {
+public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 
 	private final FloatProcessor fp;
+	private final int width, height;
+
+	@Override
+	public void syncBuffer() {};
+	@Override
+	public void readyBuffer() {};
+	@Override
+	public void makeCoherent() {};
+	
+	
+	@Override
+	public ImageVector duplicate() {
+	    ImageVector ret  = ImageVector.create(width, height);
+	    ret.copy(this);
+	    return ret;
+	
+	}
+
+	@Override
+	public int vectorWidth() { return width; }
+	@Override
+	public int vectorHeight() { return height; }
+
+	@Override
+	public void  paste( Vec2d.Real in , int x, int y, boolean zero) {
+	    Vec2d.paste( in, this, 0, 0, in.vectorWidth(), in.vectorHeight(), x,y, zero);
+	}
+
+	@Override
+	public void set(int x, int y, float a) {
+	    data[x+y*width] = a;
+	}
+
+	@Override
+	public float get(int x, int y) {
+	    return data[x+y*width];
+	}
 
 	/** Internal constructor, use factory methods instead */
 	private ImageVector( int w, int h, FloatProcessor f ) {
-	    super(w,h, (float [])f.getPixels() ); fp=f;
+	    super( (float [])f.getPixels() ); 
+	    fp=f; width=w;  height=h;
 	}
 
 	/** Create a new ImageVector size w x h */

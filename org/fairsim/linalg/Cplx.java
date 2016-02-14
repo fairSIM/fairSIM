@@ -321,6 +321,16 @@ public class Cplx {
 	return new Cplx.Float( a.re / b, a.im / b );
     }
 
+    
+    /** Helper function, real part of complex mult */
+    static float multReal( float Xr, float Xi, float Yr, float Yi ) {
+	    return ((Xr * Yr ) - (Xi*Yi));
+    }
+    /** Helper function, imag part of complex mult */
+    static float multImag( float Xr, float Xi, float Yr, float Yi ) {
+	    return ((Xi * Yr ) + (Xr*Yi));
+    }
+
 
 
 }

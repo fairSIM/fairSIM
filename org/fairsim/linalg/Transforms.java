@@ -28,21 +28,31 @@ import java.util.TreeMap;
  */
 public abstract class Transforms {
 
+
     /** Two-dimensional FFT of the input vector. */
     static public void fft2d( Vec2d.Cplx in, boolean inverse ) {
+	in.fft2d(inverse);
+    }
+    
+
+    static public void runfft( Vec2d.Cplx in, boolean inverse ) {
 	// get parameters
-	final int w = in.width;
-	final int h = in.height;
+	final int w = in.vectorWidth();
+	final int h = in.vectorHeight();
 	// see if we have an instance already, otherwise make one
 	Transforms ffti = getOrCreateInstance(new FFTkey(w,h));
-	ffti.fft_2d_trans_c2c( in.data , inverse );
+	float [] dat = in.vectorData();
+	ffti.fft_2d_trans_c2c( dat , inverse );
+	in.syncBuffer();
     }
 
     /** One-dimensional FFT of the complex input vector. */
     static public void fft1d( Vec.Cplx in, boolean inverse ) {
-	final int len = in.elemCount;
+	final int len = in.vectorSize();
 	Transforms ffti = getOrCreateInstance( new FFTkey(len));
-	ffti.fft_1d_trans_c2c( in.data, inverse );
+	float [] dat = in.vectorData();
+	ffti.fft_1d_trans_c2c( dat, inverse );
+	in.syncBuffer();
     }
 
     /** One-dimensional FFT of a standard float array. This assumes
@@ -150,12 +160,12 @@ public abstract class Transforms {
 
 
 	// TODO: maybe speed this up to higher efficience
-	final int w= inV.width;
-	final int h= inV.height;
-	float [] in  =  inV.data;
-	float [] out  = outV.data;
+	final int w= inV.vectorWidth();
+	final int h= inV.vectorHeight();
+	float [] in  =  inV.vectorData();
+	float [] out  = outV.vectorData();
 
-	if (( w != outV.width  ) || ( h != outV.height ))
+	if (( w != outV.vectorWidth()  ) || ( h != outV.vectorHeight() ))
 	    throw new RuntimeException("Vector size mismatch");
 
 
@@ -191,6 +201,8 @@ public abstract class Transforms {
 	    }
 	}
     
+	outV.syncBuffer( );
+
     }
 
     /** Swap quadrands. */
@@ -231,11 +243,12 @@ public abstract class Transforms {
 	}
     }
 
-    /** Return a vector containing phases for a Fourier shift theorems shift to kx,ky.
+    /* Return a vector containing phases for a Fourier shift theorems shift to kx,ky.
      *  @param N Width and heigt of vector
      *  @param kx x-coordinate of shift
      *  @param ky y-coordinate of shift
      *  @param fast Use faster, but less precise sin/cos (see {@link MTool#fsin}) */
+    /*
     static public Vec2d.Cplx createShiftVector( 
 	final int N, final double kx, final double ky, final boolean fast ) {
 	Vec2d.Cplx shft = Vec2d.createCplx(N,N);
@@ -256,21 +269,31 @@ public abstract class Transforms {
 		}
 	    }
 	};
-	
-	return shft;
-    }
 
-    /** See {@link #createShiftVector}, with fast='false' */
+	shft.syncBuffer();
+
+	return shft;
+    } */
+
+    /* See {@link #createShiftVector}, with fast='false' */
+    /*
     static public Vec2d.Cplx createShiftVector(int N, double kx, double ky ) {
 	return createShiftVector(N, kx, ky, false);
-    }
+    } */
 
     /** Multiply a vector with Fourier shift theorem phases.
      *  Vector has to be of square size (w==h).
      *  @param kx x-coordinate of shift
      *  @param ky y-coordinate of shift
      *  @param fast Use faster, but less precise sin/cos (see {@link MTool#fsin}) */
+    @Deprecated
     static public void timesShiftVector( final Vec2d.Cplx vec,
+	final double kx, final double ky, final boolean fast ) {
+	vec.fourierShift( kx, ky );
+    }
+
+
+    static public void runTimesShiftVector( final Vec2d.Cplx vec,
 	final double kx, final double ky, final boolean fast ) {
 	final float [] val = vec.vectorData();
 	final int N = Vec2d.checkSquare( vec );
@@ -292,12 +315,13 @@ public abstract class Transforms {
 		    float re = val[ (y*N+x)*2+0 ] ;
 		    float im = val[ (y*N+x)*2+1 ] ;
 		    // set
-		    val[ (y*N+x)*2+0 ] = Vec.multReal( re, im, co, si );
-		    val[ (y*N+x)*2+1 ] = Vec.multImag( re, im, co, si );
+		    val[ (y*N+x)*2+0 ] = Cplx.multReal( re, im, co, si );
+		    val[ (y*N+x)*2+1 ] = Cplx.multImag( re, im, co, si );
 		}
 	    }
 	};
-	
+
+	vec.syncBuffer();
     }
 
     /** See {@link #timesShiftVector}, with fast='false' */
