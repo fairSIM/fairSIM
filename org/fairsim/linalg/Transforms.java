@@ -34,6 +34,14 @@ public abstract class Transforms {
 	in.fft2d(inverse);
     }
     
+    /** Three-dimensional FFT of the input vector. */
+    static public void fft3d( Vec3d.Cplx in, boolean inverse ) {
+	in.fft3d(inverse);
+    }
+
+
+
+
 
     static public void runfft( Vec2d.Cplx in, boolean inverse ) {
 	// get parameters
@@ -45,6 +53,20 @@ public abstract class Transforms {
 	ffti.fft_2d_trans_c2c( dat , inverse );
 	in.syncBuffer();
     }
+
+    static public void runfft3d( Vec3d.Cplx in, boolean inverse ) {
+	// get parameters
+	final int w = in.vectorWidth();
+	final int h = in.vectorHeight();
+	final int d = in.vectorHeight();
+	// see if we have an instance already, otherwise make one
+	Transforms ffti = getOrCreateInstance(new FFTkey(w,h,d));
+	float [] dat = in.vectorData();
+	ffti.fft_3d_trans_c2c( dat , inverse );
+	in.syncBuffer();
+    }
+
+
 
     /** One-dimensional FFT of the complex input vector. */
     static public void fft1d( Vec.Cplx in, boolean inverse ) {
@@ -70,18 +92,22 @@ public abstract class Transforms {
 
     /** key to store instances */
     private static class FFTkey implements  Comparable<FFTkey> { 
-	final int d,x,y ; 
+	final int d,x,y,z ; 
 	FFTkey( int xi ) {
-	    d=1; x=xi; y=-1;
+	    d=1; x=xi; y=-1; z=-1;
 	}
 	FFTkey( int xi, int yi ) { 
-	    d=2; x=xi; y=yi;
+	    d=2; x=xi; y=yi; z=-1;
+	}
+	FFTkey( int xi, int yi, int zi ) { 
+	    d=3; x=xi; y=yi; z=zi;
 	}
 	@Override
 	public int compareTo(FFTkey t) {
 	    if (d != t.d) return (t.d -d );
 	    if (x != t.x) return (t.x -x );
 	    if (y != t.y) return (t.y -y );
+	    if (z != t.z) return (t.z -z );
 	    return 0;
 	}
     }
@@ -132,6 +158,14 @@ public abstract class Transforms {
      *  all necessary parameters are passed.
      */
     protected abstract void fft_2d_trans_c2c(  float [] x, boolean inverse );
+
+    /** 
+     *  3D Fourier tranformation complexFloat2complexFloat.
+     *  This has to be implemented in a subclass. For convenience,
+     *  all necessary parameters are passed.
+     */
+    protected abstract void fft_3d_trans_c2c(  float [] x, boolean inverse );
+
 
 
     /** checks if input is 2^n */
