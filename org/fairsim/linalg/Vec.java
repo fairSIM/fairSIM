@@ -145,7 +145,10 @@ public final class Vec {
 	/** Access to the internal vector array. 
 	 *  If the vector is backed by external memory (GPU, etc.) it
 	 *  will be synced before the buffer is returned. If the buffer
-	 *  is written to, call {@link #syncBuffer} after the write. */
+	 *  is written to, call {@link #syncBuffer} after the write. 
+	 *  Also, any call to methods in this vector (add, mult, etc.)
+	 *  may invalidate the buffer.
+	 *  */
 	public float [] vectorData ();
 
 	/** Sync content from the last reference returned by
@@ -159,6 +162,18 @@ public final class Vec {
 	 *  WHEN buffers are syncronized (for timing, etc.), the program will run
 	 *  correctly without explicitly calling makeCoherent. */
 	public void makeCoherent();
+
+
+	/** Get the n'th element. Note: Depending on implementation,
+	 * when running a loop over the full vector, obtaining the vector
+	 * buffer directly might be faster */
+	public float get(int i);
+	
+	/** Set the n'th element. Note: Depending on implementation,
+	 * when running a loop over the full vector, obtaining the vector
+	 * buffer directly and syncing it afterwards might be faster. */
+	public void set(int i, float x);
+    
 
 	// --- copy functions ---
 
@@ -240,44 +255,38 @@ public final class Vec {
 	 * should typically return their specific type here. */
 	public Cplx duplicate();
 
-	/** Return the n'th element */
-	/*
-	org.fairsim.linalg.Cplx.Float get( int n ); {
-	    this.readyBuffer();
-	    return new org.fairsim.linalg.Cplx.Float( data[2*n], data[2*n+1] );
-	} */
+	/** Get the n'th element. Note: Depending on implementation,
+	 * when running a loop over the full vector, obtaining the vector
+	 * buffer directly might be faster */
+    	public org.fairsim.linalg.Cplx.Float get( int n ); 
 	
-	/** Set the n'th element */
-	/*
-	void set( int n, org.fairsim.linalg.Cplx.Float v ) {
-	    this.readyBuffer();
-	    data[2*n+0] = v.re;
-	    data[2*n+1] = v.im;
-	    this.syncBuffer();
-	} */
+	/** Set the n'th element. Note: Depending on implementation,
+	 * when running a loop over the full vector, obtaining the vector
+	 * buffer directly and syncing it afterwards might be faster. */
+	public void set( int n, org.fairsim.linalg.Cplx.Float v );
 
-	/** Set the n'th element */
-	/*
-	void set( int n, org.fairsim.linalg.Cplx.Double v ) {
-	    this.readyBuffer();
-	    data[2*n+0] = (float)v.re;
-	    data[2*n+1] = (float)v.im;
-	    this.syncBuffer();
-	} */
+	/** Set the n'th element. Note: Depending on implementation,
+	 * when running a loop over the full vector, obtaining the vector
+	 * buffer directly and syncing it afterwards might be faster. */
+	public void set( int n, org.fairsim.linalg.Cplx.Double v );
    
 	// --- creating new vectors ---
 
 	
 	/** Return a copy of the real elements in this vector */
+	@Deprecated
 	public Real duplicateReal();
 
 	/** Return a copy of the imaginary elements in this vector */
+	@Deprecated
 	public Real duplicateImag();
 	
 	/** Return a copy, containing the magnitudes of elements in this vector */
+	@Deprecated
 	public Real duplicateMagnitude();
 
 	/** Return a copy, containing the phases of elements in this vector */
+	@Deprecated
 	public Real duplicatePhase();
 
 	// --- arith. functions ---

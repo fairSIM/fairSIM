@@ -62,6 +62,27 @@ public abstract class AbstractVectorReal implements  Vec.Real {
 	return elemCount;
     }
 
+    
+    /** Return the n'th element, after syncing buffer.
+     *  Implementing classes should probably override this
+     *  with a more efficient implementation. */
+    public float get( int n ) 
+    {
+	this.readyBuffer();
+	return data[n];
+    } 
+
+    /** Set the n'th element, with synced buffer.
+     *  Implementing classes should probably override this
+     *  with a more efficient implementation. */
+    public void set( int n, float x ) 
+    {
+	this.readyBuffer();
+	data[n] = x ;
+	this.syncBuffer();
+    } 
+
+
     // --- copy functions ---
 
     /** Copy the content of 'in' into this vector */

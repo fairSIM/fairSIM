@@ -95,7 +95,38 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
 	return ret;
     }
     
-    // --- arith. functions ---
+    /** Return the n'th element, after syncing buffer.
+     *  Implementing classes should probably override this
+     *  with a more efficient implementation. */
+    @Override
+    public Cplx.Float get( int n ) {
+        this.readyBuffer();
+        return new org.fairsim.linalg.Cplx.Float( data[2*n], data[2*n+1] );
+    } 
+
+    /** Set the n'th element, with synced buffer.
+     *  Implementing classes should probably override this
+     *  with a more efficient implementation. */
+    @Override
+    public void set( int n, Cplx.Float v ) {
+	this.readyBuffer();
+	data[2*n+0] = v.re;
+	data[2*n+1] = v.im;
+	this.syncBuffer();
+    } 
+
+    /** Set the n'th element, with synced buffer.
+     *  Implementing classes should probably override this
+     *  with a more efficient implementation. */
+    @Override
+    public void set( int n, Cplx.Double v ) {
+	this.readyBuffer();
+	data[2*n+0] = (float)v.re;
+	data[2*n+1] = (float)v.im;
+	this.syncBuffer();
+    } 
+   
+
 
     /** Copy the content of 'in' into this vector */
     @Override
@@ -118,6 +149,8 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
 	}
 	this.syncBuffer();
     }
+    
+    // --- arith. functions ---
     
     /** Set all elements to zero */
     public void zero() {
