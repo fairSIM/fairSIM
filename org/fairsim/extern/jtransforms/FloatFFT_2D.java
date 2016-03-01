@@ -28,6 +28,7 @@
 // Code modified for inclusion with fairSIM:
 // - changed package name
 // - Commented out all dependence on ...LargeArray
+// - based on JTransforms 3.1, git ede249c9824262bd9b5f571e56f7a0fa596f6f20
 
 package org.fairsim.extern.jtransforms;
 
