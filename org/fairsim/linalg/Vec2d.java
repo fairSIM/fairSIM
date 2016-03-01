@@ -133,6 +133,10 @@ public final class Vec2d {
 
 	/** height of the vector */
 	public int vectorHeight();
+    
+	/** project (sum along z) a Vec3d into this vector */
+	public void project( Vec3d.Real in );
+    
     }
     
     // =======================================================
@@ -178,6 +182,8 @@ public final class Vec2d {
 	/** height of the vector */
 	public int vectorHeight();
 
+	/** project (sum along z) a Vec3d into this vector */
+	public void project( Vec3d.Cplx in );
     }
    
     // =======================================================

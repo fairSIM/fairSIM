@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.fiji;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.Vec3d;
 import org.fairsim.linalg.AbstractVectorReal;
 
 import ij.process.FloatProcessor;
@@ -101,5 +102,25 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	public FloatProcessor img() {
 	    return fp;
 	}
+
+	@Override
+	public void project(Vec3d.Real inV ) {
+	    
+	    final float [] out = this.vectorData();
+	    final float [] in  =  inV.vectorData();
+	    final int wo = this.vectorWidth();
+	    final int ho = this.vectorHeight();
+	    
+	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+		throw new RuntimeException("Wrong vector size when projecting");
+
+	    for (int z=0; z<inV.vectorDepth(); z++)
+	    for (int y=0; y<vectorHeight(); y++)
+	    for (int x=0; x<vectorWidth(); x++) {
+		out[ y * wo + x ] = in[ z  * wo*ho + y*wo + x ];
+	    }
+	}
+
+
 
 }

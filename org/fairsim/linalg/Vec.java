@@ -19,11 +19,23 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.linalg;
 
 
-/** Minimal implementation of some linear algebra. Did some rewrites,
- * trying to come up with a consistant syntax. Now it is like this:
- * For all operations, the input arguments are NEVER written to,
- * only read from, i.e. <br>
- * a.sub( b ) will only change a, not b.
+/**
+ * Interface definition for linear algebra (vectors).
+ * Available functions should be somewhat universal, but
+ * of course cater to SIM reconstructions (FFTs, shifts, etc).
+ * There is some convention to how the code works, which should
+ * be followed:
+ * 
+ * <ul>
+ * <li>Vectors are nested interfaces in the Vec, Vec2d, Vec3d class
+ * <li>This is because Vec.Cplx, Vec2d.Real seem most readable to me
+ * <li>Input parameters are always read-only, e.g. a.sub(b)
+ *  will only change a, never b. Think "const" if this would be C++
+ * <li>Memory allocation only happens through methods directly in
+ * Vec, Vec2d ... class, NOT in the nested interfaces. E.g. do NOT
+ * implement Vec.Cplx.duplicate(), but Vec.duplicate( Vec.Cplx )
+ * <li>All memory allocation goes through the vector factory
+ * </ul>
  *
  * */
 public final class Vec {
@@ -274,19 +286,19 @@ public final class Vec {
 
 	
 	/** Return a copy of the real elements in this vector */
-	@Deprecated
+	//@Deprecated // TODO: re-deprecate all these 'duplicate' functions!
 	public Real duplicateReal();
 
 	/** Return a copy of the imaginary elements in this vector */
-	@Deprecated
+	//@Deprecated
 	public Real duplicateImag();
 	
 	/** Return a copy, containing the magnitudes of elements in this vector */
-	@Deprecated
+	//@Deprecated
 	public Real duplicateMagnitude();
 
 	/** Return a copy, containing the phases of elements in this vector */
-	@Deprecated
+	//@Deprecated
 	public Real duplicatePhase();
 
 	// --- arith. functions ---

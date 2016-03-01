@@ -89,7 +89,7 @@ public class Correlation {
 	
 		    // copy and Fourier-shift band1
 		    Vec2d.Cplx b1s = b1.duplicate();
-		    Transforms.timesShiftVector( b1s, xpos, -ypos, true);
+		    b1s.fourierShift( xpos, -ypos);
 
 		    // get correlation by multiplication, summing elements, scaling by b0
 		    b1s.timesConj( b0 );
@@ -196,7 +196,7 @@ public class Correlation {
 	Transforms.fft2d( b1, true );
     
 	// Fourier-shift band1 to correct position
-	Transforms.timesShiftVector( b1, kx, -ky, false); 
+	b1.fourierShift( kx, -ky ); 
 	
 	// mult b0 to b1
 	b1.timesConj( b0 );

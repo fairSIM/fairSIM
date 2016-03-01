@@ -194,9 +194,9 @@ public class SimAlgorithm {
 		    par.px(b), par.py(b), 0.15, (b==1)?(.2):(.05), true);
 
 		// move the high band to its correct position
-		Transforms.fft2d( b1, true );
-		Transforms.timesShiftVector( b1, par.px(b), -par.py(b), true );
-		Transforms.fft2d( b1, false );
+		b1.fft2d( true );
+		b1.fourierShift( par.px(b), -par.py(b));
+		b1.fft2d( false );
 	
 		// apply phase correction
 		b1.scal( Cplx.Float.fromPhase( param.dir(angIdx).getPhaOff()*b ));
@@ -213,9 +213,9 @@ public class SimAlgorithm {
 
 		    // add band1, band2, ...
 		    Vec2d.Cplx btmp = separate[2*b].duplicate();
-		    Transforms.fft2d( btmp, true );
-		    Transforms.timesShiftVector( btmp, par.px(b), -par.py(b), true );
-		    Transforms.fft2d( btmp, false );
+		    btmp.fft2d( true );
+		    btmp.fourierShift( par.px(b), -par.py(b) );
+		    btmp.fft2d( false );
 		    otfPr.maskOtf( btmp, par.px(b), par.py(b));
 
 		    pwSt.addImage(SimUtils.pwSpec( btmp ), String.format( 

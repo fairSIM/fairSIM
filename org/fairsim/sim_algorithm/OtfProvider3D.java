@@ -31,7 +31,7 @@ import org.fairsim.utils.SimpleMT;
 /**
  * OTFs and associated functions (attenuation, apotization, ...).
  * Provides loading, saving, simple estimation, conversion
- * from 1D (radially symmetric, in phys. units) to 2D vectors.
+ * from 2D (radially symmetric, in phys. units) to 3D vectors.
  * */
 public class OtfProvider3D {
     
@@ -193,7 +193,6 @@ public class OtfProvider3D {
     
     /** Multiplied conjugated OTF to a vector.
      *  The desired vector pixel size has to be set (via {@link #setPixelSize}) first.
-     *  Attenuation is used if set via {@link #switchAttenuation}.
      *  @param vec  Vector to write to
      *	@param band OTF band */
     public void applyOtf(Vec3d.Cplx vec, final int band) {
@@ -202,7 +201,6 @@ public class OtfProvider3D {
 
     /** Multiplied conjugated OTF to a vector.
      *  The desired vector pixel size has to be set (via {@link #setPixelSize}) first.
-     *  Attenuation is used if set via {@link #switchAttenuation}.
      *  @param vec  Vector to write to
      *	@param band OTF band 
      *	@param kx OTF center position offset x
@@ -211,9 +209,8 @@ public class OtfProvider3D {
 	otfToVector( vec, band, kx, ky, false ) ; 
     }
 
-    /** Create a 2-dimension, radial symmetric vector of the OTF, centered at kx,ky.
+    /** Create a 3-dimension, radial symmetric vector of the OTF, centered at kx,ky.
      *  The desired vector pixel size has to be set (via {@link #setPixelSize}) first.
-     *  Attenuation is not applied. 
      *  @param vec  Vector to write to
      *	@param band OTF band 
      *	@param kx Position / offset kx

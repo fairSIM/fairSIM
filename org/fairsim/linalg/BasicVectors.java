@@ -156,6 +156,23 @@ class BasicVector implements VectorFactory {
 	    data[ x + y*width ] = a;
 	}
 
+	@Override
+	public void project(Vec3d.Real inV ) {
+	    
+	    final float [] out = this.vectorData();
+	    final float [] in  =  inV.vectorData();
+	    final int wo = this.vectorWidth();
+	    final int ho = this.vectorHeight();
+	    
+	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+		throw new RuntimeException("Wrong vector size when projecting");
+
+	    for (int z=0; z<inV.vectorDepth(); z++)
+	    for (int y=0; y<vectorHeight(); y++)
+	    for (int x=0; x<vectorWidth(); x++) {
+		out[ y * wo + x ] = in[ z  * wo*ho + y*wo + x ];
+	    }
+	}
 
 
     }
@@ -238,6 +255,26 @@ class BasicVector implements VectorFactory {
 	    // TODO: copy the implementation over to here
 	    Transforms.runTimesShiftVector( this, kx, ky, true);
 	}
+    
+	@Override
+	public void project(Vec3d.Cplx inV ) {
+	    
+	    final float [] out = this.vectorData();
+	    final float [] in  =  inV.vectorData();
+	    final int wo = this.vectorWidth();
+	    final int ho = this.vectorHeight();
+	    
+	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+		throw new RuntimeException("Wrong vector size when projecting");
+
+	    for (int z=0; z<inV.vectorDepth(); z++)
+	    for (int y=0; y<vectorHeight(); y++)
+	    for (int x=0; x<vectorWidth(); x++) {
+		out[(y * wo + x)*2+0 ] = in[(z  * wo*ho + y*wo + x)*2+0 ];
+		out[(y * wo + x)*2+1 ] = in[(z  * wo*ho + y*wo + x)*2+1 ];
+	    }
+	}
+    
     }
 
 
