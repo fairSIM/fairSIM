@@ -109,9 +109,6 @@ public final class Vec3d {
 	/** Return a duplicte / clone of this vector */
 	public Real duplicate();
 
-	/** Project (sum up) the vector to a 2D plane vector */
-	public Vec2d.Real project();
-	
 	/** Set the z'th 
 	 *  x-y-slice of the vector to the provided input */
 	public void setSlice( int z, Vec2d.Real dat );
@@ -137,15 +134,22 @@ public final class Vec3d {
 	/** Return a duplicte / clone of this vector */
 	public Cplx duplicate();
 
-	/** Project (sum up) the vector to a 2D plane vector */
-	public Vec2d.Cplx project();
-	
 	/** Set the z'th 
 	 *  x-y-slice of the vector to the provided input */
 	public void setSlice( int z, Vec2d.Cplx dat );
+	
+	/** Set the z'th 
+	 *  x-y-slice of the vector to the provided input */
+	public void setSlice( int z, Vec2d.Real dat );
 
 	/** Compute the in-place fft */
 	public void fft3d( boolean inverse );
+
+	/** TODO: comment, see Vec2d */
+	public void pasteFreq( Cplx i );
+
+	/** TODO: comment */
+	void fourierShift( double kx, double ky, double kz);
 
     }
    

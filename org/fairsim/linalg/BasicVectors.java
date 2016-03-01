@@ -18,6 +18,8 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.linalg;
 
+import org.fairsim.utils.SimpleMT;
+
 /** Basic, pure java implementation of the Vector interfaces
  * ({@link Vec}, {@link Vec2d}) */
 class BasicVector implements VectorFactory {
@@ -252,8 +254,35 @@ class BasicVector implements VectorFactory {
     	
 	@Override
 	public void fourierShift( final double kx, final double ky ) {
-	    // TODO: copy the implementation over to here
-	    Transforms.runTimesShiftVector( this, kx, ky, true);
+
+	    final boolean fast = true; // TODO: make this user-settable??
+	    
+	    final float [] val = vectorData();
+	    final int N = Vec2d.checkSquare( this );
+
+	    // run outer loop in parallel
+	    new SimpleMT.PFor(0,N) {
+		public void at(int y) {
+		    for (int x=0; x<N; x++) {
+			float phaVal = (float)(2*Math.PI*(kx*x+ky*y)/N);
+			float si,co;
+			if (fast) {
+			    co = (float)MTool.fcos( phaVal );
+			    si = (float)MTool.fsin( phaVal );
+			} else {
+			    co = (float)Math.cos( phaVal );
+			    si = (float)Math.sin( phaVal );
+			}
+			// get
+			float re = val[ (y*N+x)*2+0 ] ;
+			float im = val[ (y*N+x)*2+1 ] ;
+			// set
+			val[ (y*N+x)*2+0 ] = Cplx.multReal( re, im, co, si );
+			val[ (y*N+x)*2+1 ] = Cplx.multImag( re, im, co, si );
+		    }
+		}
+	    };
+	
 	}
     
 	@Override
@@ -318,14 +347,6 @@ class BasicVector implements VectorFactory {
 	    throw new RuntimeException("Not jet implemented");
 	}
 
-	@Override
-	public Vec2d.Real project() {
-	    // TODO: Actually implement this
-	    throw new RuntimeException("Not jet implemented");
-	}
-
-
-
     }
 
 
@@ -373,18 +394,108 @@ class BasicVector implements VectorFactory {
 	}
 	
 	@Override
-	public void setSlice( int z, Vec2d.Cplx vec ) {
-	    // TODO: Actually implement this
-	    throw new RuntimeException("Not jet implemented");
+	public void setSlice( final int z, Vec2d.Cplx vec ) {
+	    if (( vec.vectorWidth() != vectorWidth() ) ||
+		( vec.vectorHeight() != vectorHeight() ) ||
+		z<0 || z>=vectorDepth() )
+		throw new RuntimeException("Index mismatch");
+
+	    final int h = vectorHeight();
+	    final int w = vectorWidth();
+	    float [] in = vec.vectorData();
+
+	    for (int y=0; y<h; y++)
+	    for (int x=0; x<w; x++) {
+		data[ 2*( x + w*y + z*w*y )+0 ] = in[ 2*( x + w*y )+0 ];
+		data[ 2*( x + w*y + z*w*y )+1 ] = in[ 2*( x + w*y )+1 ];
+	    }
+	
+	}
+	
+	@Override
+	public void setSlice( int z, Vec2d.Real vec ) {
+	    if (( vec.vectorWidth() != vectorWidth() ) ||
+		( vec.vectorHeight() != vectorHeight() ) ||
+		z<0 || z>=vectorDepth() )
+		throw new RuntimeException("Index mismatch");
+
+	    final int h = vectorHeight();
+	    final int w = vectorWidth();
+	    float [] in = vec.vectorData();
+
+	    for (int y=0; y<h; y++)
+	    for (int x=0; x<w; x++) {
+		data[ 2*( x + w*y + z*w*y )+0 ] = in[ 2*( x + w*y )+0 ];
+		data[ 2*( x + w*y + z*w*y )+1 ] = 0;
+	    }
+	
 	}
 
 	@Override
-	public Vec2d.Cplx project() {
-	    // TODO: Actually implement this
-	    throw new RuntimeException("Not jet implemented");
+	public void pasteFreq( Vec3d.Cplx inV) {
+	
+	    final int wi = inV.vectorWidth();
+	    final int hi = inV.vectorHeight();
+	    final int ti = inV.vectorDepth();
+	    final int wo = this.vectorWidth();
+	    final int ho = this.vectorHeight();
+	    final int to = this.vectorDepth();
+	
+	    final float [] out = this.vectorData();
+	    final float [] in  =  inV.vectorData();
+	
+	    this.zero();
+	
+	    // loop output
+	    for (int z= 0;z<ti;z++)
+	    for (int y= 0;y<hi;y++)
+	    for (int x= 0;x<wi;x++) {
+		int xo = (x<wi/2)?(x):(x+wo/2);
+		int yo = (y<hi/2)?(y):(y+ho/2);
+		int zo = (z<ti/2)?(z):(z+to/2);
+		out[ (xo + wo*yo + wo*ho*zo)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
+		out[ (xo + wo*yo + wo*ho*zo)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
+	    }
+	
 	}
 
+	@Override
+	public void fourierShift(
+	    final double kx, final double ky, final double kz ) {
+	   
+	    final boolean fast = true; //TODO: user-settable??, see above
+	    final float [] val = vectorData();
+	    final int w = vectorWidth();
+	    final int h = vectorHeight();
+	    final int d = vectorDepth();
+
+	    // run outer loop in parallel
+	    new SimpleMT.PFor(0,d) {
+		public void at(int z) {
+		    for (int y=0; y<h; y++)
+		    for (int x=0; x<w; x++) {
+			float phaVal = (float)(2*Math.PI*(x*kx/w+y*ky/h+z*kz/d));
+			float si,co;
+			if (fast) {
+			    co = (float)MTool.fcos( phaVal );
+			    si = (float)MTool.fsin( phaVal );
+			} else {
+			    co = (float)Math.cos( phaVal );
+			    si = (float)Math.sin( phaVal );
+			}
+			// get
+			float re = val[ (z*w*h+y*w+x)*2+0 ] ;
+			float im = val[ (z*w*h+y*w+x)*2+1 ] ;
+			// set
+			val[ (z*w*h+y*h+x)*2+0 ] = Cplx.multReal( re, im, co, si );
+			val[ (z*w*h+y*h+x)*2+1 ] = Cplx.multImag( re, im, co, si );
+		    }
+		}
+	    };
 	
+	}
+
+		
     }
 
 

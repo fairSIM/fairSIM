@@ -128,7 +128,7 @@ public class BandSeparation {
      *  @param fac    Scaling factors, one for each band 
      *
      *  */
-    static public void separateBands( Vec2d.Cplx [] in, Vec2d.Cplx [] out, 
+    static public void separateBands( Vec.Cplx [] in, Vec.Cplx [] out, 
 	double [] phases, final int bands, double [] fac ) {
     
 	// check length
@@ -178,7 +178,7 @@ public class BandSeparation {
      *  @param fac    Scaling factors, one for each band 
      *
      *  */
-    static public void separateBands( Vec2d.Cplx [] in, Vec2d.Cplx [] out, 
+    static public void separateBands( Vec.Cplx [] in, Vec.Cplx [] out, 
 	final double  phaOff, final int bands, double [] fac ) {
 
 	// construct phases

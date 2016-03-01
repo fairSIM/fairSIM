@@ -57,11 +57,27 @@ public class SimUtils {
 	Transforms.computePowerSpectrum( in, pw, swap);
 	return pw;
     }
+    
+    /** Return the power spectrum (as a new vector) of 'in' */
+    public static Vec2d.Real pwSpec(Vec3d.Cplx in,  boolean swap) {
+	Vec2d.Cplx in2d = Vec2d.createCplx( in.vectorWidth(), in.vectorHeight());
+	in2d.project( in );
+	Vec2d.Real pw   = Vec2d.createReal(in2d);
+	Transforms.computePowerSpectrum( in2d, pw, swap);
+	return pw;
+    }
+
 
     /** Return the power spectrum (as a new vector) of 'in' */
     public static Vec2d.Real pwSpec(Vec2d.Cplx in ) {
 	return pwSpec(in, true );
     }
+    
+    /** Return the power spectrum (as a new vector) of 'in' */
+    public static Vec2d.Real pwSpec(Vec3d.Cplx in ) {
+	return pwSpec(in, true );
+    }
+
 
     
     /** Create an image by FFTin back 'in' to spatial */
@@ -72,6 +88,17 @@ public class SimUtils {
 	pw.copy( tmp );
 	return pw;
     }
+    
+    /** Create an image by FFTin back 'in' to spatial */
+    public static Vec2d.Real spatial(Vec3d.Cplx in ) {
+	Vec2d.Real pw  = Vec2d.createReal(in.vectorWidth(), in.vectorHeight());
+	Vec2d.Cplx tmp = Vec2d.createCplx( pw );
+	tmp.project( in );
+	Transforms.fft2d( tmp, true );
+	pw.copy( tmp );
+	return pw;
+    }
+    
     
     
     /** Create an image by FFTin back 'in' to spatial,
