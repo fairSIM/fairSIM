@@ -39,6 +39,13 @@ public interface VectorFactory {
     
     /** Return a two-dimensional, complex-valued vector, sized w x h. */
     public Vec2d.Cplx createCplx2D(int w, int h);
+    
+    /** Return a two-dimensional, real-valued vector, sized w x h x d. */
+    public Vec3d.Real createReal3D(int w, int h, int d);
+    
+    /** Return a two-dimensional, complex-valued vector, sized w x h x d. */
+    public Vec3d.Cplx createCplx3D(int w, int h, int d);
+
 
     
     /** Finish whatever parallel / concurrent process is running (for timing CUDA, etc.) */

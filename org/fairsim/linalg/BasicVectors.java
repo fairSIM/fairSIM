@@ -53,6 +53,16 @@ class BasicVector implements VectorFactory {
     public BCplx2D createCplx2D(int w, int h) {
 	return new BCplx2D(w,h);
     }
+    
+    @Override
+    public BReal3D createReal3D(int w, int h, int d) {
+	return new BReal3D(w,h,d);
+    }
+    
+    @Override
+    public BCplx3D createCplx3D(int w, int h, int d) {
+	return new BCplx3D(w,h,d);
+    }
 
     @Override
     public void syncConcurrent() {};
@@ -232,48 +242,114 @@ class BasicVector implements VectorFactory {
 
 
 
+    /** Minimal 2d vector implementation */
+    class BReal3D extends BReal implements Vec3d.Real {
+	final int width, height, depth;
+	
+	BReal3D(int w, int h, int d) {
+	    super(w*h*d);
+	    width=w; height=h; depth=d;
+	}
 
-    /*
-    protected final int width, height;
-    
-    protected Real( int w, int h ) {
-	super(w*h);
-	width=w; height=h;
+	@Override
+	public int vectorWidth() { return width; }
+	@Override
+	public int vectorHeight() { return height; }
+	@Override
+	public int vectorDepth() { return depth; }
+
+	@Override
+	public BReal3D duplicate() {
+	    BReal3D ret = new BReal3D(width, height, depth);
+	    ret.copy( this );
+	    return ret;
+	}
+
+	@Override
+	public float get(int x, int y, int z) {
+	    return data[ x + y*width + z*width*height];
+	}
+
+	@Override
+	public void set(int x, int y, int z, float a) {
+	    data[ x + y*width + z*width*height ] = a;
+	}
+
+	@Override
+	public void setSlice( int z, Vec2d.Real vec ) {
+	    // TODO: Actually implement this
+	    throw new RuntimeException("Not jet implemented");
+	}
+
+	@Override
+	public Vec2d.Real project() {
+	    // TODO: Actually implement this
+	    throw new RuntimeException("Not jet implemented");
+	}
+
+
+
     }
-    
-    protected Real( int w, int h, float [] dat ) {
-	super( dat );
-	if ( (w*h) != dat.length )
-	    throw new RuntimeException("Vector w*x size mismatch to 'dat'");
-	width=w; height=h;
+
+
+    /** Minimal 2d vector implementation */
+    class BCplx3D extends BCplx implements Vec3d.Cplx {
+	final int width, height, depth;
+	
+	BCplx3D(int w, int h, int d) {
+	    super(w*h*d);
+	    width=w; height=h; depth=d;
+	}
+	
+	@Override
+	public BCplx3D duplicate() {
+	    BCplx3D ret = new BCplx3D(width, height, depth);
+	    ret.copy( this );
+	    return ret;
+	}
+	
+	@Override
+	public int vectorWidth() { return width; }
+	@Override
+	public int vectorHeight() { return height; }
+	@Override
+	public int vectorDepth() { return depth; }
+
+	@Override
+	public Cplx.Float get(int x, int y, int z) {
+	    return Cplx.Float.at( data, x + y*width + z*width*height);
+	}
+	@Override
+	public void set(int x, int y, int z, Cplx.Float a) {
+	    data[ (x + y*width + z*width*height)*2+0 ] = a.re;
+	    data[ (x + y*width + z*width*height)*2+1 ] = a.im;
+	}
+	@Override
+	public void set(int x, int y, int z, Cplx.Double a) {
+	    data[ (x + y*width + z*width*height)*2+0 ] = (float)a.re;
+	    data[ (x + y*width + z*width*height)*2+1 ] = (float)a.im;
+	}
+	
+	@Override
+	public void fft3d(boolean inverse) {
+	    Transforms.runfft3d( this, inverse );
+	}
+	
+	@Override
+	public void setSlice( int z, Vec2d.Cplx vec ) {
+	    // TODO: Actually implement this
+	    throw new RuntimeException("Not jet implemented");
+	}
+
+	@Override
+	public Vec2d.Cplx project() {
+	    // TODO: Actually implement this
+	    throw new RuntimeException("Not jet implemented");
+	}
+
+	
     }
 
 
-    public float get(int x, int y) {
-	this.readyBuffer();
-	return data[x+y*width];
-    }
-
-    public void set(int x, int y, float v) {
-	this.readyBuffer();
-	data[x+y*width] = v;
-	this.syncBuffer();
-    }
-    protected final int width, height;	
-    
-    protected Cplx( int w, int h ) {
-	super(w*h);
-	width=w; height=h;
-    }
-
-
-    protected Cplx( int w, int h, float [] dat ) {
-	super( dat );
-	if ( (w*h)*2 != dat.length )
-	    throw new RuntimeException("Vector w*x size mismatch to 'dat'");
-	width=w; height=h;
-    }
-
-  */
 
 }

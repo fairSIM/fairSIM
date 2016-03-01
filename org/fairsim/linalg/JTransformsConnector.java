@@ -28,6 +28,7 @@ class JTransformsConnector extends Transforms {
 
 	FloatFFT_1D fft1ds;
 	FloatFFT_2D fft2ds;
+	FloatFFT_3D fft3ds;
 
 	/** Create a 1d transform for vectors length n */
 	JTransformsConnector( int n ) {
@@ -37,6 +38,11 @@ class JTransformsConnector extends Transforms {
 	/** Create a 2d transform for vectors size w x h */
 	JTransformsConnector( int w, int h ) {
 		fft2ds = new  FloatFFT_2D(w,h);
+	}
+	
+	/** Create a 3d transform for vectors size w x h x d */
+	JTransformsConnector( int w, int h, int d) {
+		fft3ds = new  FloatFFT_3D(w,h,d);
 	}
 
 
@@ -61,5 +67,15 @@ class JTransformsConnector extends Transforms {
 	    else
 	    fft2ds.complexInverse( x , true );
 	}
+	
+	/** Computes 3-dim Fourier Transfor */
+	@Override
+    	protected void fft_3d_trans_c2c(final float [] x, boolean inverse) {
+	    if (!inverse)
+	    fft3ds.complexForward( x );
+	    else
+	    fft3ds.complexInverse( x , true );
+	}
+
 
 }

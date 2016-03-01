@@ -1,12 +1,9 @@
 # fairSIM
 Free Analysis and Interactive Reconstruction for Structured Illumination Microscopy
 
-This is the **development branch** for the integration of new features, so commits 
-in this branch might be unstable, contain known errors or not compile. For release versions,
-please switch to the master branch.
+This is the **dev-3dSupport branch** for the integration of full 3D SR-SIM reconstruction
+support into fairSIM.
 
-Binary jar files files for the plugin can be found [here](https://github.com/fairSIM/fairSIM/releases/).
+Commits in this branch will likely be unstable, contain known errors will often not compile. 
+For release versions, please switch to the master branch.
 
-Quickstart manual, test datasets and additional material can be found on 
-[our website](https://fairSIM.github.io)
-([mirror](http://www.physik.uni-bielefeld.de/fairsim)).
