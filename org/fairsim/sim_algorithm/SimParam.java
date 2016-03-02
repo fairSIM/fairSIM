@@ -21,13 +21,14 @@ package org.fairsim.sim_algorithm;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.Vec3d;
 
 /** Storage / management of SIM reconstruction parameters. 
  *  Provides a good way to connect GUI and algorithm, as checks,
  *  conversions etc. can happen in this class instead of cluttering other
  *  code.
  * */
-public class SimParam implements Vec2d.Size {
+public class SimParam implements Vec2d.Size, Vec3d.Size {
 
     /** number of angles/pattern directions */
     final protected int nrDirs;	
@@ -586,6 +587,9 @@ public class SimParam implements Vec2d.Size {
     
     /** Return height */
     @Override public int vectorHeight() { return imgSize; }
+    
+    /** Return height */
+    @Override public int vectorDepth() { return stackSize ; }
 
     /** Returns a multi-line, human-readable output of parameters */
     public String prettyPrint(boolean phaInDeg) {

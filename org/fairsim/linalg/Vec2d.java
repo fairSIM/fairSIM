@@ -182,8 +182,15 @@ public final class Vec2d {
 	/** height of the vector */
 	public int vectorHeight();
 
+	/** project (sum along z, from start to end) a Vec3d into this vector */
+	public void project( Vec3d.Cplx in, int start, int end );
+	
 	/** project (sum along z) a Vec3d into this vector */
 	public void project( Vec3d.Cplx in );
+    
+	/** get slice nr n */
+	public void slice( Vec3d.Cplx in, int n );
+    
     }
    
     // =======================================================

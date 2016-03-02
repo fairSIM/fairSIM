@@ -33,18 +33,20 @@ class JTransformsConnector extends Transforms {
 
 	/** Create a 1d transform for vectors length n */
 	JTransformsConnector( int n ) {
-		fft1ds = new  FloatFFT_1D(n);
+	    fft1ds = new  FloatFFT_1D(n);
 	}
 	
 	/** Create a 2d transform for vectors size w x h */
 	JTransformsConnector( int w, int h ) {
-		fft2ds = new  FloatFFT_2D(w,h);
+	    // note the order of dimensions changed in constructor
+	    fft2ds = new  FloatFFT_2D(h,w);
 	}
 	
 	/** Create a 3d transform for vectors size w x h x d */
 	JTransformsConnector( int w, int h, int d) {
-		Tool.trace(String.format("Created FFT size %d x %d x %d",w,h,d));
-		fft3ds = new  FloatFFT_3D(w,h,d);
+	    Tool.trace(String.format("Created FFT size %d x %d x %d",w,h,d));
+	    // note the order of dimensions changed in constructor
+	    fft3ds = new  FloatFFT_3D(d,w,h);
 	}
 
 

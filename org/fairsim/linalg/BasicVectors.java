@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.linalg;
 
 import org.fairsim.utils.SimpleMT;
+import org.fairsim.utils.Tool;
 
 /** Basic, pure java implementation of the Vector interfaces
  * ({@link Vec}, {@link Vec2d}) */
@@ -288,26 +289,41 @@ class BasicVector implements VectorFactory {
 	}
     
 	@Override
-	public void project(Vec3d.Cplx inV ) {
+	public void project(Vec3d.Cplx inV, int start, int end) {
 	    
 	    final float [] out = this.vectorData();
 	    final float [] in  =  inV.vectorData();
-	    final int wo = this.vectorWidth();
-	    final int ho = this.vectorHeight();
 	    
-	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+	    if (inV.vectorWidth() != width || inV.vectorHeight() != height)
 		throw new RuntimeException("Wrong vector size when projecting");
+	    
+	    if (start<0 || end >= inV.vectorDepth() || start > end )
+		throw new RuntimeException("z-index out of vector depth bounds");
 
+
+	    // TODO: This could be more efficient in the loop??
 	    this.zero();
 
-	    for (int z=0; z<inV.vectorDepth(); z++)
-	    for (int y=0; y<vectorHeight(); y++)
-	    for (int x=0; x<vectorWidth(); x++) {
-		out[(y * wo + x)*2+0 ] += in[(z  * wo*ho + y*wo + x)*2+0 ];
-		out[(y * wo + x)*2+1 ] += in[(z  * wo*ho + y*wo + x)*2+1 ];
+	    for (int z=start; z<=end; z++)
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		out[(y * width + x)*2+0 ] += in[(z*width*height + y*width + x)*2+0];
+		out[(y * width + x)*2+1 ] += in[(z*width*height + y*width + x)*2+0];
 	    }
+	
 	}
-    
+	
+	@Override
+	public void project(Vec3d.Cplx inV) {
+	    project( inV, 0, inV.vectorDepth()-1);
+	}
+
+	@Override
+	public void slice(Vec3d.Cplx inV, int n) {
+	    project( inV, n, n );
+	}
+	
+
     }
 
 

@@ -61,8 +61,9 @@ public class Test3d implements PlugIn {
 
     boolean findPeak    = true;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
+    boolean doTheReconstruction = true; // if to run the reconstruction (for debug, mostly)
 	
-    final int visualFeedback = 3;   // amount of intermediate results to create (-1,0,1,2,3)
+    final int visualFeedback = 0;   // amount of intermediate results to create (-1,0,1,2,3)
 
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
 
@@ -95,7 +96,9 @@ public class Test3d implements PlugIn {
     public void runReconstruction( ImageStack inSt, String cfgfile ) {
 	
 	// ----- Parameters -----
-	final int w=inSt.getWidth(), h=inSt.getHeight(), d = inSt.getSize() / (nrPhases*nrDirs);
+	final int w=inSt.getWidth(), h=inSt.getHeight();
+	final int d = inSt.getSize() / (nrPhases*nrDirs);
+	//final int d = 6;
 
 	Conf cfg=null;
 	OtfProvider3D otfPr    = null; 
@@ -115,7 +118,7 @@ public class Test3d implements PlugIn {
 	
 	// Reconstruction parameters: #bands, #directions, #phases, size, microns/pxl, the OTF 
 	final SimParam param = 
-	    SimParam.create3d(nrBands, nrDirs, nrPhases, w, d, 0.08, 0.15, otfPr2D, otfPr );
+	    SimParam.create3d(nrBands, nrDirs, nrPhases, w, d, 0.08, 0.125, otfPr2D, otfPr );
 	
 	// ----- Shift vectors for example data -----
 	// (used for reconstruction, or as starting guess if 'locatePeak' is off, but 'findPeak' on)
@@ -144,9 +147,38 @@ public class Test3d implements PlugIn {
 	Tool.Timer tRec  = Tool.getTimer();	// Reconstruction
 
 	tAll.start();
+	
+	// Output displays to show the intermediate results
+	ImageDisplay pwSt  = new DisplayWrapper(w,h, "Power Spectra" );
+	ImageDisplay spSt  = new DisplayWrapper(w,h, "Spatial images");
+	ImageDisplay pwSt2 = new DisplayWrapper(2*w,2*h, "Power Spectra" );
+	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
+
+	// Do some OTF testing for 3D OTF
+	if (false) {
+	    int otfdepth=128;
+	    otfPr.setPixelSize(0.0244,0.052);
+	    Vec3d.Cplx otfVec = Vec3d.createCplx(512,512,otfdepth);
+	    Vec2d.Cplx tmp  = Vec2d.createCplx(512,512);
+	    Vec2d.Real tmp2 = Vec2d.createReal(512,512);
+
+	    for (int b=0; b<=2; b++) {
+		ImageDisplay otfSt  = new DisplayWrapper(w,h, "OTF band"+b );
+		otfPr.writeOtfVector( otfVec, b, 0, 0 );
+		for (int z=0; z<otfdepth; z++) {
+		    tmp.slice(otfVec, z);
+		    tmp2.copy(tmp);
+		    otfSt.addImage(tmp2, "b:"+b+" z:"+z);
+		}
+		otfSt.display();
+	    }
+	    return;
+	}
+
+
+
 
 	// Copy current stack into vectors, apotize borders, run fft 
-
 	Vec3d.Cplx inFFT[][] = new Vec3d.Cplx[ nrDirs ][ nrPhases ];
 
 	Tool.trace(String.format("Running with dimensions %d x %d x %d, a:%d p:%d",
@@ -165,20 +197,20 @@ public class Test3d implements PlugIn {
 		inFFT[a][p].setSlice( z, img );
 	    }
 
+	    // input FFT
 	    inFFT[a][p].fft3d(false);
 	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
+	    
+	    // DEBUG output
+	    Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
+	    tmp.slice( inFFT[a][p],0 );
+	    spSt.addImage( SimUtils.spatial(tmp), "IN: a"+a+" p"+p);
+	    pwSt.addImage( SimUtils.pwSpec( inFFT[a][p] ) , "IN: a"+a+" p"+p);
 	}
 
 
 	// vectors to store the result
 	Vec3d.Cplx fullResult    = Vec3d.createCplx( w*2,h*2,d);
-    
-	// Output displays to show the intermediate results
-	ImageDisplay pwSt  = new DisplayWrapper(w,h, "Power Spectra" );
-	ImageDisplay spSt  = new DisplayWrapper(w,h, "Spatial images");
-	ImageDisplay pwSt2 = new DisplayWrapper(2*w,2*h, "Power Spectra" );
-	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
-
 
 
 	// ---------------------------------------------------------------------
@@ -187,7 +219,10 @@ public class Test3d implements PlugIn {
 	
 	tEst.start();
 	if (findPeak) {
-	
+
+	    // TODO: This currently just uses the 2D algorithm on the projection
+	    // For good modulation estimate, however the full 3D OTF should be used
+
 	    // The attenuation vector helps well to fade out the DC component,
 	    // which is uninteresting for the correlation anyway
 	    Vec2d.Real otfAtt = Vec2d.createReal( param );
@@ -205,8 +240,13 @@ public class Test3d implements PlugIn {
 
 		// compute z-projection
 		Vec2d.Cplx [] inFFT2d = Vec2d.createArrayCplx( nrPhases, w, h);
-		for (int p=0; p<nrPhases; p++)
-		    inFFT2d[p].project( inFFT[angIdx][p]);
+		for (int p=0; p<nrPhases; p++) {
+		    inFFT2d[p].slice( inFFT[angIdx][p], 0);
+		    // DEBUG: Output the z-projection
+		    pwSt.addImage( SimUtils.pwSpec( inFFT2d[p]), "a"+angIdx+" p"+p);
+		    spSt.addImage( SimUtils.spatial( inFFT2d[p]), "a"+angIdx+" p"+p);
+		}
+
 
 		// compute band separation
 		Vec2d.Cplx [] separate = Vec2d.createArrayCplx( dir.nrComp(), w, h);
@@ -414,14 +454,16 @@ public class Test3d implements PlugIn {
 	// ---------------------------------------------------------------------
 	
 	tWien.start();
-	WienerFilter wFilter = new WienerFilter( param );
+	WienerFilter3d wFilter = new WienerFilter3d( param );
 	
 	if (visualFeedback>0) {
-	    Vec2d.Real wd = wFilter.getDenominator(wienParam);
-	    wd.reciproc();
-	    wd.normalize();
-	    Transforms.swapQuadrant( wd );
-	    pwSt2.addImage(wd, "Wiener denominator");
+	    Vec3d.Real wd = wFilter.getDenominator(wienParam);
+	    Vec2d.Real wdpr = Vec2d.createReal(2*w, 2*h);
+	    wdpr.project( wd );
+	    wdpr.reciproc();
+	    wdpr.normalize();
+	    Transforms.swapQuadrant( wdpr );
+	    pwSt2.addImage(wdpr, "Wiener denominator");
 	}
 	
 	tWien.stop();
@@ -430,207 +472,213 @@ public class Test3d implements PlugIn {
 	// ---------------------------------------------------------------------
 	// Run the actual reconstruction 
 	// ---------------------------------------------------------------------
-	
+
+    
+
 	tRec.start();	
 	// loop all pattern directions
-	for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) 
-	{
-	    final SimParam.Dir par = param.dir(angIdx);
+	if ( doTheReconstruction ) {
+	    for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) 
+	    {
+		final SimParam.Dir par = param.dir(angIdx);
 
-	    // ----- Band separation & OTF multiplication (if before shift) -------
+		// ----- Band separation & OTF multiplication (if before shift) -------
 
-	    Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
-	    
-	    BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
-
-	    if (otfBeforeShift)
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    otfPr.applyOtf( separate[i], (i+1)/2);
-
-	    // ------- Shifts to correct position ----------
-
-	    Vec3d.Cplx [] shifted   = Vec3d.createArrayCplx(5, 2*w, 2*h, d);
-
-	    // band 0 is DC, so does not need shifting, only a bigger vector
-	    shifted[0].pasteFreq( separate[0] );
-	    //SimUtils.placeFreq( separate[0],  shifted[0]);
-	    
-	    // higher bands need shifting
-	    for ( int b=1; b<par.nrBand(); b++) {
+		Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
 		
-		Tool.trace("REC: Dir "+angIdx+": shift band: "+b+" to: "+par.px(b)+" "+par.py(b));
-		
-		// first, copy to larger vectors
-		int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
-		shifted[pos].pasteFreq( separate[pos] );
-		shifted[neg].pasteFreq( separate[neg] );
+		BandSeparation.separateBands( inFFT[angIdx] , separate , 
+			par.getPhases(), par.nrBand(), par.getModulations());
 
-		// then, fourier shift
-		shifted[pos].fourierShift(  par.px(b),  par.py(b), 0 );
-		shifted[neg].fourierShift( -par.px(b), -par.py(b), 0 );
-	    }
-	   
-	    // ------ OTF multiplication or masking ------
-	    
-	    if (!otfBeforeShift) { 
-		// multiply with shifted OTF
-		for (int b=0; b<par.nrBand(); b++) {
+		if (otfBeforeShift)
+		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+			otfPr.applyOtf( separate[i], (i+1)/2);
+
+		// ------- Shifts to correct position ----------
+
+		Vec3d.Cplx [] shifted   = Vec3d.createArrayCplx(5, 2*w, 2*h, d);
+
+		// band 0 is DC, so does not need shifting, only a bigger vector
+		shifted[0].pasteFreq( separate[0] );
+		//SimUtils.placeFreq( separate[0],  shifted[0]);
+		
+		// higher bands need shifting
+		for ( int b=1; b<par.nrBand(); b++) {
+		    
+		    Tool.trace("REC: Dir "+angIdx+": shift band: "+b+" to: "+par.px(b)+" "+par.py(b));
+		    
+		    // first, copy to larger vectors
 		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
-		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
-		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
-		}
-	    } 
-	    // TODO: re-implement OTF mask support for 3D
-	    /*
-	    else {
-		// or mask for OTF support
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    otfPr.maskOtf( shifted[i], angIdx, i);
-	    } */
-	    
-	    // ------ Sum up result ------
-	    
-	    for (int i=0;i<par.nrBand()*2-1;i++)  
-		fullResult.add( shifted[i] ); 
-	
-	    
-	    // ------ Output intermediate results ------
-	    
-	    if (visualFeedback>0) {
-	
-		// per-direction results
-		Vec2d.Cplx result = Vec2d.createCplx(2*w,2*h);
-		Vec2d.Cplx tmp = Vec2d.createCplx(2*w,2*h);
-		for (int i=0;i<par.nrBand()*2-1;i++) { 
-		    tmp.project( shifted[i]) ;
-		    result.add( tmp ); 
-		}
+		    shifted[pos].pasteFreq( separate[pos] );
+		    shifted[neg].pasteFreq( separate[neg] );
 
-		// loop bands in this direction
-		for (int i=0;i<par.nrBand();i++) {     
-
-		    // get wiener denominator for (direction, band), add to full denom for this band
-		    Vec2d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+		    // then, fourier shift
+		    shifted[pos].fourierShift(  par.px(b),  par.py(b), 0 );
+		    shifted[neg].fourierShift( -par.px(b), -par.py(b), 0 );
+		}
+	       
+		// ------ OTF multiplication or masking ------
 		
-		    // add up +- shift for this band
-		    Vec3d.Cplx thisband   = shifted[i*2];
-		    if (i!=0)
-			thisband.add( shifted[i*2-1] );
-	
+		if (!otfBeforeShift) { 
+		    // multiply with shifted OTF
+		    for (int b=0; b<par.nrBand(); b++) {
+			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
+			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+		    }
+		} 
+		// TODO: re-implement OTF mask support for 3D
+		/*
+		else {
+		    // or mask for OTF support
+		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+			//wFilter.maskOtf( shifted[i], angIdx, i);
+			otfPr.maskOtf( shifted[i], angIdx, i);
+		} */
+		
+		// ------ Sum up result ------
+		
+		for (int i=0;i<par.nrBand()*2-1;i++)  
+		    fullResult.add( shifted[i] ); 
+	    
+		
+		// ------ Output intermediate results ------
+		
+		if (visualFeedback>0) {
+	    
+		    // per-direction results
+		    Vec2d.Cplx result = Vec2d.createCplx(2*w,2*h);
+		    Vec2d.Cplx tmp = Vec2d.createCplx(2*w,2*h);
+		    for (int i=0;i<par.nrBand()*2-1;i++) { 
+			tmp.slice( shifted[i], 0) ;
+			result.add( tmp ); 
+		    }
+
+		    // loop bands in this direction
+		    for (int i=0;i<par.nrBand();i++) {     
+
+			// TODO: re-implement and re-enable this
+			// get wiener denominator for (direction, band), add to full denom for this band
+			//Vec2d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+		    
+			// add up +- shift for this band
+			Vec3d.Cplx thisband   = shifted[i*2];
+			if (i!=0)
+			    thisband.add( shifted[i*2-1] );
+	    
+			// output the wiener denominator
+			/*
+			if (visualFeedback>1) {
+			    Vec2d.Real wd = denom.duplicate();
+			    wd.reciproc();
+			    wd.normalize();
+			    Transforms.swapQuadrant( wd );
+			    pwSt2.addImage( wd, String.format(
+				"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
+			} */
+			
+			// apply filter and output result
+			//thisband.times( denom );
+			
+			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
+			    "a%1d: band %1d",angIdx,(i/2)));
+			spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
+			    "a%1d: band %1d",angIdx,(i/2)));
+		    }
+
+		    // per direction wiener denominator	
+		    /*
+		    Vec2d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);	
+		    result.times( fDenom );
+			
 		    // output the wiener denominator
 		    if (visualFeedback>1) {
-			Vec2d.Real wd = denom.duplicate();
+			Vec2d.Real wd = fDenom.duplicate();
 			wd.reciproc();
 			wd.normalize();
 			Transforms.swapQuadrant( wd );
 			pwSt2.addImage( wd, String.format(
-			    "a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
+			    "a%1d: OTF/Wiener all bands",angIdx ));
+		    } */
+		    
+		    pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
+			"a%1d: all bands",angIdx));
+		    spSt2.addImage( SimUtils.spatial( result ) ,String.format(
+			"a%1d: all bands",angIdx));
+		
+		    // power spectra before shift
+		    if (visualFeedback>2) { 
+			for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+			pwSt.addImage( SimUtils.pwSpec( separate[i] ), String.format(
+			    "a%1d, sep%1d, seperated band", angIdx, i));
 		    }
-		    
-		    // apply filter and output result
-		    //thisband.times( denom );
-		    
-		    pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
-			"a%1d: band %1d",angIdx,(i/2)));
-		    spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
-			"a%1d: band %1d",angIdx,(i/2)));
+	       
 		}
 
-		// per direction wiener denominator	
-		Vec2d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);	
-		result.times( fDenom );
-		    
-		// output the wiener denominator
-		if (visualFeedback>1) {
-		    Vec2d.Real wd = fDenom.duplicate();
-		    wd.reciproc();
-		    wd.normalize();
-		    Transforms.swapQuadrant( wd );
-		    pwSt2.addImage( wd, String.format(
-			"a%1d: OTF/Wiener all bands",angIdx ));
-		}
-		
-		pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
-		    "a%1d: all bands",angIdx));
-		spSt2.addImage( SimUtils.spatial( result ) ,String.format(
-		    "a%1d: all bands",angIdx));
+
+	    }   
 	    
-		// power spectra before shift
-		if (visualFeedback>2) { 
-		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    pwSt.addImage( SimUtils.pwSpec( separate[i] ), String.format(
-			"a%1d, sep%1d, seperated band", angIdx, i));
-		}
-	   
+	    // -- done loop all pattern directions, 'fullResult' now holds the image --
+	    
+	    // multiply by wiener denominator
+	    Vec3d.Real denom = wFilter.getDenominator( wienParam );
+	    fullResult.times(denom);
+	    
+	    if (visualFeedback>0) {
+		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
+		spSt2.addImage(  SimUtils.spatial(fullResult), "full (w/o APO)");
 	    }
 
-
-	}   
-	
-	// -- done loop all pattern directions, 'fullResult' now holds the image --
-	
-	// multiply by wiener denominator
-	Vec2d.Real denom = wFilter.getDenominator( wienParam );
-	//fullResult.times(denom);
-	
-	if (visualFeedback>0) {
-	    pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
-	    spSt2.addImage(  SimUtils.spatial(fullResult), "full (w/o APO)");
-	}
-
-	// apply apotization filter
-	Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
-	//otfPr.writeApoVector( apo, apoB, apoF);
-	//fullResult.times(apo);
-	spSt2.addImage( SimUtils.spatial( fullResult), "full result");
-	
-	if (visualFeedback>0) {
-	    pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
-	}
-
-	// Add wide-field for comparison
-	if (visualFeedback>=0) {
+	    // apply apotization filter
+	    Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
+	    //otfPr.writeApoVector( apo, apoB, apoF);
+	    //fullResult.times(apo);
+	    spSt2.addImage( SimUtils.spatial( fullResult), "full result");
 	    
-	    // obtain the low freq result
-	    Vec3d.Cplx lowFreqResult = Vec3d.createCplx(w*2,h*2,d);
-	    
-	    // have to do the separation again, result before had the OTF multiplied
-	    for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
-		
-		final SimParam.Dir par = param.dir(angIdx);
-		
-		Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
-		BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
+	    if (visualFeedback>0) {
+		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
+	    }
 
-		Vec3d.Cplx tmp  = Vec3d.createCplx( w*2,h*2,d );
-		tmp.pasteFreq( separate[0] );
-		lowFreqResult.add( tmp );
+	    // Add wide-field for comparison
+	    if (visualFeedback>=0) {
+		
+		// obtain the low freq result
+		Vec3d.Cplx lowFreqResult = Vec3d.createCplx(w*2,h*2,d);
+		
+		// have to do the separation again, result before had the OTF multiplied
+		for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+		    
+		    final SimParam.Dir par = param.dir(angIdx);
+		    
+		    Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
+		    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+			par.getPhases(), par.nrBand(), par.getModulations());
+
+		    Vec3d.Cplx tmp  = Vec3d.createCplx( w*2,h*2,d );
+		    tmp.pasteFreq( separate[0] );
+		    lowFreqResult.add( tmp );
+		}	
+		
+		// now, output the widefield
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
+		spSt2.addImage( SimUtils.spatial(lowFreqResult), "Widefield" );
+	    
+		// otf-multiply and wiener-filter the wide-field
+		//otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
+
+		Vec3d.Real lfDenom = wFilter.getWidefieldDenominator( wienParam );
+		lowFreqResult.times( lfDenom );
+		
+		//Vec2d.Cplx apoLowFreq = Vec2d.createCplx(2*w,2*h);
+		//otfPr.writeApoVector( apoLowFreq, 0.4, 1.2);
+		//lowFreqResult.times(apoLowFreq);
+		
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
+		spSt2.addImage( SimUtils.spatial( lowFreqResult), "filtered Widefield" );
+
 	    }	
-	    
-	    // now, output the widefield
-	    if (visualFeedback>0)
-		pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
-	    spSt2.addImage( SimUtils.spatial(lowFreqResult), "Widefield" );
-	
-	    // otf-multiply and wiener-filter the wide-field
-	    //otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
-
-	    Vec2d.Real lfDenom = wFilter.getWidefieldDenominator( wienParam );
-	    //lowFreqResult.times( lfDenom );
-	    
-	    //Vec2d.Cplx apoLowFreq = Vec2d.createCplx(2*w,2*h);
-	    //otfPr.writeApoVector( apoLowFreq, 0.4, 1.2);
-	    //lowFreqResult.times(apoLowFreq);
-	    
-	    if (visualFeedback>0)
-		pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
-	    spSt2.addImage( SimUtils.spatial( lowFreqResult), "filtered Widefield" );
-
-	}	
-
+	}
 	// stop timers
 	tRec.stop();	
 	tAll.stop();
