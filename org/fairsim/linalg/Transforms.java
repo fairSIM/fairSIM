@@ -58,7 +58,7 @@ public abstract class Transforms {
 	// get parameters
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
-	final int d = in.vectorHeight();
+	final int d = in.vectorDepth();
 	// see if we have an instance already, otherwise make one
 	Transforms ffti = getOrCreateInstance(new FFTkey(w,h,d));
 	float [] dat = in.vectorData();
@@ -133,6 +133,8 @@ public abstract class Transforms {
 	    ffti = new JTransformsConnector(k.x);
 	if (k.d==2)
 	    ffti = new JTransformsConnector(k.x,k.y);
+	if (k.d==3)
+	    ffti = new JTransformsConnector(k.x,k.y,k.z);
 	if (ffti==null) 
 	    throw new RuntimeException("Unsupported dimensions");
 	instances.put( k , ffti );

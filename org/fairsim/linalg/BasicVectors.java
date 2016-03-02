@@ -168,11 +168,13 @@ class BasicVector implements VectorFactory {
 	    
 	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
 		throw new RuntimeException("Wrong vector size when projecting");
+    
+	    this.zero();
 
 	    for (int z=0; z<inV.vectorDepth(); z++)
 	    for (int y=0; y<vectorHeight(); y++)
 	    for (int x=0; x<vectorWidth(); x++) {
-		out[ y * wo + x ] = in[ z  * wo*ho + y*wo + x ];
+		out[ y * wo + x ] += in[ z  * wo*ho + y*wo + x ];
 	    }
 	}
 
@@ -296,11 +298,13 @@ class BasicVector implements VectorFactory {
 	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
 		throw new RuntimeException("Wrong vector size when projecting");
 
+	    this.zero();
+
 	    for (int z=0; z<inV.vectorDepth(); z++)
 	    for (int y=0; y<vectorHeight(); y++)
 	    for (int x=0; x<vectorWidth(); x++) {
-		out[(y * wo + x)*2+0 ] = in[(z  * wo*ho + y*wo + x)*2+0 ];
-		out[(y * wo + x)*2+1 ] = in[(z  * wo*ho + y*wo + x)*2+1 ];
+		out[(y * wo + x)*2+0 ] += in[(z  * wo*ho + y*wo + x)*2+0 ];
+		out[(y * wo + x)*2+1 ] += in[(z  * wo*ho + y*wo + x)*2+1 ];
 	    }
 	}
     
@@ -395,45 +399,45 @@ class BasicVector implements VectorFactory {
 	
 	@Override
 	public void setSlice( final int z, Vec2d.Cplx vec ) {
-	    if (( vec.vectorWidth() != vectorWidth() ) ||
-		( vec.vectorHeight() != vectorHeight() ) ||
-		z<0 || z>=vectorDepth() )
+	    if (( vec.vectorWidth() != width ) ||
+		( vec.vectorHeight() != height ) ||
+		z<0 || z>= depth )
 		throw new RuntimeException("Index mismatch");
 
-	    final int h = vectorHeight();
-	    final int w = vectorWidth();
 	    float [] in = vec.vectorData();
 
-	    for (int y=0; y<h; y++)
-	    for (int x=0; x<w; x++) {
-		data[ 2*( x + w*y + z*w*y )+0 ] = in[ 2*( x + w*y )+0 ];
-		data[ 2*( x + w*y + z*w*y )+1 ] = in[ 2*( x + w*y )+1 ];
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		data[ 2*( x + width*y + z*width*height )+0 ] = in[ 2*( x + width*y )+0 ];
+		data[ 2*( x + width*y + z*width*height )+1 ] = in[ 2*( x + width*y )+1 ];
 	    }
 	
 	}
 	
 	@Override
 	public void setSlice( int z, Vec2d.Real vec ) {
-	    if (( vec.vectorWidth() != vectorWidth() ) ||
-		( vec.vectorHeight() != vectorHeight() ) ||
-		z<0 || z>=vectorDepth() )
+	    if (( vec.vectorWidth() != width ) ||
+		( vec.vectorHeight() != height ) ||
+		z<0 || z>= depth )
 		throw new RuntimeException("Index mismatch");
 
-	    final int h = vectorHeight();
-	    final int w = vectorWidth();
 	    float [] in = vec.vectorData();
 
-	    for (int y=0; y<h; y++)
-	    for (int x=0; x<w; x++) {
-		data[ 2*( x + w*y + z*w*y )+0 ] = in[ 2*( x + w*y )+0 ];
-		data[ 2*( x + w*y + z*w*y )+1 ] = 0;
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		data[ 2*( x + width*y + z*width*height )+0 ] = in[ x + width*y ];
+		data[ 2*( x + width*y + z*width*height )+1 ] = 0;
 	    }
 	
 	}
 
+	/** Look into source code for usage */
 	@Override
 	public void pasteFreq( Vec3d.Cplx inV) {
-	
+
+	    // TODO: This currently only works for the very specific case of
+	    // the output vector size being 2*w, 2*h, z (as typ. in SIM)
+
 	    final int wi = inV.vectorWidth();
 	    final int hi = inV.vectorHeight();
 	    final int ti = inV.vectorDepth();
@@ -453,8 +457,10 @@ class BasicVector implements VectorFactory {
 		int xo = (x<wi/2)?(x):(x+wo/2);
 		int yo = (y<hi/2)?(y):(y+ho/2);
 		int zo = (z<ti/2)?(z):(z+to/2);
-		out[ (xo + wo*yo + wo*ho*zo)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
-		out[ (xo + wo*yo + wo*ho*zo)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
+		//out[ (xo + wo*yo + wo*ho*zo)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
+		//out[ (xo + wo*yo + wo*ho*zo)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
+		out[ (xo + wo*yo + wo*ho*z)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
+		out[ (xo + wo*yo + wo*ho*z)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
 	    }
 	
 	}

@@ -466,6 +466,7 @@ public class TestPlugin implements PlugIn {
 	    if (!otfBeforeShift) {
 		// multiply with shifted OTF
 		for (int b=0; b<par.nrBand(); b++) {
+		    // TODO: This will fail (index -1)
 		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
 		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
 		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );

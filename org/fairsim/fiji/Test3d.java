@@ -56,13 +56,10 @@ public class Test3d implements PlugIn {
     double pxSize    = 0.080;	    // pixel size (microns)
 
     double wienParam   = 0.05;	    // Wiener filter parameter
-    double attStrength = 0.995;	    // Strength of attenuation
-    double attFWHM     = 1.2;	    // FWHM of attenuation (cycles/micron)
-    boolean doAttenuation = true;  // use attenuation?
 
     boolean otfBeforeShift = true;  // multiply the OTF before or after shift to px,py
 
-    boolean findPeak    = true;	    // run localization and fit of shfit vector
+    boolean findPeak    = true;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
 	
     final int visualFeedback = 3;   // amount of intermediate results to create (-1,0,1,2,3)
@@ -98,7 +95,7 @@ public class Test3d implements PlugIn {
     public void runReconstruction( ImageStack inSt, String cfgfile ) {
 	
 	// ----- Parameters -----
-	final int w=inSt.getWidth(), h=inSt.getHeight(), d = inSt.getSize() / nrPhases*nrDirs;
+	final int w=inSt.getWidth(), h=inSt.getHeight(), d = inSt.getSize() / (nrPhases*nrDirs);
 
 	Conf cfg=null;
 	OtfProvider3D otfPr    = null; 
@@ -118,7 +115,7 @@ public class Test3d implements PlugIn {
 	
 	// Reconstruction parameters: #bands, #directions, #phases, size, microns/pxl, the OTF 
 	final SimParam param = 
-	    SimParam.create(nrBands, nrDirs, nrPhases );
+	    SimParam.create3d(nrBands, nrDirs, nrPhases, w, d, 0.08, 0.15, otfPr2D, otfPr );
 	
 	// ----- Shift vectors for example data -----
 	// (used for reconstruction, or as starting guess if 'locatePeak' is off, but 'findPeak' on)
@@ -151,7 +148,10 @@ public class Test3d implements PlugIn {
 	// Copy current stack into vectors, apotize borders, run fft 
 
 	Vec3d.Cplx inFFT[][] = new Vec3d.Cplx[ nrDirs ][ nrPhases ];
-	
+
+	Tool.trace(String.format("Running with dimensions %d x %d x %d, a:%d p:%d",
+	    w,h,d,nrDirs,nrPhases));
+
 	for (int a=0; a<nrDirs; a++) 
 	for (int p=0; p<nrPhases; p++) {
 	    
@@ -160,13 +160,13 @@ public class Test3d implements PlugIn {
 	    for (int z=0; z<d; z++) {
 		
 		int pos = 1 + p + 5 * z + a * 5 * d; // TODO: Use SimUtils here?
-		
 		Vec2d.Real img = ImageVector.copy( inSt.getProcessor(pos) );
 		SimUtils.fadeBorderCos( img , 10);
 		inFFT[a][p].setSlice( z, img );
 	    }
 
 	    inFFT[a][p].fft3d(false);
+	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
 	}
 
 
@@ -473,8 +473,7 @@ public class Test3d implements PlugIn {
 	   
 	    // ------ OTF multiplication or masking ------
 	    
-	    //if (!otfBeforeShift) 
-	    if (true) {
+	    if (!otfBeforeShift) { 
 		// multiply with shifted OTF
 		for (int b=0; b<par.nrBand(); b++) {
 		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
@@ -503,8 +502,11 @@ public class Test3d implements PlugIn {
 	
 		// per-direction results
 		Vec2d.Cplx result = Vec2d.createCplx(2*w,2*h);
-		for (int i=0;i<par.nrBand()*2-1;i++)  
-		    result.add( shifted[i] ); 
+		Vec2d.Cplx tmp = Vec2d.createCplx(2*w,2*h);
+		for (int i=0;i<par.nrBand()*2-1;i++) { 
+		    tmp.project( shifted[i]) ;
+		    result.add( tmp ); 
+		}
 
 		// loop bands in this direction
 		for (int i=0;i<par.nrBand();i++) {     
@@ -528,7 +530,7 @@ public class Test3d implements PlugIn {
 		    }
 		    
 		    // apply filter and output result
-		    thisband.times( denom );
+		    //thisband.times( denom );
 		    
 		    pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			"a%1d: band %1d",angIdx,(i/2)));
@@ -571,7 +573,7 @@ public class Test3d implements PlugIn {
 	
 	// multiply by wiener denominator
 	Vec2d.Real denom = wFilter.getDenominator( wienParam );
-	fullResult.times(denom);
+	//fullResult.times(denom);
 	
 	if (visualFeedback>0) {
 	    pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
@@ -592,19 +594,19 @@ public class Test3d implements PlugIn {
 	if (visualFeedback>=0) {
 	    
 	    // obtain the low freq result
-	    Vec2d.Cplx lowFreqResult = Vec2d.createCplx( param, 2);
+	    Vec3d.Cplx lowFreqResult = Vec3d.createCplx(w*2,h*2,d);
 	    
 	    // have to do the separation again, result before had the OTF multiplied
 	    for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
 		
 		final SimParam.Dir par = param.dir(angIdx);
 		
-		Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
+		Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
 		BandSeparation.separateBands( inFFT[angIdx] , separate , 
 		    par.getPhases(), par.nrBand(), par.getModulations());
 
-		Vec2d.Cplx tmp  = Vec2d.createCplx( param, 2 );
-		SimUtils.placeFreq( separate[0],  tmp);
+		Vec3d.Cplx tmp  = Vec3d.createCplx( w*2,h*2,d );
+		tmp.pasteFreq( separate[0] );
 		lowFreqResult.add( tmp );
 	    }	
 	    
@@ -617,7 +619,7 @@ public class Test3d implements PlugIn {
 	    //otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
 
 	    Vec2d.Real lfDenom = wFilter.getWidefieldDenominator( wienParam );
-	    lowFreqResult.times( lfDenom );
+	    //lowFreqResult.times( lfDenom );
 	    
 	    //Vec2d.Cplx apoLowFreq = Vec2d.createCplx(2*w,2*h);
 	    //otfPr.writeApoVector( apoLowFreq, 0.4, 1.2);

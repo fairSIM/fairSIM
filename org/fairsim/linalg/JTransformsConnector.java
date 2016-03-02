@@ -21,6 +21,7 @@ package org.fairsim.linalg;
 
 // use our own, stripped-down version of JTransforms
 import org.fairsim.extern.jtransforms.*;
+import org.fairsim.utils.Tool;
 
 //import org.jtransforms.fft.*;
 
@@ -42,6 +43,7 @@ class JTransformsConnector extends Transforms {
 	
 	/** Create a 3d transform for vectors size w x h x d */
 	JTransformsConnector( int w, int h, int d) {
+		Tool.trace(String.format("Created FFT size %d x %d x %d",w,h,d));
 		fft3ds = new  FloatFFT_3D(w,h,d);
 	}
 

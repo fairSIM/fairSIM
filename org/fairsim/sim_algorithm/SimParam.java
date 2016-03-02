@@ -34,11 +34,17 @@ public class SimParam implements Vec2d.Size {
     final protected int nrBands;	
     final protected int nrPhases;
     final protected Dir [] directions ;
+    final protected boolean is3D;		    // if z-information is provided
 
     // Image parameters
-    private int imgSize;			    // image size in pxl
-    private double micronsPerPixel;		    // spatial extent of pixel
-    private double cyclesPerMicron;		    // freq extent of FFT pixel
+    private int imgSize=-1;			    // image size in pxl
+    private double micronsPerPixel=-1;		    // spatial extent of pixel
+    private double cyclesPerMicron=-1;		    // freq extent of FFT pixel
+
+    private int stackSize=-1;			    // z-stack length in #slices
+    private double micronsPerSlice=-1;		    // spatial extent of the z-slice stage shift
+    private double cyclesPerMicronInZ=-1;	    // freq extent of FFT in z-slices
+
     private IMGSEQ imgSeq = IMGSEQ.PAZ;		    // order of images in input
     private double wienerFilterParameter = 0.05;    // Wiener filter parameter
     private double apoCutOff = 2;		    // Apo cutoff parameter
@@ -46,16 +52,19 @@ public class SimParam implements Vec2d.Size {
     double modLowLimit = 0.3, modHighLimit = 1.1;
 
     // Transfer function, OTF attenuation, Apotization
-    private OtfProvider currentOtf=null;
+    private OtfProvider   currentOtf2D=null;
+    private OtfProvider3D currentOtf3D=null;
+
 
     /** Use factory method {@link #create} to obtain object */
-    protected SimParam(int bands, int dirs, int phases) { 
+    protected SimParam(int bands, int dirs, int phases, boolean threeD) { 
 	if (dirs<1)
 	    throw new RuntimeException("dirs < 1, not useful");
 	
 	nrDirs   = dirs;
 	nrBands  = bands;
 	nrPhases = phases;
+	is3D	 = threeD;
 
 	directions = new Dir[ nrDirs ];
 	for (int i=0; i<nrDirs; i++)
@@ -63,16 +72,16 @@ public class SimParam implements Vec2d.Size {
 	
     }
     
-    /** New set of SIM reconstruction parameters. 
+    /** New set of SIM reconstruction parameters for 2D reconstruction. 
      *	@param bands  Number of bands
      *	@param dirs   Number of pattern orientations
      *	@param phases Number of phases
      * */
     public static SimParam create(int bands, int dirs, int phases ) {
-	return new SimParam( bands, dirs, phases);
+	return new SimParam( bands, dirs, phases, false);
     }
     
-    /** New set of SIM reconstruction parameters. 
+    /** New set of SIM reconstruction parameters for 2D reconstruction. 
      *	@param bands  Number of bands
      *	@param dirs   Number of pattern orientations
      *	@param phases Number of phases
@@ -81,12 +90,46 @@ public class SimParam implements Vec2d.Size {
      * */
     public static SimParam create(int bands, int dirs, int phases, 
 	int size, double micronsPerPxl, OtfProvider otf ) {
-	SimParam sp = new SimParam( bands, dirs, phases);
+	SimParam sp = new SimParam( bands, dirs, phases, false);
 	sp.setPxlSize( size, micronsPerPxl );
 	sp.otf( otf );
 	return sp;
     }
+   
+
+
+    /** New set of SIM reconstruction parameters for 3D reconstruction. 
+     *	@param bands  Number of bands
+     *	@param dirs   Number of pattern orientations
+     *	@param phases Number of phases
+     * */
+    public static SimParam create3d(int bands, int dirs, int phases ) {
+	return new SimParam( bands, dirs, phases, true);
+    }
     
+    /** New set of SIM reconstruction parameters for 2D reconstruction. 
+     *	@param bands  Number of bands
+     *	@param dirs   Number of pattern orientations
+     *	@param phases Number of phases
+     *	@param latsize Size in pixels (width or height) of raw images
+     *	@param axsize  Number of z-stacks
+     *	@param micronsPerPxl Size of a pixel in micrometers 
+     *	@param micronsPerSlice Distance of z-slices, in mcirons
+     *	@param otf	projected 2D OTF provider
+     *	@param otf3d	full 3D OTF provider
+     * */
+    public static SimParam create3d(int bands, int dirs, int phases, 
+	int latsize, int axsize, double micronsPerPxl, double micronsPerSlice, 
+	OtfProvider otf, OtfProvider3D otf3d ) {
+	SimParam sp = new SimParam( bands, dirs, phases, true);
+	sp.setPxlSize3d( latsize, axsize, micronsPerPxl, micronsPerSlice );
+	sp.otf( otf, otf3d );
+	return sp;
+    }
+   
+
+
+
     
 
     /** Get parameter subset for pattern direction 'i' */
@@ -108,6 +151,14 @@ public class SimParam implements Vec2d.Size {
     public double pxlSizeCyclesMicron() {
 	return cyclesPerMicron;
     }
+    
+    /** Get cycles / micron pxl size */
+    public double pxlSizeCyclesMicronInZ() {
+	if (!is3D)
+	    throw new RuntimeException("Not a 3D parameter set");
+	return cyclesPerMicronInZ;
+    }
+    
     
     /** Get the image ordering */
     public IMGSEQ getImgSeq() {
@@ -134,9 +185,23 @@ public class SimParam implements Vec2d.Size {
 	imgSize  = pxl;
 	micronsPerPixel = microns;
 	cyclesPerMicron = 1/(pxl*microns);
-	this.otf( currentOtf );	// propagate size to OTF
+	this.otf( currentOtf2D );	// propagate size to OTF
 	return this;
     }
+
+
+    /** Set the image and stack size */
+    public SimParam setPxlSize3d( int pxl, int stack, double micronPxl, double micronStack) {
+	// in x,y
+	setPxlSize( pxl, micronPxl);
+	// in z
+	stackSize = stack;
+	micronsPerSlice=micronStack;
+	cyclesPerMicronInZ = 1/(stack*micronStack);
+	this.otf( currentOtf2D, currentOtf3D);
+	return this;
+    }
+
 
     /** Set the Wiener Filter parameter */
     public SimParam setWienerFilter( double wf ) {
@@ -163,16 +228,35 @@ public class SimParam implements Vec2d.Size {
 
     /** Get the current otf */
     public OtfProvider otf() {
-	return currentOtf;
+	return currentOtf2D;
     }
     
+    /** Get the current otf */
+    public OtfProvider3D otf3d() {
+	return currentOtf3D;
+    }
+
     /** Set a new OTF */
-    public OtfProvider otf(OtfProvider otf) {
+    public void otf(OtfProvider otf) {
+
 	if (otf!=null) { 
-	    currentOtf=otf;
+	    currentOtf2D=otf;
 	    otf.setPixelSize( cyclesPerMicron );
 	}
-	return currentOtf;
+    }
+
+    
+    /** Set a new OTF */
+    public void otf(OtfProvider otf, OtfProvider3D otf3d) {
+	if (!is3D)
+	    throw new RuntimeException("Please provida a 2D OTF instead");
+
+	if (otf!=null) { 
+	    currentOtf2D=otf;
+	    currentOtf3D=otf3d;
+	    otf.setPixelSize( cyclesPerMicron );
+	    otf3d.setPixelSize( cyclesPerMicron, cyclesPerMicronInZ );
+	}
     }
 
 
@@ -387,13 +471,15 @@ public class SimParam implements Vec2d.Size {
     public static SimParam loadConfig( Conf.Folder cfg ) 
 	throws Conf.EntryNotFoundException {
 	
+	// TODO: This wont handle 3D currently!!
+
 	Conf.Folder fd = cfg.cd("sim-param");
 	
 	// basics
 	int nDirs = fd.getInt("nr-angles").val();
 	int nBand = fd.getInt("nr-bands").val();
 	int nPhas = fd.getInt("nr-phases").val();
-	SimParam ret = new SimParam( nBand, nDirs, nPhas );
+	SimParam ret = new SimParam( nBand, nDirs, nPhas, false );
 	
 	// pixel size
 	ret.setPxlSize( fd.getInt("img-size-pxl").val(),
