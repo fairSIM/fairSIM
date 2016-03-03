@@ -160,25 +160,38 @@ class BasicVector implements VectorFactory {
 	}
 
 	@Override
-	public void project(Vec3d.Real inV ) {
+	public void project(Vec3d.Real inV, int start, int end) {
 	    
 	    final float [] out = this.vectorData();
 	    final float [] in  =  inV.vectorData();
-	    final int wo = this.vectorWidth();
-	    final int ho = this.vectorHeight();
 	    
-	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+	    if (inV.vectorWidth() != width || inV.vectorHeight() != height)
 		throw new RuntimeException("Wrong vector size when projecting");
-    
+	    
+	    if (start<0 || end >= inV.vectorDepth() || start > end )
+		throw new RuntimeException("z-index out of vector depth bounds");
+
+
+	    // TODO: This could be more efficient in the loop??
 	    this.zero();
 
-	    for (int z=0; z<inV.vectorDepth(); z++)
-	    for (int y=0; y<vectorHeight(); y++)
-	    for (int x=0; x<vectorWidth(); x++) {
-		out[ y * wo + x ] += in[ z  * wo*ho + y*wo + x ];
+	    for (int z=start; z<=end; z++)
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		out[y * width + x ] += in[z*width*height + y*width + x];
 	    }
+	
+	}
+	
+	@Override
+	public void project(Vec3d.Real inV) {
+	    project( inV, 0, inV.vectorDepth()-1);
 	}
 
+	@Override
+	public void slice(Vec3d.Real inV, int n) {
+	    project( inV, n, n );
+	}
 
     }
 
@@ -496,7 +509,8 @@ class BasicVector implements VectorFactory {
 		public void at(int z) {
 		    for (int y=0; y<h; y++)
 		    for (int x=0; x<w; x++) {
-			float phaVal = (float)(2*Math.PI*(x*kx/w+y*ky/h+z*kz/d));
+			float phaVal = (float)(2*Math.PI*(
+			    ((float)x*kx)/w+((float)y*ky)/h+((float)z*kz)/d));
 			float si,co;
 			if (fast) {
 			    co = (float)MTool.fcos( phaVal );
@@ -509,8 +523,8 @@ class BasicVector implements VectorFactory {
 			float re = val[ (z*w*h+y*w+x)*2+0 ] ;
 			float im = val[ (z*w*h+y*w+x)*2+1 ] ;
 			// set
-			val[ (z*w*h+y*h+x)*2+0 ] = Cplx.multReal( re, im, co, si );
-			val[ (z*w*h+y*h+x)*2+1 ] = Cplx.multImag( re, im, co, si );
+			val[ (z*w*h+y*w+x)*2+0 ] = Cplx.multReal( re, im, co, si );
+			val[ (z*w*h+y*w+x)*2+1 ] = Cplx.multImag( re, im, co, si );
 		    }
 		}
 	    };

@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.utils;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.Vec3d;
 
 /** Interface defining mechanisms to 
  *  display images to the user. */
@@ -38,6 +39,9 @@ public interface ImageDisplay {
      *	@param m Markers to draw on the image (see {@link ImageDisplay.Marker}
      *	*/
     public abstract void addImage( Vec2d.Real v, String label, Marker ... m );
+    
+    /** TODO: comment this */
+    public void addImage( Vec3d.Real v, boolean project, String label, ImageDisplay.Marker ... m) ;
 
     /** Set that the display should be visible. Implementations (e.g.
      *  output to disk) may ignore this flag. */

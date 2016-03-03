@@ -22,8 +22,9 @@ package org.fairsim.fiji;
 import org.fairsim.utils.ImageDisplay; 
 import org.fairsim.utils.Tool; 
 
-import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Vec;
+import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.Vec3d;
 
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -160,6 +161,35 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	refMarkers.add( new ArrayList<ImageDisplay.Marker>(Arrays.asList(m)) );
 
     }
+    
+    /** {@inheritDoc} */
+    @Override
+    public void addImage( Vec3d.Real v, boolean project, String label, ImageDisplay.Marker ... m) {
+	
+	String l = (label==null)?("no label"):label;
+	
+	// copy over the image content
+	if (project) {
+	    ImageVector img = ImageVector.create( width, height );
+	    img.project(v);
+
+	    // add content, label and markers to our storage
+	    refs.add( img );
+	    refLabels.add("(3d-proj):"+  l );
+	    refMarkers.add( new ArrayList<ImageDisplay.Marker>(Arrays.asList(m)) );
+	} else {
+	    for (int z=0; z<v.vectorDepth(); z++) {
+		ImageVector img = ImageVector.create( width, height );
+		img.slice(v,z);
+
+		// add content, label and markers to our storage
+		refs.add( img );
+		refLabels.add("(z"+z+"): "+  l );
+		refMarkers.add( new ArrayList<ImageDisplay.Marker>(Arrays.asList(m)) );
+	    }
+	}
+    }
+
 
     /** Set the image at the n'th position. 
      *	@param v Vector content, gets copied

@@ -134,8 +134,14 @@ public final class Vec2d {
 	/** height of the vector */
 	public int vectorHeight();
     
+	/** project (sum along z, from start to end) a Vec3d into this vector */
+	public void project( Vec3d.Real in, int start, int end );
+	
 	/** project (sum along z) a Vec3d into this vector */
 	public void project( Vec3d.Real in );
+	
+	/** get slice nr n */
+	public void slice( Vec3d.Real in, int n );
     
     }
     

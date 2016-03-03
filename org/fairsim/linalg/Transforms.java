@@ -278,7 +278,75 @@ public abstract class Transforms {
 	    in.set(x+w/2,y,tmp2);
 	}
     }
-
+    
+    /** Swap quadrands. */
+    static public void swapQuadrant(Vec3d.Cplx in) {
+	final int w = in.vectorWidth();
+	final int h = in.vectorHeight();
+	final int d = in.vectorHeight();
+	for (int z0=0;z0<d/2;z0++)
+	for (int y0=0;y0<h/2;y0++)
+	for (int x0=0;x0<w/2;x0++) {
+	    int x1=x0+w/2, y1=y0+h/2, z1=z0+d/2;
+	    Cplx.Float tmpA, tmpB;
+	    // 000 <> 111
+	    tmpA = in.get(x0,y0,z0);
+	    tmpB = in.get(x1,y1,z1);
+	    in.set(x0,y0,z0,tmpB);
+	    in.set(x1,y1,z1,tmpA);
+	    // 010 <> 101
+	    tmpA = in.get(x0,y1,z0);
+	    tmpB = in.get(x1,y0,z1);
+	    in.set(x0,y1,z0,tmpB);
+	    in.set(x1,y0,z1,tmpA);
+	    // 100 <> 011
+	    tmpA = in.get(x1,y0,z0);
+	    tmpB = in.get(x0,y1,z1);
+	    in.set(x1,y0,z0,tmpA);
+	    in.set(x0,y1,z1,tmpB);
+	    // 001 <> 110
+	    tmpA = in.get(x0,y0,z1);
+	    tmpB = in.get(x1,y1,z0);
+	    in.set(x0,y0,z1,tmpB);
+	    in.set(x1,y1,z0,tmpA);
+	}
+    }
+    
+    /** Swap quadrands. */
+    static public void swapQuadrant(Vec3d.Real in) {
+	final int w = in.vectorWidth();
+	final int h = in.vectorHeight();
+	final int d = in.vectorHeight();
+	for (int z0=0;z0<d/2;z0++)
+	for (int y0=0;y0<h/2;y0++)
+	for (int x0=0;x0<w/2;x0++) {
+	    int x1=x0+w/2, y1=y0+h/2, z1=z0+d/2;
+	    float tmpA, tmpB;
+	    // 000 <> 111
+	    tmpA = in.get(x0,y0,z0);
+	    tmpB = in.get(x1,y1,z1);
+	    in.set(x0,y0,z0,tmpB);
+	    in.set(x1,y1,z1,tmpA);
+	    // 010 <> 101
+	    tmpA = in.get(x0,y1,z0);
+	    tmpB = in.get(x1,y0,z1);
+	    in.set(x0,y1,z0,tmpB);
+	    in.set(x1,y0,z1,tmpA);
+	    // 100 <> 011
+	    tmpA = in.get(x1,y0,z0);
+	    tmpB = in.get(x0,y1,z1);
+	    in.set(x1,y0,z0,tmpA);
+	    in.set(x0,y1,z1,tmpB);
+	    // 001 <> 110
+	    tmpA = in.get(x0,y0,z1);
+	    tmpB = in.get(x1,y1,z0);
+	    in.set(x0,y0,z1,tmpB);
+	    in.set(x1,y1,z0,tmpA);
+	}
+    }
+    
+    
+    
     /* Return a vector containing phases for a Fourier shift theorems shift to kx,ky.
      *  @param N Width and heigt of vector
      *  @param kx x-coordinate of shift

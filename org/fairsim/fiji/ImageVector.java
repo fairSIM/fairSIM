@@ -104,23 +104,38 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	}
 
 	@Override
-	public void project(Vec3d.Real inV ) {
+	public void project(Vec3d.Real inV, int start, int end) {
 	    
 	    final float [] out = this.vectorData();
 	    final float [] in  =  inV.vectorData();
-	    final int wo = this.vectorWidth();
-	    final int ho = this.vectorHeight();
 	    
-	    if (inV.vectorWidth() != wo || inV.vectorHeight() != ho)
+	    if (inV.vectorWidth() != width || inV.vectorHeight() != height)
 		throw new RuntimeException("Wrong vector size when projecting");
+	    
+	    if (start<0 || end >= inV.vectorDepth() || start > end )
+		throw new RuntimeException("z-index out of vector depth bounds");
 
-	    for (int z=0; z<inV.vectorDepth(); z++)
-	    for (int y=0; y<vectorHeight(); y++)
-	    for (int x=0; x<vectorWidth(); x++) {
-		out[ y * wo + x ] = in[ z  * wo*ho + y*wo + x ];
+
+	    // TODO: This could be more efficient in the loop??
+	    this.zero();
+
+	    for (int z=start; z<=end; z++)
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		out[y * width + x ] += in[z*width*height + y*width + x];
 	    }
+	
+	}
+	
+	@Override
+	public void project(Vec3d.Real inV) {
+	    project( inV, 0, inV.vectorDepth()-1);
 	}
 
+	@Override
+	public void slice(Vec3d.Real inV, int n) {
+	    project( inV, n, n );
+	}
 
 
 }

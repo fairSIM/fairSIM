@@ -50,7 +50,7 @@ public class Test3d implements PlugIn {
     int nrDirs   = 3;		    // #angles or pattern orientations
     int nrPhases = 5;		    // #phases (at least 2*bands -1 )
 
-    double emWavelen = 560;	    // emission wavelength		    
+    double emWavelen = 680;	    // emission wavelength		    
     double otfNA     = 1.4;	    // NA of objective
     double otfCorr   = 0.31;	    // OTF correction factor
     double pxSize    = 0.080;	    // pixel size (microns)
@@ -61,9 +61,9 @@ public class Test3d implements PlugIn {
 
     boolean findPeak    = true;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
-    boolean doTheReconstruction = true; // if to run the reconstruction (for debug, mostly)
+    boolean doTheReconstruction = false; // if to run the reconstruction (for debug, mostly)
 	
-    final int visualFeedback = 0;   // amount of intermediate results to create (-1,0,1,2,3)
+    final int visualFeedback = 1;   // amount of intermediate results to create (-1,0,1,2,3,4)
 
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
 
@@ -124,13 +124,13 @@ public class Test3d implements PlugIn {
 	// (used for reconstruction, or as starting guess if 'locatePeak' is off, but 'findPeak' on)
 	
 	// green
-	if (true) {
+	if (false) {
 	    param.dir(0).setPxPy( 137.44, -140.91); 
 	    param.dir(1).setPxPy( -52.8,  -189.5);
 	    param.dir(2).setPxPy( 190.08,  49.96);
 	}
 	// red
-	if (false) {
+	if (true) {
 	    param.dir(0).setPxPy( 121.303, -118.94 ); 
 	    param.dir(1).setPxPy(  -42.04, -164.68 );
 	    param.dir(2).setPxPy(  163.05,   46.81 );
@@ -202,10 +202,14 @@ public class Test3d implements PlugIn {
 	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
 	    
 	    // DEBUG output
-	    Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
-	    tmp.slice( inFFT[a][p],0 );
-	    spSt.addImage( SimUtils.spatial(tmp), "IN: a"+a+" p"+p);
-	    pwSt.addImage( SimUtils.pwSpec( inFFT[a][p] ) , "IN: a"+a+" p"+p);
+	    if (visualFeedback>3) {
+		Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
+		tmp.slice( inFFT[a][p],0 );
+		spSt.addImage( 
+		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p);
+		pwSt.addImage( 
+		    SimUtils.pwSpec(inFFT[a][p]) , "input projected: a"+a+" p"+p);
+	    }
 	}
 
 
@@ -472,12 +476,12 @@ public class Test3d implements PlugIn {
 	// ---------------------------------------------------------------------
 	// Run the actual reconstruction 
 	// ---------------------------------------------------------------------
-
     
 
 	tRec.start();	
 	// loop all pattern directions
 	if ( doTheReconstruction ) {
+	    
 	    for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) 
 	    {
 		final SimParam.Dir par = param.dir(angIdx);
@@ -499,7 +503,6 @@ public class Test3d implements PlugIn {
 
 		// band 0 is DC, so does not need shifting, only a bigger vector
 		shifted[0].pasteFreq( separate[0] );
-		//SimUtils.placeFreq( separate[0],  shifted[0]);
 		
 		// higher bands need shifting
 		for ( int b=1; b<par.nrBand(); b++) {
@@ -512,12 +515,19 @@ public class Test3d implements PlugIn {
 		    shifted[neg].pasteFreq( separate[neg] );
 
 		    // then, fourier shift
-		    shifted[pos].fourierShift(  par.px(b),  par.py(b), 0 );
-		    shifted[neg].fourierShift( -par.px(b), -par.py(b), 0 );
+		    shifted[pos].fft3d(true);
+		    shifted[pos].fourierShift(  par.px(b), -par.py(b), 0 );
+		    shifted[pos].fft3d(false);
+
+		    shifted[neg].fft3d(true);
+		    shifted[neg].fourierShift( -par.px(b),  par.py(b), 0 );
+		    shifted[neg].fft3d(false);
 		}
 	       
 		// ------ OTF multiplication or masking ------
 		
+		// TODO: re-implement OTF mask support for 3D
+		/*
 		if (!otfBeforeShift) { 
 		    // multiply with shifted OTF
 		    for (int b=0; b<par.nrBand(); b++) {
@@ -526,8 +536,6 @@ public class Test3d implements PlugIn {
 			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
 		    }
 		} 
-		// TODO: re-implement OTF mask support for 3D
-		/*
 		else {
 		    // or mask for OTF support
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
@@ -539,26 +547,22 @@ public class Test3d implements PlugIn {
 		
 		for (int i=0;i<par.nrBand()*2-1;i++)  
 		    fullResult.add( shifted[i] ); 
-	    
 		
 		// ------ Output intermediate results ------
 		
 		if (visualFeedback>0) {
 	    
 		    // per-direction results
-		    Vec2d.Cplx result = Vec2d.createCplx(2*w,2*h);
-		    Vec2d.Cplx tmp = Vec2d.createCplx(2*w,2*h);
-		    for (int i=0;i<par.nrBand()*2-1;i++) { 
-			tmp.slice( shifted[i], 0) ;
-			result.add( tmp ); 
-		    }
+		    Vec3d.Cplx result = Vec3d.createCplx(2*w,2*h,d);
+		    for (int i=0;i<par.nrBand()*2-1;i++)  
+			result.add( shifted[i] ); 
 
 		    // loop bands in this direction
 		    for (int i=0;i<par.nrBand();i++) {     
 
 			// TODO: re-implement and re-enable this
 			// get wiener denominator for (direction, band), add to full denom for this band
-			//Vec2d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+			Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
 		    
 			// add up +- shift for this band
 			Vec3d.Cplx thisband   = shifted[i*2];
@@ -566,18 +570,17 @@ public class Test3d implements PlugIn {
 			    thisband.add( shifted[i*2-1] );
 	    
 			// output the wiener denominator
-			/*
 			if (visualFeedback>1) {
-			    Vec2d.Real wd = denom.duplicate();
+			    Vec3d.Real wd = denom.duplicate();
 			    wd.reciproc();
 			    wd.normalize();
 			    Transforms.swapQuadrant( wd );
-			    pwSt2.addImage( wd, String.format(
+			    pwSt2.addImage( wd, false, String.format(
 				"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
-			} */
+			} 
 			
 			// apply filter and output result
-			//thisband.times( denom );
+			thisband.times( denom );
 			
 			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			    "a%1d: band %1d",angIdx,(i/2)));

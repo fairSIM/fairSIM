@@ -137,6 +137,48 @@ public class WienerFilter3d {
 	return ret; 
     }
  
+    /** Returns a copy of a per-direction Wiener denominator, with all bands. 
+     *  This is used mostly for filtering intermediate results. 
+     *	@param d Direction
+     *	@param wParam Wiener filter parameter
+     *  */
+    public Vec3d.Real getIntermediateDenominator(int d, double wParam) {
+
+	// get the otf
+	Vec3d.Real ret = Vec3d.createReal( 
+	    sp.vectorWidth()*2, sp.vectorHeight()*2, sp.vectorDepth());
+	for (int b=0; b<sp.dir(d).nrBand(); b++)
+	    addWienerDenominator( ret, d, b );
+
+	// add the wiener parameter
+	for (int z=0; z<ret.vectorDepth();  z++)
+	for (int y=0; y<ret.vectorHeight(); y++)
+	for (int x=0; x<ret.vectorWidth();  x++)
+	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
+	return ret;
+    }
+    
+    /** Returns a copy of a per-band, per-direction Wiener denominator.
+     *  This is used mostly for filtering intermediate results. 
+     *	@param d Direction
+     *	@param b Band
+     *	@param wParam Wiener filter parameter
+     *  */
+    public Vec3d.Real getIntermediateDenominator(int d, int b, double wParam) {
+
+	// get the otf
+	Vec3d.Real ret = Vec3d.createReal( 
+	    sp.vectorWidth()*2, sp.vectorHeight()*2, sp.vectorDepth());
+	addWienerDenominator( ret, d, b );
+
+	// add the wiener parameter
+	for (int z=0; z<ret.vectorDepth();  z++)
+	for (int y=0; y<ret.vectorHeight(); y++)
+	for (int x=0; x<ret.vectorWidth();  x++)
+	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
+	return ret;
+    }
+
     /** For testing */
     /*
     public static void main( String [] args ) {
