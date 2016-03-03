@@ -195,6 +195,16 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
     }
 
     /** Set every element to 1/element */
+    public void addConst(Cplx.Float a) {
+	this.readyBuffer();
+	for (int i=0; i<elemCount; i++) {
+	    data[ 2*i   ] +=  a.re;
+	    data[ 2*i+1 ] +=  a.im;
+	}
+	this.syncBuffer();
+    }
+
+    /** Set every element to 1/element */
     public void reciproc() {
 	this.readyBuffer();
 	for (int i=0; i<elemCount; i++) {

@@ -63,7 +63,7 @@ public class Test3d implements PlugIn {
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
     boolean doTheReconstruction = false; // if to run the reconstruction (for debug, mostly)
 	
-    final int visualFeedback = 1;   // amount of intermediate results to create (-1,0,1,2,3,4)
+    final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3,4)
 
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
 
@@ -175,9 +175,6 @@ public class Test3d implements PlugIn {
 	    return;
 	}
 
-
-
-
 	// Copy current stack into vectors, apotize borders, run fft 
 	Vec3d.Cplx inFFT[][] = new Vec3d.Cplx[ nrDirs ][ nrPhases ];
 
@@ -229,8 +226,8 @@ public class Test3d implements PlugIn {
 
 	    // The attenuation vector helps well to fade out the DC component,
 	    // which is uninteresting for the correlation anyway
-	    Vec2d.Real otfAtt = Vec2d.createReal( param );
-	    otfPr2D.writeAttenuationVector( otfAtt, .99, 0.15*otfPr.getCutoff(), 0, 0  ); 
+	    //Vec2d.Real otfAtt = Vec2d.createReal( param );
+	    //otfPr2D.writeAttenuationVector( otfAtt, .99, 0.15*otfPr.getCutoff(), 0, 0  ); 
 	    
 	    // loop through pattern directions
 	    for (int angIdx=0; angIdx<param.nrDir(); angIdx++) {
@@ -242,45 +239,67 @@ public class Test3d implements PlugIn {
 		final int lb = 1;
 		final int hb = (param.dir(angIdx).nrBand()==3)?(3):(1);
 
-		// compute z-projection
-		Vec2d.Cplx [] inFFT2d = Vec2d.createArrayCplx( nrPhases, w, h);
-		for (int p=0; p<nrPhases; p++) {
-		    inFFT2d[p].slice( inFFT[angIdx][p], 0);
-		    // DEBUG: Output the z-projection
-		    pwSt.addImage( SimUtils.pwSpec( inFFT2d[p]), "a"+angIdx+" p"+p);
-		    spSt.addImage( SimUtils.spatial( inFFT2d[p]), "a"+angIdx+" p"+p);
-		}
-
-
 		// compute band separation
-		Vec2d.Cplx [] separate = Vec2d.createArrayCplx( dir.nrComp(), w, h);
-		
-		BandSeparation.separateBands( inFFT2d, separate , 
+		Vec3d.Cplx [] separate = Vec3d.createArrayCplx( dir.nrComp(), w, h, d);
+		BandSeparation.separateBands( inFFT[angIdx], separate , 
 		    0, dir.nrBand(), null);
 
 		// duplicate vectors, as they are modified for coarse correlation
-		Vec2d.Cplx c0 = separate[0].duplicate();
-		Vec2d.Cplx c1 = separate[lb].duplicate();
-		Vec2d.Cplx c2 = separate[hb].duplicate();
+		Vec3d.Cplx c0 = separate[0].duplicate();
+		Vec3d.Cplx c1 = separate[lb].duplicate();
+		Vec3d.Cplx c2 = separate[hb].duplicate();
 
-		// dampen region around DC 
-		c0.times( otfAtt );
-		c1.times( otfAtt );
-		c2.times( otfAtt ); 
+		Vec3d.Cplx otf = Vec3d.createCplx( w,h,d);
+		
+		otfPr.writeOtfVector( otf, 0, 0, 0);
+		otf.addConst( new Cplx.Float(0.01f,0));
+		otf.reciproc();
+		c0.times( otf );
+		
+		otfPr.writeOtfVector( otf, 0, 1, 0);
+		otf.addConst( new Cplx.Float(0.01f,0));
+		otf.reciproc();
+		c1.times( otf );
+		
+		otfPr.writeOtfVector( otf, 0, 2, 0);
+		otf.addConst( new Cplx.Float(0.01f,0));
+		otf.reciproc();
+		c2.times( otf );
+
+
+
+		// dampen region around DC // TODO: is this needed for 3D?
+		//c0.times( otfAtt );
+		//c1.times( otfAtt );
+		//c2.times( otfAtt ); 
 		
 		// compute correlation: ifft, mult. in spatial, fft back
-		Transforms.fft2d( c0, true);
-		Transforms.fft2d( c1, true);
-		Transforms.fft2d( c2, true);
+		c0.fft3d( true);
+		c1.fft3d( true);
+		c2.fft3d( true);
 		c1.timesConj( c0 );
 		c2.timesConj( c0 );
-		Transforms.fft2d( c1, false);
-		Transforms.fft2d( c2, false);
-	   
+		c1.fft3d( false);
+		c2.fft3d( false);
+	
 		// find the highest peak in corr of band0 to highest band 
 		// with min dist 0.5*otfCutoff from origin, store in 'param'
 		double minDist = .5 * otfPr.getCutoff() / param.pxlSizeCyclesMicron();
-		double [] peak = Correlation.locatePeak(  c2 , minDist );
+	
+		Vec2d.Cplx pl = Vec2d.createCplx(w,h);
+
+		for (int z=0; z<d; z++) {
+		    pl.slice( c1 , z );
+		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b1, a:"+angIdx+" z: "+z);
+		}
+		for (int z=0; z<d; z++) {
+		    pl.slice( c1 , z );
+		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b2, a:"+angIdx+" z: "+z);
+		}
+		
+		
+		/*
+		double [] peak = Correlation3d.locatePeak(  c2 , minDist );
 		
 		Tool.trace(String.format("a%1d: LocPeak (min %4.0f) --> Peak at x %5.0f y %5.0f",
 		    angIdx, minDist, peak[0], peak[1]));
@@ -288,19 +307,19 @@ public class Test3d implements PlugIn {
 		// fit the peak to sub-pixel precision by cross-correlation of
 		// Fourier-shifted components
 		ImageVector cntrl    = ImageVector.create(30,10);
-		peak = Correlation.fitPeak( separate[0], separate[hb], 0, 2, otfPr2D,
+		peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
 		    -peak[0], -peak[1], 0.05, 2.5, cntrl );
 
 		// Now, either three beam / 3 bands ...
 		if (lb!=hb) {
 
 		    // At the peak position found, extract phase and modulation from band0 <-> band 1
-		    Cplx.Double p1 = Correlation.getPeak( separate[0], separate[lb], 
-			0, 1, otfPr2D, peak[0]/2, peak[1]/2, 0.05 );
+		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[lb], 
+			0, 1, otfPr, peak[0]/2, peak[1]/2, 0.05 );
 
 		    // Extract modulation from band0 <-> band 2
-		    Cplx.Double p2 = Correlation.getPeak( separate[0], separate[hb], 
-			0, 2, otfPr2D, peak[0], peak[1], 0.05 );
+		    Cplx.Double p2 = Correlation3d.getPeak( separate[0], separate[hb], 
+			0, 2, otfPr, peak[0], peak[1], 0.05 );
 
 		    Tool.trace(
 			String.format("a%1d: FitPeak --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
@@ -316,8 +335,8 @@ public class Test3d implements PlugIn {
 		// ... or two-beam / 2 bands
 		if (lb==hb) {
 		    // get everything from one correlation band0 to band1
-		    Cplx.Double p1 = Correlation.getPeak( separate[0], separate[1], 
-			0, 1, otfPr2D, peak[0], peak[1], 0.05 );
+		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[1], 
+			0, 1, otfPr, peak[0], peak[1], 0.05 );
 
 		    Tool.trace(
 			String.format("a%1d: FitPeak --> x %7.3f y %7.3f p %7.3f (m %7.3f)", 
@@ -328,10 +347,11 @@ public class Test3d implements PlugIn {
 		    param.dir(angIdx).setPhaOff( p1.phase() );
 		    param.dir(angIdx).setModulation( 1, p1.hypot() );
 		}
-
+		*/
 
 
 		// --- output visual feedback of peak fit ---
+		/*
 		if (visualFeedback>0) {
 		    
 		    // mark region excluded from peak finder
@@ -342,35 +362,40 @@ public class Test3d implements PlugIn {
 		    
 		    Vec2d.Real fittedPeak = SimUtils.pwSpec( c2 );
 		    fittedPeak.paste( cntrl, 0, 0, false );
+		   
+		    
+		    pwSt.addImage( fittedPeak, "dir "+angIdx+" c-corr band 0<>high" );
+		    pwSt.addImage( SimUtils.pwSpec( c1 ), "dir "+angIdx+" c-corr band 0<>low");
 		    
 		    pwSt.addImage( fittedPeak, "dir "+angIdx+" c-corr band 0<>high",
-			new ImageDisplay.Marker( w/2-peak[0], h/2+peak[1], 10, 10, true),
-			excludedDC);
+		    	new ImageDisplay.Marker( w/2-peak[0], h/2+peak[1], 10, 10, true),
+		    	excludedDC);
 		    
 		    // if there is a low band, also add it
 		    if ((visualFeedback>1)&&(lb!=hb))
 			pwSt.addImage( SimUtils.pwSpec( c1 ), "dir "+angIdx+" c-corr band 0<>low",
 			    new ImageDisplay.Marker( w/2-peak[0]/2, h/2+peak[1]/2, 10, 10, true));
-		}
+		} */
 		    
 
 		// --- output visual feedback of overlapping regions (for all bands) ---
+		/*
 		if (visualFeedback>1)  
 		for (int b=1; b<param.nrBand(); b++) {	
 		
 		    SimParam.Dir par = param.dir(angIdx);
 
 		    // find common regions in low and high band
-		    Vec2d.Cplx b0 = separate[0  ].duplicate();
-		    Vec2d.Cplx b1 = separate[2*b].duplicate();
+		    Vec3d.Cplx b0 = separate[0  ].duplicate();
+		    Vec3d.Cplx b1 = separate[2*b].duplicate();
 		
-		    Correlation.commonRegion( b0, b1, 0, b, otfPr2D,  
+		    Correlation3d.commonRegion( b0, b1, 0, b, otfPr,  
 		        par.px(b), par.py(b), 0.15, (b==1)?(.2):(.05), true);
 
 		    // move the high band to its correct position
-		    b1.fft2d( true );
-		    b1.fourierShift( par.px(b), -par.py(b) );
-		    b1.fft2d( false );
+		    b1.fft3d( true );
+		    b1.fourierShift( par.px(b), -par.py(b),0 );
+		    b1.fft3d( false );
 	    
 		    // apply phase correction
 		    b1.scal( Cplx.Float.fromPhase( param.dir(angIdx).getPhaOff()*b ));
@@ -379,18 +404,18 @@ public class Test3d implements PlugIn {
 		    if ( visualFeedback>2 )  {
 			// only add band0 once	
 			if ( b==1 ) {
-			    Vec2d.Cplx btmp = separate[0].duplicate();
-			    otfPr2D.maskOtf( btmp, 0, 0);
+			    Vec3d.Cplx btmp = separate[0].duplicate();
+			    //otfPr2D.maskOtf( btmp, 0, 0);
 			    pwSt.addImage(SimUtils.pwSpec( btmp ), String.format(
 				"a%1d: full band0", angIdx, b ));
 			}
 
 			// add band1, band2, ...
-			Vec2d.Cplx btmp = separate[2*b].duplicate();
-			btmp.fft2d( true );
-			btmp.fourierShift(par.px(b), -par.py(b) );
-			btmp.fft2d( false );
-			otfPr2D.maskOtf( btmp, par.px(b), par.py(b));
+			Vec3d.Cplx btmp = separate[2*b].duplicate();
+			btmp.fft3d( true );
+			btmp.fourierShift(par.px(b), -par.py(b),0 );
+			btmp.fft3d( false );
+			//otfPr2D.maskOtf( btmp, par.px(b), par.py(b));
 
 			pwSt.addImage(SimUtils.pwSpec( btmp ), String.format( 
 			    "a%1d: full band%1d (shifted %7.3f %7.3f)",
@@ -409,7 +434,7 @@ public class Test3d implements PlugIn {
 		    spSt.addImage(SimUtils.spatial( b1 ), String.format( 
 			"a%1d: common region b0<>b%1d, band%1d",angIdx, b, b)); 
 		}
-	    
+		*/
 	    }
 	
 	}
@@ -720,12 +745,12 @@ public class Test3d implements PlugIn {
 	
 	boolean set=false;
   
-	new ij.ImageJ( ij.ImageJ.EMBEDDED );
 	//SimpleMT.useParallel( false );
 	ImagePlus ip = IJ.openImage(arg[0]);
 	//ip.show();
 
 	Test3d tp = new Test3d();
+	new ij.ImageJ( ij.ImageJ.EMBEDDED );
 	tp.runReconstruction( ip.getStack(), arg[1] );
     }
 

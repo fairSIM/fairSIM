@@ -233,7 +233,8 @@ public final class Vec {
 
 	/** Normalize the vector to vmin..vmax */
 	public void normalize(float vmin, float vmax);
-	
+
+
 	/** Set every element to 1/element */
 	public void reciproc();
 
@@ -323,6 +324,9 @@ public final class Vec {
 	
 	/** Set every element to 1/element */
 	public void reciproc();
+	
+	/** Add a constant value to each component */
+	public void addConst( org.fairsim.linalg.Cplx.Float a);
     
 	/** Multiply by scalar, ie this *= a */
 	public void scal( float a );

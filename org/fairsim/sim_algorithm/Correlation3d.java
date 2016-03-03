@@ -141,8 +141,8 @@ public class Correlation3d {
      *  @param vec input vector (typ. cross-/auto-correlation)
      *  @param kMin Mininum distance from DC component, in pxl
      *  @return px, py, mag, phase */ 
-    public static double [] locatePeak( Vec2d.Cplx vec, double kMin ) {
-	final int w=vec.vectorWidth(), h=vec.vectorHeight();
+    public static double [] locatePeak( Vec3d.Cplx vec, double kMin ) {
+	final int w=vec.vectorWidth(), h=vec.vectorHeight(), d=vec.vectorDepth();
 	double xPos=-0, yPos=-1, max = -1, phase=0;
 
 	for (int y=0; y<h; y++)
@@ -150,9 +150,9 @@ public class Correlation3d {
 	    // distance to DC component
 	    double rad = Math.sqrt( 
 		((x<w/2)?(x*x):((x-w)*(x-w))) + ((y<h/2)?(y*y):((y-h)*(y-h)))  );
-	    if ((rad>kMin)&&( vec.get(x,y).abs() > max )) {
-		max = vec.get(x,y).abs();
-		xPos = x; yPos=y; phase = vec.get(x,y).phase();
+	    if ((rad>kMin)&&( vec.get(x,y,0).abs() > max )) {
+		max = vec.get(x,y,0).abs();
+		xPos = x; yPos=y; phase = vec.get(x,y,0).phase();
 	    }
 	}
 	// convert to our coordinate convention
