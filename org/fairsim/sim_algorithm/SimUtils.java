@@ -34,7 +34,6 @@ public class SimUtils {
 	outV.pasteFreq(inV);
     }
 
-
     /** Moves freq space data to kx, ky with subpixel precision, by phase
      *  multiplication in real space. Basically, just ifft, multiply phases, fft...
      *  @param inV Vector to move
@@ -48,6 +47,47 @@ public class SimUtils {
 	Transforms.fft2d( inV , true );
 	Transforms.timesShiftVector( inV, kx, -ky );
 	Transforms.fft2d( inV , false );
+    }
+
+    /** Moves freq space data to kx, ky with subpixel precision, by phase
+     *  multiplication in real space. 
+     *  In standard mode, input vector is copied into output, then moved
+     *  by Fourier shift on the output vector.
+     *  In fast mode, the subpixel move is carried out on the input vector,
+     *  result than is copied to the correct (multiple integer) position in
+     *  output vector.
+     *
+     *  @param inV Input vector, w x h (vector will be changed in fast mode!)
+     *  @param outV Output vector, 2*w x 2*h
+     *  @param kx x-coord to move to
+     *  @param ky y-coord to move to
+     *  */
+    static public void pasteAndFourierShift( Vec2d.Cplx inV, Vec2d.Cplx outV,
+	final double kx, final double ky, boolean doFastShift ) {
+
+	if (!doFastShift) {
+	    // standard, slow shift (two FFTs on 2w,2h )
+	    outV.pasteFreq( inV, 0, 0);
+	    outV.fft2d( true );
+	    outV.fourierShift( kx, -ky );
+	    outV.fft2d( false );
+	} else {
+
+	    // do the subpixel part on input
+	    double xFrac = kx - Math.floor(kx);
+	    double yFrac = -ky - Math.floor(-ky);
+	    inV.fft2d( true );
+	    inV.fourierShift( xFrac, yFrac);
+	    inV.fft2d( false );
+	    
+	    // do the integer shift in paste
+	    int xInt = (int)Math.floor(  kx );
+	    int yInt = (int)Math.floor( -ky );
+	    outV.pasteFreq( inV, xInt, yInt );
+
+	    Tool.trace(String.format(" %7.4f %7.4f %7.4f %7.4f" ,
+		xFrac, yFrac, (double)xInt, (double)yInt));
+	}
     }
 
 

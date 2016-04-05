@@ -240,6 +240,11 @@ class BasicVector implements VectorFactory {
     
 	@Override
 	public void pasteFreq( Vec2d.Cplx inV) {
+	    pasteFreq(inV, 0, 0);
+	}
+	
+	@Override
+	public void pasteFreq( Vec2d.Cplx inV, int xOffset, int yOffset ) {
 	
 	    final int wi = inV.vectorWidth();
 	    final int hi = inV.vectorHeight();
@@ -248,7 +253,10 @@ class BasicVector implements VectorFactory {
 	
 	    final float [] out = this.vectorData();
 	    final float [] in  =  inV.vectorData();
-	
+	    
+	    //while (xOffset<0) xOffset += wo;
+	    //while (yOffset<0) yOffset += ho;
+
 	    this.zero();
 	
 	    // loop output
@@ -256,6 +264,8 @@ class BasicVector implements VectorFactory {
 	    for (int x= 0;x<wi;x++) {
 		int xo = (x<wi/2)?(x):(x+wo/2);
 		int yo = (y<hi/2)?(y):(y+ho/2);
+		xo = (xo+xOffset+wo) % wo;
+		yo = (yo+yOffset+ho) % ho;
 		out[ (xo + (wo*yo))*2+0 ] = in[ (x + wi*y)*2+0];
 		out[ (xo + (wo*yo))*2+1 ] = in[ (x + wi*y)*2+1];
 	    }

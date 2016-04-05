@@ -172,8 +172,14 @@ public final class Vec2d {
 	public void paste( Vec2d.Cplx xIn, int ulx, int uly, boolean zero );
 
 	/** Copy a freq-space vector into this one.
-	 * @param xIn The vector to copy into this one */
+	 * @param xIn The vector to copy into this one 
+	 * @param xOff The offset in x-direction 
+	 * @param yOff The offset in y-direction */
+	public void pasteFreq( Vec2d.Cplx xIn , int xOff, int yOff );
+
+	/** pasteFreq(xIn, 0, 0) */
 	public void pasteFreq( Vec2d.Cplx xIn );
+
 
 
 	/** Multiply a vector with Fourier shift theorem phases.

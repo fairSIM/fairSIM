@@ -65,7 +65,8 @@ public class TestPlugin implements PlugIn {
     boolean findPeak    = true;	    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
 	
-    final int visualFeedback = 3;   // amount of intermediate results to create (-1,0,1,2,3)
+    final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3)
+    boolean doFastShift = true;     // use the fast fourier shift impl. or standard
 
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
 
@@ -444,7 +445,7 @@ public class TestPlugin implements PlugIn {
 	    Vec2d.Cplx [] shifted		= Vec2d.createArrayCplx(5, 2*w, 2*h);
 
 	    // band 0 is DC, so does not need shifting, only a bigger vector
-	    SimUtils.placeFreq( separate[0],  shifted[0]);
+	    shifted[0].pasteFreq( separate[0] );
 	    
 	    // higher bands need shifting
 	    for ( int b=1; b<par.nrBand(); b++) {
@@ -453,12 +454,19 @@ public class TestPlugin implements PlugIn {
 		
 		// first, copy to larger vectors
 		int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+		/*
 		SimUtils.placeFreq( separate[pos] , shifted[pos]);
 		SimUtils.placeFreq( separate[neg] , shifted[neg]);
 
 		// then, fourier shift
 		SimUtils.fourierShift( shifted[pos] ,  par.px(b),  par.py(b) );
-		SimUtils.fourierShift( shifted[neg] , -par.px(b), -par.py(b) );
+		SimUtils.fourierShift( shifted[neg] , -par.px(b), -par.py(b) ); */
+
+		SimUtils.pasteAndFourierShift( separate[pos], shifted[pos], 
+		     par.px(b),  par.py(b), doFastShift );
+		SimUtils.pasteAndFourierShift( separate[neg], shifted[neg], 
+		    -par.px(b), -par.py(b), doFastShift );
+
 	    }
 	   
 	    // ------ OTF multiplication or masking ------
@@ -473,9 +481,13 @@ public class TestPlugin implements PlugIn {
 		}
 	    } else {
 		// or mask for OTF support
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+		for (int b=1; b<(par.nrBand()) ;b++) {
 		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    otfPr.maskOtf( shifted[i], angIdx, i);
+		    //otfPr.maskOtf( shifted[i], angIdx, i);
+		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+		    otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
+		    otfPr.maskOtf( shifted[neg], -par.px(b), -par.py(b) );
+		}
 	    }
 	    
 	    // ------ Sum up result ------
@@ -500,7 +512,7 @@ public class TestPlugin implements PlugIn {
 		    Vec2d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
 		
 		    // add up +- shift for this band
-		    Vec2d.Cplx thisband   = shifted[i*2];
+		    Vec2d.Cplx thisband   = shifted[i*2].duplicate();
 		    if (i!=0)
 			thisband.add( shifted[i*2-1] );
 	
@@ -518,9 +530,9 @@ public class TestPlugin implements PlugIn {
 		    thisband.times( denom );
 		    
 		    pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
-			"a%1d: band %1d",angIdx,(i/2)));
+			"a%1d: band %1d",angIdx,i));
 		    spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
-			"a%1d: band %1d",angIdx,(i/2)));
+			"a%1d: band %1d",angIdx,i));
 		}
 
 		// per direction wiener denominator	
