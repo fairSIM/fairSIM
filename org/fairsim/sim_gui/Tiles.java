@@ -26,9 +26,13 @@ import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JComboBox;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JList;
+import javax.swing.JComponent;
 
 import javax.swing.BoxLayout;
 import javax.swing.Box;
+import java.awt.Component;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -127,7 +131,7 @@ public class Tiles {
 	 * @param label Label in front of box
 	 * @param opts  Selectable elements */
 	public LComboBox(String label, T ... opts ) {
-	    this( label, (java.awt.Component)null, opts );
+	    this( label, (java.awt.Component)null, false, opts );
 	}
 
 	/** 
@@ -135,10 +139,20 @@ public class Tiles {
 	 * @param addComp Additional component, added directly after the box
 	 * @param opts  Selectable elements */
 	public LComboBox(String label, java.awt.Component addComp, T ... opts ) {
+	    this( label, addComp, false, opts );
+	}
+	
+	/** 
+	 * @param label Label in front of box
+	 * @param addComp Additional component, added directly after the box
+	 * @param showToolTip if true, display the full text for each entry as tooltip
+	 * @param opts  Selectable elements */
+	public LComboBox(String label, java.awt.Component addComp, 
+	    boolean showToolTip, T ... opts ) {
+	    
 	    super();
 	    super.setLayout( new BoxLayout(this, BoxLayout.LINE_AXIS));
 	    final JLabel jl = new JLabel(label);
-	    
 	    
 	    if ((opts!=null)&&(opts.length>0))
 		box = new TComboBox<T>(opts);
@@ -155,7 +169,26 @@ public class Tiles {
 		    }
 		}
 	    });
-	    
+	   
+
+	    // display tooltip with full file name
+	    if (showToolTip) {
+		box.setRenderer( new DefaultListCellRenderer() {
+		    @Override
+		    public Component getListCellRendererComponent(JList list, Object value,
+			int index, boolean isSelected, boolean cellHasFocus) {
+			
+			JComponent comp = (JComponent) super.getListCellRendererComponent(list,
+			    value, index, isSelected, cellHasFocus);
+
+			if (-1 < index && null != value ) {
+			    list.setToolTipText( value.toString() );
+			}
+			return comp;
+		    }
+		});
+	    }
+
 	    super.add( Box.createHorizontalGlue());
 	    super.add( jl );
 	    super.add( Box.createRigidArea(new Dimension(5,0)));
