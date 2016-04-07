@@ -115,7 +115,7 @@ public class ImageControl {
 	// setup selector box
 	ImageSelector.ImageInfo [] openImages = imgSelect.getOpenImages();
 	final Tiles.LComboBox<ImageSelector.ImageInfo> imgBox
-	    = new Tiles.LComboBox<ImageSelector.ImageInfo>("Img", openImages);
+	    = new Tiles.LComboBox<ImageSelector.ImageInfo>("Img", null, true, openImages);
 	importImageButton  = new JButton("SELECT");
 
 	imgBox.box.setPrototypeDisplayValue("some really long image filename"+
