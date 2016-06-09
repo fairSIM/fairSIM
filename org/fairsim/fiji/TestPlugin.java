@@ -58,7 +58,7 @@ public class TestPlugin implements PlugIn {
     double wienParam   = 0.05;	    // Wiener filter parameter
     double attStrength = 0.995;	    // Strength of attenuation
     double attFWHM     = 1.2;	    // FWHM of attenuation (cycles/micron)
-    boolean doAttenuation = true;  // use attenuation?
+    boolean doAttenuation = true;   // use attenuation?
 
     boolean otfBeforeShift = true;  // multiply the OTF before or after shift to px,py
 
@@ -67,7 +67,7 @@ public class TestPlugin implements PlugIn {
 	
     final int visualFeedback = 3;   // amount of intermediate results to create (-1,0,1,2,3)
 
-    final double apoB=.9, apoF=2; // Bend and mag. factor of APO
+    final double apoB=.9, apoF=2;   // Bend and mag. factor of APO
 
     /** Called by Fiji to start the plugin. 
      *	Uses the currently selected image, does some basic checks
@@ -463,18 +463,20 @@ public class TestPlugin implements PlugIn {
 	   
 	    // ------ OTF multiplication or masking ------
 	    
-	    if (!otfBeforeShift) {
-		// multiply with shifted OTF
-		for (int b=0; b<par.nrBand(); b++) {
-		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+	    for (int b=0; b<par.nrBand(); b++) {
+		int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+	    
+		if (!otfBeforeShift) {
+		    // multiply with shifted OTF
 		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
+		    if (b>0)
 		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+		} else {
+		    // or mask for OTF support (this should help with noise suppression)
+		    otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
+		    if (b>0)
+		    otfPr.maskOtf( shifted[neg], -par.px(b), -par.py(b) );
 		}
-	    } else {
-		// or mask for OTF support
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    otfPr.maskOtf( shifted[i], angIdx, i);
 	    }
 	    
 	    // ------ Sum up result ------

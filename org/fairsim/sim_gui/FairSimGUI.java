@@ -137,7 +137,7 @@ public class FairSimGUI {
 	nrBands.box.setSelectedItem(3);
 	
 	final Tiles.LComboBox<Integer> nrDir = 
-	    new Tiles.LComboBox<Integer>("angles", new Integer [] {2,3,4,5,6,7});
+	    new Tiles.LComboBox<Integer>("angles", new Integer [] {1,2,3,4,5,6,7});
 	nrDir.box.setSelectedItem(3);
 	
 	final Tiles.LComboBox<Integer> nrPha = 
