@@ -471,21 +471,18 @@ public class TestPlugin implements PlugIn {
 	   
 	    // ------ OTF multiplication or masking ------
 	    
-	    if (!otfBeforeShift) {
-		// multiply with shifted OTF
-		for (int b=0; b<par.nrBand(); b++) {
-		    // TODO: This will fail (index -1)
-		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+	    for (int b=0; b<par.nrBand(); b++) {
+		int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+		
+		if (!otfBeforeShift) {
+		    // multiply with shifted OTF
 		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
+		    if (b>0)
 		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
-		}
-	    } else {
-		// or mask for OTF support
-		for (int b=1; b<(par.nrBand()) ;b++) {
-		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    //otfPr.maskOtf( shifted[i], angIdx, i);
-		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+		} else {
+		    // or mask for OTF support (this should help with noise suppression)
 		    otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
+		    if (b>0)
 		    otfPr.maskOtf( shifted[neg], -par.px(b), -par.py(b) );
 		}
 	    }
