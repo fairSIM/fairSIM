@@ -79,7 +79,6 @@ public class FairSimGUI {
 	    baseframe.setIconImage(new ImageIcon( logo ).getImage());
 	}
 
-
 	imgc = new ImageControl(baseframe, is, imgFactory, sp );
 	simp = new SimParamGUI(baseframe, sp );
 	otfc = new OtfControl(baseframe, sp);

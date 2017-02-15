@@ -143,6 +143,14 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     /** {@inheritDoc} */
     @Override
     public int getCount() { return refs.size(); }
+    
+    /** {@inheritDoc} */
+    @Override
+    public int width() { return width; }
+    
+    /** {@inheritDoc} */
+    @Override
+    public int height() { return height; }
 
 
     /** {@inheritDoc} */
@@ -218,6 +226,10 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	    refMarkers.set( n, new ArrayList<ImageDisplay.Marker>() ); 
 	}
 
+	// update the image if we currently display it
+	if ( ip != null && ( ip.getCurrentSlice()-1 == n) ) {
+	    ip.updateAndDraw();
+	}
     }
 
 
@@ -264,6 +276,7 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     public void imageUpdated(ImagePlus imp)  {
 	// check if the notification is for us
 	if (imp!=ip) return;
+
 	if (currentPosition == ip.getCurrentSlice()-1)
 	    return;
 

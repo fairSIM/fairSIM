@@ -61,6 +61,12 @@ public interface ImageDisplay {
     /** De-register a listener */
     public void removeListener( Notify n ); 
 
+    /** Get image width */
+    public int width();
+
+    /** Get image height */
+    public int height();
+
     // ------------------------------------------------------------------------
 
 

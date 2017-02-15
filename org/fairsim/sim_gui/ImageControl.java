@@ -101,7 +101,9 @@ public class ImageControl {
     Vec2d.Cplx [][] theFFTImages =null;
     double pxlSize;
     boolean pxlSet;
-   
+    
+    private ImageDisplay rawDataDisplay = null;
+
     // video functions
     boolean isVideoStack = false;
     int videoStackPosition=0;
@@ -114,8 +116,7 @@ public class ImageControl {
 
     /** Contructor, initializes image list. */
     public ImageControl( JFrame baseframe, ImageSelector is, 
-	final ImageDisplay.Factory imgFactory,
-	SimParam sp ) {
+	final ImageDisplay.Factory imgFactory, 	SimParam sp ) {
 
 	// initialize variables
 	this.baseframe = baseframe;
@@ -125,7 +126,7 @@ public class ImageControl {
 
 	// create our pnael
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
-	ourContent.setBorder(BorderFactory.createTitledBorder("1a - Image Selector") );
+	ourContent.setBorder(BorderFactory.createTitledBorder("1 - Image Selector") );
 
 	// setup label
 	ourState.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -543,7 +544,35 @@ public class ImageControl {
 	
 	final ImageDisplay curSlice = (showOutput)?(idpFactory.create( 
 	    imgSize, imgSize, "Slice to reconstruct")):(null);
-	
+    
+	// setup dislay for raw data
+	if (showOutput) {
+	    // reset and close for size mismatched
+	    if ( rawDataDisplay != null && 
+		(	rawDataDisplay.width() != imgSize 
+		    ||	rawDataDisplay.height() != imgSize
+		    ||	rawDataDisplay.getCount() != ipz+1 )) {
+		rawDataDisplay.drop();
+		rawDataDisplay = null;
+	    }
+	    // create with right size
+	    if (rawDataDisplay == null) {
+		rawDataDisplay = idpFactory.create( imgSize, imgSize, 
+		"SIM: raw input data");
+		for (int i=0; i<ipz+1; i++)
+		    rawDataDisplay.addImage( Vec2d.createReal(imgSize, imgSize), 
+			"Placeholder");
+
+	    }
+	} else {
+	    if (rawDataDisplay != null)
+		rawDataDisplay.drop();
+	    rawDataDisplay=null;
+	}
+
+	Vec2d.Real widefield = Vec2d.createReal( imgSize, imgSize );
+	int imageCount=0;
+
 	for (int d=0; d<simParam.nrDir(); d++) {
 	    
 	    theImages[d]    = new Vec2d.Real[ simParam.dir(d).nrPha() ];
@@ -553,6 +582,8 @@ public class ImageControl {
 	    
 		int pos = simParam.getImgSeq().calcPosWithTime( d,p,zPos, tPos,
 		    simParam.nrDir(), simParam.dir(d).nrPha(), zpl );
+
+		imageCount++;
 
 		// import and store images  // TODO: move the FFT to somewhere else
 		Vec2d.Real curImg   = imgSelect.getImage(img,pos).duplicate();
@@ -579,16 +610,24 @@ public class ImageControl {
 		theFFTImages[d][p] = Vec2d.createCplx( theImages[d][p] );
 		theFFTImages[d][p].copy( theImages[d][p] );
 		Transforms.fft2d( theFFTImages[d][p], false );
-		if (showOutput) {
-		    curSlice.addImage( theImages[d][p], String.format( 
-		    "Image p: %2d/%2d a: %2d/%2d z: %2d/%2d t: %2d", p+1, simParam.dir(d).nrPha(),
+		
+		if (rawDataDisplay != null) {
+		    
+		    rawDataDisplay.setImage( theImages[d][p], imageCount, 
+		    String.format( 
+		    "Image p: %2d/%2d a: %2d/%2d z: %2d/%2d t: %2d",
+		    p+1, simParam.dir(d).nrPha(),
 		    d+1, simParam.nrDir(), zPos+1, zpl, tPos+1 ));
+		    
+		    widefield.add( theImages[d][p]);
 		}
 	    }
 	}
     
-	if (showOutput) {
-	    curSlice.display();
+	if (rawDataDisplay!=null) {
+	    widefield.scal( 1.f/simParam.getImgPerZ() );
+	    rawDataDisplay.setImage( widefield, 0, "Image: proj. widefield");
+	    rawDataDisplay.display();
 	}
 
 	ourState.setText(String.format("%s (slice z %d, t %d plx %3.0fnm)", img.name, zPos+1, tPos+1, pxlSize)); 
@@ -662,6 +701,7 @@ public class ImageControl {
 	showSlicesButton.setText("show slices");
 
     }
+
 
 
     /** The lowest multiple of 32 larger or equal to 'in' */
