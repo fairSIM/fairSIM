@@ -56,6 +56,8 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private OtfProvider   currentOtf2D=null;
     private OtfProvider3D currentOtf3D=null;
 
+    private long runtimeTimestamp = 0;
+
 
     /** Use factory method {@link #create} to obtain object */
     protected SimParam(int bands, int dirs, int phases, boolean threeD) { 
@@ -602,6 +604,26 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 
 
 
+    }
+
+    // ----------------------------------------------------------------------------------
+
+    /** update the internal timestamp to signal changes, return the timestamp */
+    public long signalRuntimeChange() {
+	runtimeTimestamp = System.currentTimeMillis();
+	return runtimeTimestamp;
+    }
+
+    /** returns the last time 'signalRuntimeChange' was called, as
+     * System.currentTimeMillis */
+    public long getRuntimeTimestamp() {
+	return runtimeTimestamp;
+    }
+    
+    /** returns true if the timestamp provided is older than the stamp generated
+     * by the last call to singalRuntimeChange. */ 
+    public boolean compareRuntimeTimestamp( long timestamp ) {
+	return (( timestamp - runtimeTimestamp ) < 0);
     }
 
 

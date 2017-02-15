@@ -287,7 +287,7 @@ public class FairSimGUI {
 	    //SimParamGUI.dummySP(), 
 	    sp,
 	    new ImageSelector.Dummy(nImg),
-	    DisplayWrapper.getFactory(),
+	    DisplayWrapper.getTestingFactory(),
 	    load
 	    );
 	a.baseframe.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE);

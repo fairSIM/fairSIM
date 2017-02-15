@@ -33,6 +33,7 @@ import javax.swing.JComponent;
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import java.awt.Component;
+import java.awt.Color;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -87,6 +88,12 @@ public class Tiles {
 	    super.add( Box.createRigidArea(new Dimension(5,0)));
 	}
 
+	@Override
+	public void setEnabled(boolean onoff) {
+	    spr.setEnabled(onoff);
+	}
+
+
 	/** Get the spinners current value */
 	public double getVal() {
 	    return ((Number)spr.getValue()).doubleValue();
@@ -121,8 +128,12 @@ public class Tiles {
 	
 	boolean suppressEvents=false;
 
+	final JLabel jl;
+
 	List<SelectListener<T>> listener 
 	    = new ArrayList<SelectListener<T>>();
+
+	final Color defaultBackground = this.getBackground();
 
 	/** Access to the ComboBox. */
 	final public TComboBox<T> box;
@@ -152,7 +163,7 @@ public class Tiles {
 	    
 	    super();
 	    super.setLayout( new BoxLayout(this, BoxLayout.LINE_AXIS));
-	    final JLabel jl = new JLabel(label);
+	    jl = new JLabel(label);
 	    
 	    if ((opts!=null)&&(opts.length>0))
 		box = new TComboBox<T>(opts);
@@ -210,6 +221,25 @@ public class Tiles {
 	public int getSelectedIndex() {
 	    return box.getSelectedIndex();
 	}
+
+	public void setSelectedIndex(int i) {
+	    box.setSelectedIndex(i);
+	}
+
+	@Override
+	public void setEnabled(boolean onoff) {
+	    box.setEnabled(onoff);
+	}
+
+	public void setLabelColor( Color c ) {
+	    jl.setForeground(c);
+	}
+	
+	public void setBackgroundColor( Color c ) {
+	    if (c==null) c = defaultBackground;
+	    super.setBackground(c);
+	}
+
 
 	/** Add a listener to be notified when the selection changes */
 	public void addSelectListener( SelectListener<T> l ) {

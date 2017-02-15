@@ -227,7 +227,6 @@ public class ReconstructionControl {
 
 
 
-
     /** just here to not clutter the ActionPerformed event with so much code */
     void runRecon() {
 

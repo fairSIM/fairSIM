@@ -26,6 +26,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JCheckBox;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 import javax.swing.JSlider;
@@ -58,6 +59,7 @@ import org.fairsim.utils.ImageDisplay;
 import org.fairsim.sim_algorithm.OtfProvider;
 import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.SimUtils;
+import org.fairsim.sim_algorithm.SimAlgorithm;
 
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Transforms;
@@ -69,7 +71,6 @@ public class ImageControl {
     
     private final JPanel ourContent = new JPanel();  
     private final JLabel ourState = new JLabel("no image selected");
-    final Tiles.LNSpinner zSliceVideoSpinner ; 
     private volatile boolean running = false;
 
     private final ImageSelector imgSelect ;
@@ -81,7 +82,7 @@ public class ImageControl {
 
     // global references to be accessed both by importImage and showSlices
     private JButton importImageButton	= null;
-    private JButton importVideoButton	= null;
+    private JCheckBox importTimelapseBox= null;
     private JButton showSlicesButton	= null;
     private ImageDisplay sliceSelector	= null;
     private Tiles.LComboBox<Integer> sliceBox;
@@ -95,6 +96,10 @@ public class ImageControl {
     private final JSlider videoPosSlider;
     final JLabel  videoPosLabel = new JLabel( String.format("t % 5d", 0));
     final JLabel maxTimePointsLabel;
+    final Tiles.LNSpinner zSliceVideoSpinner ; 
+    final String [] updateModes = {"off", "widefield", "full"};
+    final Tiles.LComboBox<String> videoAutoUpdateMode =
+     new Tiles.LComboBox<String>("auto-update", updateModes); 
 
     // the images
     Vec2d.Real [][] theImages    =null;
@@ -102,20 +107,24 @@ public class ImageControl {
     double pxlSize;
     boolean pxlSet;
     
-    private ImageDisplay rawDataDisplay = null;
+    private ImageDisplay rawDataDisplay   = null;
+    private ImageDisplay simPreviewDisplay = null;
 
     // video functions
     boolean isVideoStack = false;
-    int videoStackPosition=0;
+    int videoStackPositionTime = 0;
+    int videoStackPositionZ =0;
+    boolean sucessfulImport = false;
     int totalTimePoints = 1;
 
+    AutoUpdateThread autoUpdater = null;
 
     public JPanel getPanel() {
 	return ourContent;
     }
 
     /** Contructor, initializes image list. */
-    public ImageControl( JFrame baseframe, ImageSelector is, 
+    public ImageControl( final JFrame baseframe, ImageSelector is, 
 	final ImageDisplay.Factory imgFactory, 	SimParam sp ) {
 
 	// initialize variables
@@ -137,7 +146,8 @@ public class ImageControl {
 	imgBox = new Tiles.LComboBox<ImageSelector.ImageInfo>(
 	    "Img", null, true, openImages);
 	importImageButton  = new JButton("import");
-	importVideoButton  = new JButton("import as video");
+	importTimelapseBox  = new JCheckBox("timelapse mode");
+	
 	zSliceVideoSpinner = 	
 	    new Tiles.LNSpinner( "zSlices" , 1, 1, 200, 1 ); 
 
@@ -155,10 +165,12 @@ public class ImageControl {
 	
 	JPanel row2 = new JPanel();
 	row2.add(Box.createHorizontalGlue());
-	row2.add( importVideoButton );
+	row2.add( importTimelapseBox );
 	row2.add( zSliceVideoSpinner);
 	row2.add(Box.createRigidArea(new Dimension(5,1)));
 	row2.add( maxTimePointsLabel );
+	row2.add(Box.createRigidArea(new Dimension(5,1)));
+	row2.add( videoAutoUpdateMode );
 	row2.add(Box.createHorizontalGlue());
 	
 	// add the video-select sliders
@@ -218,31 +230,40 @@ public class ImageControl {
 	});
 
 
-	// import an image
+	// import images / time-lapse
 	importImageButton.addActionListener( new ActionListener() {
 	    public void actionPerformed( ActionEvent e ) {
-		importImageDialog( 
-		    imgBox.getSelectedItem(), 
-		    imgBox.getSelectedItem().depth / simParam.getImgPerZ(), 0 );
-		isVideoStack = false;
+		
+		if ( isVideoStack ) {
+		    // import as time-laspe stack
+		    importImageDialog( imgBox.getSelectedItem(), 
+			(int)zSliceVideoSpinner.getVal(), videoStackPositionTime );
+		    isVideoStack = true;
+		} else {
+		    // import as stadard stack
+		    importImageDialog( 
+			imgBox.getSelectedItem(), 
+			imgBox.getSelectedItem().depth / simParam.getImgPerZ(), 0 );
+		
+		    isVideoStack = false;
+		}
 	    }
 	});
 	
-	// import a video
-	importVideoButton.addActionListener( new ActionListener() {
+	// change import mode
+	importTimelapseBox.addActionListener( new ActionListener() {
 	    public void actionPerformed( ActionEvent e ) {
-		importImageDialog( imgBox.getSelectedItem(), 
-		    (int)zSliceVideoSpinner.getVal(), videoStackPosition );
-		isVideoStack = true;
+		changeTimelapseMode( importTimelapseBox.isSelected());
 	    }
 	});
 
 	// video position slider change position
 	videoPosSlider.addChangeListener( new ChangeListener() {
 	    public void stateChanged(ChangeEvent e) {
-		videoStackPosition = videoPosSlider.getValue()-1;
+		videoStackPositionTime = videoPosSlider.getValue()-1;
 		videoPosLabel.setText( 
-		    String.format(" t:  % 5d", videoStackPosition+1));
+		    String.format(" t:  % 5d", videoStackPositionTime+1));
+		simParam.signalRuntimeChange();
 	    }
 	});
 
@@ -261,9 +282,35 @@ public class ImageControl {
 	    }
 	});
 
+	// change the auto-update mode
+	videoAutoUpdateMode.addSelectListener( new Tiles.SelectListener<String>() {
+	    public void selected( String e, int i) {
+		
+		if (!sucessfulImport) {
+		    JOptionPane.showMessageDialog( baseframe,
+		     "Please run a successful image import first", "fairSIM error",
+		     JOptionPane.ERROR_MESSAGE);
+		    videoAutoUpdateMode.setSelectedIndex(0);
+		    return;
+		}
+		
+		if (i>1 && simParam.otf() == null) {
+		    JOptionPane.showMessageDialog( baseframe,
+		     "Please run a successful single SIM reconstruction first", 
+		     "fairSIM error",
+		     JOptionPane.ERROR_MESSAGE);
+		    videoAutoUpdateMode.setSelectedIndex(0);
+		    return;
+		}
+		
+		runAutoUpdate(i);
+	    
+	    }
+	});
+
 
 	// update the video function
-	updateIfVideoCanBeUsed();
+	changeTimelapseMode(false);
     }
 
     /** check if the image is o.k. */
@@ -298,7 +345,7 @@ public class ImageControl {
 	ImageSelector.ImageInfo inf = imgBox.getSelectedItem(); 
 	if ( inf == null ) {
 	    videoPosSlider.setEnabled(false);
-	    importVideoButton.setEnabled(false);
+	    importImageButton.setEnabled(false);
 	    maxTimePointsLabel.setText("no image");	    
 	    return;
 	}
@@ -310,22 +357,25 @@ public class ImageControl {
 	
 	if ( inf.depth % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
 	    videoPosSlider.setEnabled(false);
-	    importVideoButton.setEnabled(false);
+	    importImageButton.setEnabled(false);
+	    videoAutoUpdateMode.setEnabled(false);
+	    
 	    videoPosLabel.setText("t: n/a");
 	    maxTimePointsLabel.setText("t-max: n/a");
 	    maxTimePointsLabel.setToolTipText("Total number of images divided by "+
 		"number of z-slices is no integer, "+
 		"please select matching number of z-slices");
 	} else {
-	    importVideoButton.setEnabled(true);
+	    importImageButton.setEnabled(true);
 	    videoPosSlider.setEnabled(true);
+	    videoAutoUpdateMode.setEnabled(true);
 
 	    totalTimePoints = inf.depth / zplSel / simParam.getImgPerZ(); 
 	    if ( videoPosSlider.getValue() >= totalTimePoints ) {
 		videoPosSlider.setValue(0);
 	    } else {
 		videoPosLabel.setText( 
-		    String.format(" t:  % 5d", videoStackPosition+1));
+		    String.format(" t:  % 5d", videoStackPositionTime+1));
 	    }
 	    videoPosSlider.setMaximum( totalTimePoints );
 	    maxTimePointsLabel.setText("t-max: "+ totalTimePoints);
@@ -335,6 +385,146 @@ public class ImageControl {
 	}
 
     }
+
+    /** switch timelapse mode on and off */
+    void changeTimelapseMode( boolean onoff ) {
+
+	isVideoStack = onoff;
+	
+	sucessfulImport = false;
+	runAutoUpdate(0);
+	
+	videoPosSlider.setEnabled(isVideoStack);
+	zSliceVideoSpinner.setEnabled(isVideoStack);
+    
+	if (isVideoStack) {
+	    updateIfVideoCanBeUsed();
+	} else {
+	    importImageButton.setEnabled(true);
+	    videoAutoUpdateMode.setEnabled(true);
+	}
+
+    }
+
+
+    /** start auto-update */
+    void runAutoUpdate( int mode ) {
+
+	if ( autoUpdater != null ) {
+	   autoUpdater.updateMode = 0;
+	   //autoUpdater.interrupt();
+	   try {
+		autoUpdater.join();
+	   } catch (InterruptedException ex) {
+		Tool.trace("Thread join interruption, should not happen");
+	   }
+	   autoUpdater = null;
+	   videoAutoUpdateMode.setBackground( null );	
+	   if (simPreviewDisplay != null)
+		simPreviewDisplay.drop();
+	}
+	
+	// mode 0 stops the thread and 
+	if (mode==0) return;
+
+	// all other modes are written to the thread
+	// which is started if not existing
+	autoUpdater = new AutoUpdateThread(mode);
+	Tool.trace("Starting auto update, mode "+updateModes[mode]);
+	autoUpdater.start();
+    }
+
+
+    /** this runs a background thread updating the images on the fly */
+    class AutoUpdateThread extends Thread {
+	
+	int updateMode;
+	AutoUpdateThread(int initialMode) {
+	    updateMode = initialMode;
+	}
+
+	@Override
+	public void run() {
+
+	    long lastUpdate = 0;
+		    
+	    int simWidth  = theFFTImages[0][0].vectorWidth()*2;
+	    int simHeight = theFFTImages[0][0].vectorHeight()*2;
+
+	    simPreviewDisplay = 
+		idpFactory.create(simWidth, simHeight, "SIM preview");
+	    
+	    simPreviewDisplay.addImage( Vec2d.createReal(simWidth, simHeight), 
+		"SIM preview Image");
+
+	    while(true) {
+
+		// stop the thread if the import was not successful
+		if (!sucessfulImport) {
+		    videoAutoUpdateMode.setSelectedIndex(0);
+		    Tool.trace("AUTO-UPDATE: Stopping auto updater, "+
+		    "as last import was unsuccessful");
+		    return;
+		}
+
+		// stop the thread if the update mode is 0
+	        if (updateMode == 0) {
+		    Tool.trace("AUTO-UPDATE: Stopping auto updater, as requested");
+		    return;
+		}
+
+
+		// see if any updates have to be performed
+		boolean doUpdate = simParam.compareRuntimeTimestamp( lastUpdate );
+
+		// wait a few hundred ms if there is nothing to update
+		if (!doUpdate) {
+		    //Tool.trace("AUTO-UPDATE: no change, nothing to update. ");
+		    try {
+			sleep(400);
+		    } catch (InterruptedException ex) {}
+		    continue;
+		}
+
+		// run the automatic update for the preview..
+		videoAutoUpdateMode.setBackground( Color.YELLOW );	
+		lastUpdate = System.currentTimeMillis();
+	
+		// update the input images
+		Tool.trace("AUTO-UPDATE: updating wide-field view ");
+
+		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
+		    videoStackPositionTime, true ); 
+
+
+		// update the SIM reconstruction
+		if (updateMode>1) {
+
+		    if (simParam.otf() != null ) {
+		
+			Tool.trace("AUTO-UPDATE: updating wide-field view ");
+
+			Vec2d.Real simRecon = SimAlgorithm.runReconstruction( 
+			    simParam, theFFTImages, 
+			    null,  0, false, 2, null);
+		   
+			if (simPreviewDisplay != null) {
+			    simPreviewDisplay.setImage( simRecon, 0, "SIM image");
+			    simPreviewDisplay.display();
+			}
+		    
+		    } else {
+			Tool.trace("AUTO-UPDATE: No OTF / parameters set for SIM");
+		    }
+		}
+		
+		videoAutoUpdateMode.setBackground( Color.GREEN );	
+	    
+	    }
+	}
+    }
+
+
 
 
 
@@ -432,7 +622,7 @@ public class ImageControl {
 	p2.add( pxlSizeSpinner );
 
 	// background subtraction
-	bgrSpinner = new Tiles.LNSpinner( "val" , 50, 0, 1000, 5 ); 
+	bgrSpinner = new Tiles.LNSpinner( "val" , 50, 0, 5000, 5 ); 
 	bgrBox = new Tiles.LComboBox<String>("Use?", "no", "yes");
 	bgrBox.box.setToolTipText("Subtract a constant background value?");
 
@@ -461,8 +651,8 @@ public class ImageControl {
 	JPanel p0 = new JPanel();
 	p0.add( ok );
 	p0.add( cl );
-	
-	// set a new OTF from estimate HERE
+
+	// perform the image import
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		if (!pxlSet) {	
@@ -486,17 +676,19 @@ public class ImageControl {
 		    @Override
 		    public Object doInBackground() {
 			running = true;	
-			int curZ = sliceBox.getSelectedItem()-1; 
-			importImages(img,curZ, tPosition,true);
+			videoStackPositionZ = sliceBox.getSelectedItem()-1; 
+			importImages(img, videoStackPositionZ, tPosition,true);
 			return null;
 		    }
 		    @Override
 		    protected void done() {
 			running = false;
 			importImageButton.setEnabled(true);
+			sucessfulImport = true;
+			simParam.signalRuntimeChange();
 		    }
 		}).execute();
-
+		
 	    }
 	});
 
@@ -520,6 +712,9 @@ public class ImageControl {
 	imageDialog.setVisible(true);
 
     }
+
+    
+
 
 
     /** import a set of images to be reconstructed */ 
@@ -632,8 +827,8 @@ public class ImageControl {
 
 	ourState.setText(String.format("%s (slice z %d, t %d plx %3.0fnm)", img.name, zPos+1, tPos+1, pxlSize)); 
 	ourState.setForeground(Color.GREEN.darker());
-	simParam.setPxlSize( theImages[0][0].vectorWidth(), pxlSize/1000. );
 
+	simParam.setPxlSize( theImages[0][0].vectorWidth(), pxlSize/1000. );
     }
 
 
