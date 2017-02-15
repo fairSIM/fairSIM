@@ -18,6 +18,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.utils;
 
+
 import org.fairsim.linalg.Vec2d;
 
 /** Access to list of open images */
@@ -112,12 +113,7 @@ public interface ImageSelector {
 	    "Very long image name just to test if GUI is wide enough",
 	    "Image with 45 planes"};
 
-	/*
-	@Override
-	public void addCallback( Callback b) {};
-	@Override
-	public void removeCallback( Callback b) {};
-	*/
+	
 	@Override
 	public int getOpenImageCount() { return n; }
 	@Override
@@ -137,10 +133,10 @@ public interface ImageSelector {
 	public Vec2d.Real [] getImages(ImageInfo w) {
 	    return Vec2d.createArrayReal( idxToZ(w.id) , 512, 512 );
 	}
-    
+
     
 	private int idxToZ(int i) {
-	    return (i%2==0)?(15*(i+1)):(9*(i+1));
+	    return (i!=1)?(15*(i+1)):(9*(i+1));
 	}
 
     }

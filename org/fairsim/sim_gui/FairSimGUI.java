@@ -78,7 +78,6 @@ public class FairSimGUI {
 	if ( logo != null) {
 	    baseframe.setIconImage(new ImageIcon( logo ).getImage());
 	}
-	    
 
 
 	imgc = new ImageControl(baseframe, is, imgFactory, sp );

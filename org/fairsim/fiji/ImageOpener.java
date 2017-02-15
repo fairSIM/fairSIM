@@ -39,27 +39,9 @@ import ij.IJ;
 /** Provides connectivity to Fiji */ 
 public class ImageOpener 
     implements ImageSelector {
-    //implements ImageSelector, ImageListener {
-
-    /*
-    List<ImageSelector.Callback> iscb =
-	new ArrayList<ImageSelector.Callback>(); */
 
     private boolean isActive=true;
 
-    ImageOpener() {
-	//ImagePlus.addImageListener(this);
-    }
-
-    /** de-register all listeners */
-    void drop() {
-	/*
-	iscb.clear();
-	iscb=null;
-	ImagePlus.removeImageListener(this);
-	isActive = false;
-	*/
-    }
 
     @Override
     public int getOpenImageCount() {
@@ -119,7 +101,6 @@ public class ImageOpener
 	return al.toArray(new ImageSelector.ImageInfo[0] );
     }
 
-    
     @Override
     public ImageVector getImage( ImageSelector.ImageInfo info, int pos ) {
 	ImagePlus ip = WindowManager.getImage( info.id );

@@ -28,6 +28,9 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
+import javax.swing.JSlider;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ChangeEvent;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -39,6 +42,8 @@ import java.awt.Component;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -80,20 +85,28 @@ public class ImageControl {
     private JButton showSlicesButton	= null;
     private ImageDisplay sliceSelector	= null;
     private Tiles.LComboBox<Integer> sliceBox;
+	
+    final Tiles.LComboBox<ImageSelector.ImageInfo> imgBox;
     
     private Tiles.LComboBox<String> bgrBox;
     private Tiles.LNSpinner bgrSpinner;
 
+    // video position slider
+    private final JSlider videoPosSlider;
+    final JLabel  videoPosLabel = new JLabel( String.format("t % 5d", 0));
+    final JLabel maxTimePointsLabel;
 
     // the images
     Vec2d.Real [][] theImages    =null;
     Vec2d.Cplx [][] theFFTImages =null;
     double pxlSize;
     boolean pxlSet;
-    
+   
+    // video functions
     boolean isVideoStack = false;
     int videoStackPosition=0;
     int totalTimePoints = 1;
+
 
     public JPanel getPanel() {
 	return ourContent;
@@ -112,7 +125,7 @@ public class ImageControl {
 
 	// create our pnael
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
-	ourContent.setBorder(BorderFactory.createTitledBorder("1 - Image Selector") );
+	ourContent.setBorder(BorderFactory.createTitledBorder("1a - Image Selector") );
 
 	// setup label
 	ourState.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -120,8 +133,8 @@ public class ImageControl {
 
 	// setup selector box
 	ImageSelector.ImageInfo [] openImages = imgSelect.getOpenImages();
-	final Tiles.LComboBox<ImageSelector.ImageInfo> imgBox
-	    = new Tiles.LComboBox<ImageSelector.ImageInfo>("Img", null, true, openImages);
+	imgBox = new Tiles.LComboBox<ImageSelector.ImageInfo>(
+	    "Img", null, true, openImages);
 	importImageButton  = new JButton("import");
 	importVideoButton  = new JButton("import as video");
 	zSliceVideoSpinner = 	
@@ -130,18 +143,45 @@ public class ImageControl {
 	imgBox.box.setPrototypeDisplayValue("some really long image filename"+
 	    "as these will often be used");
 
+	maxTimePointsLabel = new JLabel("t-max: n/a");
+
 	JPanel row1 = new JPanel();
 	row1.setLayout(new BoxLayout(row1, BoxLayout.LINE_AXIS));
 	row1.add(Box.createHorizontalGlue());
 	row1.add( imgBox );
-	//row1.add(Box.createRigidArea(new Dimension(5,1)));
+	row1.add(Box.createRigidArea(new Dimension(5,1)));
+	row1.add( importImageButton );
 	
 	JPanel row2 = new JPanel();
 	row2.add(Box.createHorizontalGlue());
-	row2.add( importImageButton );
 	row2.add( importVideoButton );
 	row2.add( zSliceVideoSpinner);
+	row2.add(Box.createRigidArea(new Dimension(5,1)));
+	row2.add( maxTimePointsLabel );
 	row2.add(Box.createHorizontalGlue());
+	
+	// add the video-select sliders
+	JPanel row3 = new JPanel();
+	
+	videoPosSlider = new JSlider(JSlider.HORIZONTAL, 1,100,1);
+	videoPosSlider.setEnabled(false);
+
+	JPanel sliders = new JPanel(new GridBagLayout());
+	GridBagConstraints c = new GridBagConstraints();	
+	
+	c.gridx=0; c.gridy=0; c.gridwidth=8; c.gridheight=1;
+	sliders.add( videoPosSlider,c);
+	c.gridx=9; c.gridwidth=1;
+	sliders.add( videoPosLabel,c );
+	
+	/*
+	endPosSlider   = new JSlider(JSlider.HORIZONTAL, 0,100,5);
+	c.gridx=0; c.gridy=1; c.gridwidth=1; c.gridheight=1;
+	sliders.add( endPosLabel,c );
+	c.gridx=1; c.gridwidth=6;
+	sliders.add( endPosSlider,c); */
+
+
 	
 	// add all content to the panel
 	ourContent.add(ourState);
@@ -149,6 +189,8 @@ public class ImageControl {
 	ourContent.add(row1);
 	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
 	ourContent.add(row2);
+	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+	ourContent.add(sliders);
 	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
 
 	// ------ CALLBACKS and LOGIC ------
@@ -180,7 +222,7 @@ public class ImageControl {
 	    public void actionPerformed( ActionEvent e ) {
 		importImageDialog( 
 		    imgBox.getSelectedItem(), 
-		    imgBox.getSelectedItem().depth / simParam.getImgPerZ() );
+		    imgBox.getSelectedItem().depth / simParam.getImgPerZ(), 0 );
 		isVideoStack = false;
 	    }
 	});
@@ -189,12 +231,38 @@ public class ImageControl {
 	importVideoButton.addActionListener( new ActionListener() {
 	    public void actionPerformed( ActionEvent e ) {
 		importImageDialog( imgBox.getSelectedItem(), 
-		    (int)zSliceVideoSpinner.getVal() );
+		    (int)zSliceVideoSpinner.getVal(), videoStackPosition );
 		isVideoStack = true;
-		videoStackPosition = 0;
 	    }
 	});
 
+	// video position slider change position
+	videoPosSlider.addChangeListener( new ChangeListener() {
+	    public void stateChanged(ChangeEvent e) {
+		videoStackPosition = videoPosSlider.getValue()-1;
+		videoPosLabel.setText( 
+		    String.format(" t:  % 5d", videoStackPosition+1));
+	    }
+	});
+
+	// selected image changed
+	imgBox.addSelectListener( 
+	    new Tiles.SelectListener<ImageSelector.ImageInfo>() {
+	    public void selected( ImageSelector.ImageInfo inf, int i ) {
+		updateIfVideoCanBeUsed();	
+	    }
+	});
+
+	// selected number of z-planes changed
+	zSliceVideoSpinner.addNumberListener( new Tiles.NumberListener() {
+	    public void number(double d, Tiles.LNSpinner e) {
+		updateIfVideoCanBeUsed();
+	    }
+	});
+
+
+	// update the video function
+	updateIfVideoCanBeUsed();
     }
 
     /** check if the image is o.k. */
@@ -217,16 +285,61 @@ public class ImageControl {
 	     JOptionPane.ERROR_MESSAGE);
 	    return false;
 	}
-
-
     
 	return true;
     }
 
 
+    /** Update to the user if the stack could be a video */
+    void updateIfVideoCanBeUsed() {
+
+
+	ImageSelector.ImageInfo inf = imgBox.getSelectedItem(); 
+	if ( inf == null ) {
+	    videoPosSlider.setEnabled(false);
+	    importVideoButton.setEnabled(false);
+	    maxTimePointsLabel.setText("no image");	    
+	    return;
+	}
+	
+	int zplSel = (int)zSliceVideoSpinner.getVal();  
+
+	// check if with the currently selected number of images,
+	// the image could be imported as video
+	
+	if ( inf.depth % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
+	    videoPosSlider.setEnabled(false);
+	    importVideoButton.setEnabled(false);
+	    videoPosLabel.setText("t: n/a");
+	    maxTimePointsLabel.setText("t-max: n/a");
+	    maxTimePointsLabel.setToolTipText("Total number of images divided by "+
+		"number of z-slices is no integer, "+
+		"please select matching number of z-slices");
+	} else {
+	    importVideoButton.setEnabled(true);
+	    videoPosSlider.setEnabled(true);
+
+	    totalTimePoints = inf.depth / zplSel / simParam.getImgPerZ(); 
+	    if ( videoPosSlider.getValue() >= totalTimePoints ) {
+		videoPosSlider.setValue(0);
+	    } else {
+		videoPosLabel.setText( 
+		    String.format(" t:  % 5d", videoStackPosition+1));
+	    }
+	    videoPosSlider.setMaximum( totalTimePoints );
+	    maxTimePointsLabel.setText("t-max: "+ totalTimePoints);
+	    maxTimePointsLabel.setToolTipText("Number of available time points "+
+		"at selected z");
+
+	}
+
+    }
+
+
+
     /** set the currently selected image */
     void importImageDialog( final ImageSelector.ImageInfo img, 
-	final int zSlices ) {
+	final int zSlices, final int tPosition ) {
 
 	Tool.trace("zSlice: "+zSlices);
 
@@ -373,7 +486,7 @@ public class ImageControl {
 		    public Object doInBackground() {
 			running = true;	
 			int curZ = sliceBox.getSelectedItem()-1; 
-			importImages(img,curZ,0,true);
+			importImages(img,curZ, tPosition,true);
 			return null;
 		    }
 		    @Override
