@@ -119,18 +119,23 @@ public class ImageOpener
 	return al.toArray(new ImageSelector.ImageInfo[0] );
     }
 
-    @Override
-    public ImageVector [] getImage( ImageSelector.ImageInfo info) {
     
+    @Override
+    public ImageVector getImage( ImageSelector.ImageInfo info, int pos ) {
 	ImagePlus ip = WindowManager.getImage( info.id );
 	if (ip==null) return null;
+	return ImageVector.copy( ip.getStack().getProcessor( pos+1));
+    }
+
+    @Override
+    public ImageVector [] getImages( ImageSelector.ImageInfo info ) {
 	
 	ImageVector [] ret = new ImageVector[ info.depth ];
-
 	for ( int i=0; i<info.depth; i++)
-	    ret[i] = ImageVector.copy( ip.getStack().getProcessor( i+1) );
-
+	    ret[i] = getImage( info, i);
+	
 	return ret;
+
     }
 
     // ------ ImageListener interface ------

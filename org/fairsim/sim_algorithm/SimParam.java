@@ -557,6 +557,31 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 			  return ( pha + ang*phaMax  + z*phaMax*angMax );
 	    }
 	}
+	
+	/** Calculate position in (raw) z stack.
+	 *  @param ang Index of angle
+	 *  @param pha Index of phase
+	 *  @param z   Index of z
+	 *  @param t   Index of time
+	 *  @param angMax   Number of angles
+	 *  @param phaMax   Number of phases
+	 *  @param zMax	    Number of z slices */
+	public int calcPosWithTime( int ang, int pha, int z, int t, int angMax, int phaMax, int zMax ) {
+	    if (( ang>=angMax ) || ( pha >= phaMax ) || ( z >= zMax ) || 
+		( ang <0 ) || ( pha < 0) || ( z < 0 ))
+		throw new RuntimeException("Parameter wrong!");
+	    
+	    switch(this) {
+		case PZA: return ( pha +   z*phaMax  + ang*phaMax*zMax + 
+		    phaMax*zMax*angMax * t );
+		case ZAP: return (  z  + ang*zMax    + pha*zMax*angMax +
+		    phaMax*zMax*angMax * t );
+		case PAZ: 
+		default:
+			  return ( pha + ang*phaMax  + z*phaMax*angMax +
+		    phaMax*zMax*angMax * t );
+	    }
+	}
 
 	/** Return a default SIM parameter set */
 	public SimParam getParam() {
