@@ -32,6 +32,7 @@ import javax.swing.SwingWorker;
 import javax.swing.JSlider;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
+import javax.swing.JProgressBar;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -83,6 +84,7 @@ public class ImageControl {
     // global references to be accessed both by importImage and showSlices
     private JButton importImageButton	= null;
     private JCheckBox importTimelapseBox= null;
+    private JButton batchButton		= null;
     private JButton showSlicesButton	= null;
     private ImageDisplay sliceSelector	= null;
     private Tiles.LComboBox<Integer> sliceBox;
@@ -155,6 +157,7 @@ public class ImageControl {
 	    "as these will often be used");
 
 	maxTimePointsLabel = new JLabel("t-max: n/a");
+	batchButton = new JButton("batch");
 
 	JPanel row1 = new JPanel();
 	row1.setLayout(new BoxLayout(row1, BoxLayout.LINE_AXIS));
@@ -182,11 +185,15 @@ public class ImageControl {
 	JPanel sliders = new JPanel(new GridBagLayout());
 	GridBagConstraints c = new GridBagConstraints();	
 	
-	c.gridx=0; c.gridy=0; c.gridwidth=8; c.gridheight=1;
+	c.gridx=0; c.gridy=0; c.gridwidth=10; c.gridheight=1;
 	sliders.add( videoPosSlider,c);
-	c.gridx=9; c.gridwidth=1;
+	c.gridx=11; c.gridwidth=1;
 	sliders.add( videoPosLabel,c );
-	
+	c.gridx=12; c.gridwidth=1;
+	sliders.add( Box.createRigidArea( new Dimension(5,1) ));
+	c.gridx=13; c.gridwidth=1;
+	sliders.add( batchButton );
+
 	/*
 	endPosSlider   = new JSlider(JSlider.HORIZONTAL, 0,100,5);
 	c.gridx=0; c.gridy=1; c.gridwidth=1; c.gridheight=1;
@@ -305,6 +312,20 @@ public class ImageControl {
 		
 		runAutoUpdate(i);
 	    
+	    }
+	});
+
+	// run the batch reconstruction dialog
+	batchButton.addActionListener( new ActionListener() {
+	    public void actionPerformed( ActionEvent e) {
+		if (!sucessfulImport || simParam.otf() == null) {
+		    JOptionPane.showMessageDialog( baseframe,
+		     "Please run a successful single SIM reconstruction first", 
+		     "fairSIM error",
+		     JOptionPane.ERROR_MESSAGE);
+		    return;
+		}
+		openBatchDialog();
 	    }
 	});
 
@@ -506,7 +527,7 @@ public class ImageControl {
 
 			Vec2d.Real simRecon = SimAlgorithm.runReconstruction( 
 			    simParam, theFFTImages, 
-			    null,  0, false, 2, null);
+			    null,  0, false, SimParam.CLIPSCALE.BOTH, null);
 		   
 			if (simPreviewDisplay != null) {
 			    simPreviewDisplay.setImage( simRecon, 0, "SIM image");
@@ -896,6 +917,139 @@ public class ImageControl {
 	showSlicesButton.setText("show slices");
 
     }
+
+
+    /** set the currently selected image */
+    void openBatchDialog( ) {
+
+	JPanel p1 = new JPanel();
+	p1.setLayout(new BoxLayout(p1, BoxLayout.LINE_AXIS));
+	p1.setBorder(BorderFactory.createTitledBorder("Range") );
+
+	final Tiles.LNSpinner startSpinner
+	    = new Tiles.LNSpinner("start", 1, 1, totalTimePoints, 1); 
+	final Tiles.LNSpinner stopSpinner
+	    = new Tiles.LNSpinner("stop", totalTimePoints, 1, totalTimePoints, 1); 
+
+	p1.add( startSpinner );
+	p1.add( stopSpinner );
+
+	// dialog	
+	final JDialog imageDialog = new JDialog(baseframe,
+	    "Batch reconstruction", false);
+
+	imageDialog.addWindowListener( new WindowAdapter() {
+	    @Override
+	    public void windowClosed(WindowEvent e) {
+			// TODO: put stop thread here
+	    }
+	});
+
+	final JButton ok = new JButton("Start reconstruction");
+	final JButton cl = new JButton("Cancel");
+	JPanel p0 = new JPanel();
+	p0.add( ok );
+	p0.add( cl );
+    
+	JProgressBar progressBar = new JProgressBar(0,1000);
+	JPanel p2 = new JPanel();
+	p2.setLayout(new BoxLayout(p2, BoxLayout.LINE_AXIS));
+	p2.setBorder(BorderFactory.createTitledBorder("Progress") );
+	p2.add(progressBar);
+
+	final BatchReconstructionThread brt = new BatchReconstructionThread(
+	    progressBar, ok, cl);
+
+	// perform the image import
+	ok.addActionListener( new ActionListener() {
+	    public void actionPerformed(ActionEvent e) {
+		brt.setStartStop(
+		    (int)startSpinner.getVal()-1,
+		    (int)stopSpinner.getVal());
+		ok.setEnabled(false);
+		ok.setText("running");
+		brt.start();
+	    }
+	});
+
+	cl.addActionListener( new ActionListener() {
+	    public void actionPerformed(ActionEvent e) {
+		brt.cancel = true;
+		try {
+		    brt.join();
+		} catch (InterruptedException ex) {
+		    Tool.trace("Thread join interrupted");
+		}
+		imageDialog.dispose();
+	    }
+	});
+
+	// pack and display dialog
+	JPanel dialog = new JPanel();
+	dialog.setLayout( new BoxLayout( dialog, BoxLayout.PAGE_AXIS));
+	dialog.add( p1 );
+	dialog.add( p2 );
+	dialog.add( p0 );
+	
+	imageDialog.add( dialog );
+	imageDialog.pack();
+	imageDialog.setVisible(true);
+
+    }
+
+   
+    class BatchReconstructionThread extends Thread {
+
+	int start, stop;
+	boolean cancel=false;
+	JProgressBar jpBar;
+	JButton okButton, clButton;
+
+	BatchReconstructionThread( JProgressBar jp, JButton ok, JButton cl ) {
+	    jpBar = jp;
+	    okButton = ok;
+	    clButton = cl;
+	}
+
+	void setStartStop( int start, int stop) {
+	    this.start = start;
+	    this.stop  = stop;
+	}
+
+	@Override
+	public void run() {
+
+	    int simWidth  = theFFTImages[0][0].vectorWidth()*2;
+	    int simHeight = theFFTImages[0][0].vectorHeight()*2;
+
+	    ImageDisplay simOutputDisplay = 
+		idpFactory.create(simWidth, simHeight, "SIM batch results");
+	    
+	    for (int timePos=start; timePos<stop; timePos++) {
+
+		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
+		    timePos, true ); 
+			
+		Vec2d.Real simRecon = SimAlgorithm.runReconstruction( 
+		    simParam, theFFTImages, null,  0, false, 
+		    simParam.getClipScale(), null);
+		
+		simOutputDisplay.addImage( simRecon,"timeslice t:"+timePos);
+
+		jpBar.setValue( ((timePos-start+1)*1000) / (stop-start));
+
+		if (timePos>start) simOutputDisplay.display();
+		if (cancel) break;
+	    }
+
+	    simOutputDisplay.display();
+	    okButton.setText("Done.");
+	    clButton.setText("close");
+	}
+
+    }
+
+
 
 
 

@@ -259,7 +259,8 @@ public class SimAlgorithm {
      * @return The reconstructed image */
     public static Vec2d.Real runReconstruction( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, ImageDisplay.Factory idf, int visualFeedback, 
-	final boolean otfBeforeShift, final int imgClipScale, Tool.Timer tRec ) {
+	final boolean otfBeforeShift, final SimParam.CLIPSCALE imgClipScale, 
+	Tool.Timer tRec ) {
 
 	if (tRec != null) tRec.start();	
 

@@ -47,6 +47,8 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private double cyclesPerMicronInZ=-1;	    // freq extent of FFT in z-slices
 
     private IMGSEQ imgSeq = IMGSEQ.PAZ;		    // order of images in input
+    private CLIPSCALE clipScaleMode 
+	= CLIPSCALE.BOTH;			    // clip&scale of output
     private double wienerFilterParameter = 0.05;    // Wiener filter parameter
     private double apoCutOff = 2;		    // Apo cutoff parameter
 
@@ -170,6 +172,17 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     /** Set the image ordering */
     public SimParam setImgSeq( IMGSEQ i) {
 	imgSeq = i;
+	return this;
+    }
+
+    /** Get the image ordering */
+    public CLIPSCALE getClipScale() {
+	return clipScaleMode;
+    }
+    
+    /** Set the image ordering */
+    public SimParam setClipScale( CLIPSCALE i) {
+	clipScaleMode = i;
 	return this;
     }
 
@@ -522,6 +535,24 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 
    
     // ----------------------------------------------------------------------------------
+
+    public static enum CLIPSCALE {
+	BOTH("clip&scale"),
+	CLIP("clip zeros"),
+	NONE("raw values");
+
+	final String name;
+
+	CLIPSCALE(String n) {
+	    name=n;
+	}
+
+	@Override 
+	public String toString() {
+	    return name;
+	}
+
+    }
 
     public static enum IMGSEQ {
 	PAZ("p,a,z (def)"), 

@@ -240,6 +240,10 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	refLabels.add(  l );
 	refMarkers.add( new ArrayList<ImageDisplay.Marker>(Arrays.asList(m)) );
 
+	if (is!=null && ip!=null) {
+	    is.addSlice( img.img() );
+	    ip.setPosition( getCount());
+	}
     }
     
     /** {@inheritDoc} */
