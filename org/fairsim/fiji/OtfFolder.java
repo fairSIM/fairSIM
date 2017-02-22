@@ -31,6 +31,7 @@ import java.io.File;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.util.Random;
 
 import ij.plugin.PlugIn;
 import ij.ImageStack;
@@ -118,50 +119,66 @@ public class OtfFolder implements PlugIn {
 
 	    // loop through the images
 	    for ( int i=1; i<= inputStack.getSize(); i++) {
-		Vec2d.Cplx iVec  = Vec2d.createCplx( width, height);
-		Vec2d.Cplx iVec2 = Vec2d.createCplx( width, height);
-		ImageVector inputImageVector =
-		    ImageVector.copy( inputStack.getProcessor(i)) ;
+		
+		for (int noise=0; noise<2; noise++) {
+		
+		    
+		    Vec2d.Cplx iVec  = Vec2d.createCplx( width, height);
+		    ImageVector inputImageVector =
+			ImageVector.copy( inputStack.getProcessor(i)) ;
 
-		iVec.copy( inputImageVector );
+		    iVec.copy( inputImageVector );
 
-		iVec.fft2d(true);
-		otf.applyOtf( iVec ,0);
-		iVec2.copy( iVec );
-		iVec.fft2d(false);
+		    iVec.fft2d(true);
+		    otf.applyOtf( iVec ,0);
+		    iVec.fft2d(false);
 
-		ImageVector outImg = ImageVector.create( width, height );
-		outImg.copy(   iVec );
-		SimUtils.clipAndScale( outImg, false, true );
+		    
 
-		// do some Wiener filtering
-		Vec2d.Cplx wDenom = Vec2d.createCplx( width, height );
-		for (int j=0; j<width*height; j++) {
-		    wDenom.set( j, new Cplx.Double(wParam) );
+		    // if noise == 1, apply Poisson-like noise
+		    Random rnd = new Random(2342);
+		    if ( noise == 1 ) {
+			for (int k=0; k<iVec.vectorSize(); k++) {
+			    float val = iVec.get(k).abs();
+			    val = val + (float)(rnd.nextGaussian() * Math.sqrt(val));
+			    iVec.set(k, new Cplx.Float(val));
+			}
+		    }
+
+
+		    ImageVector outImg = ImageVector.create( width, height );
+		    outImg.copy(   iVec );
+		    SimUtils.clipAndScale( outImg, false, true );
+
+		    // do some Wiener filtering
+		    iVec.fft2d(true);
+		    Vec2d.Cplx wDenom = Vec2d.createCplx( width, height );
+		    for (int j=0; j<width*height; j++) {
+			wDenom.set( j, new Cplx.Double(wParam) );
+		    }
+		    wDenom.addSqr( otfVector );
+		    
+		    ImageVector wImg = ImageVector.create( width, height );
+		    wImg.copy( wDenom );
+		    otfStack.addSlice( "wf", wImg.img() );
+		    
+		    wDenom.reciproc();
+		    
+		    otf.applyOtf( iVec ,0);
+		    iVec.times( wDenom );
+		    Vec2d.Cplx apo = Vec2d.createCplx( width, height );
+		    otf.writeApoVector( apo, .6, 2 );
+		    iVec.times( apo );
+		    iVec.fft2d( false );
+
+		    ImageVector outImgFiltered = ImageVector.create( width, height );
+		    outImgFiltered.copy(  iVec  );
+		    SimUtils.clipAndScale( outImgFiltered, false, true );
+
+		    outStack.addSlice( "i: "+i+" orig ("+otfFile.getName()+")", inputImageVector.img());
+		    outStack.addSlice( "i: "+i+" fold ("+otfFile.getName()+")", outImg.img());
+		    outStack.addSlice( "i: "+i+" filt ("+otfFile.getName()+")", outImgFiltered.img());
 		}
-		wDenom.addSqr( otfVector );
-		
-		ImageVector wImg = ImageVector.create( width, height );
-		wImg.copy( wDenom );
-		otfStack.addSlice( "wf", wImg.img() );
-		
-		wDenom.reciproc();
-		
-		otf.applyOtf( iVec2 ,0);
-		iVec2.times( wDenom );
-		Vec2d.Cplx apo = Vec2d.createCplx( width, height );
-		otf.writeApoVector( apo, .6, 2 );
-		iVec2.times( apo );
-		iVec2.fft2d( false );
-
-		ImageVector outImgFiltered = ImageVector.create( width, height );
-		outImgFiltered.copy(  iVec2  );
-		SimUtils.clipAndScale( outImgFiltered, false, true );
-
-		outStack.addSlice( "i: "+i+" orig ("+otfFile.getName()+")", inputImageVector.img());
-		outStack.addSlice( "i: "+i+" fold ("+otfFile.getName()+")", outImg.img());
-		outStack.addSlice( "i: "+i+" filt ("+otfFile.getName()+")", outImgFiltered.img());
-
 	    }
 
 
