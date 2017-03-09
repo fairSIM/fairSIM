@@ -71,8 +71,6 @@ public class ReconstructionControl {
 
     private volatile boolean running = false;
 
-    public int imgClipScale = 2;
-
     int verbosity=0;
 
     public JPanel getPanel() {
@@ -148,13 +146,15 @@ public class ReconstructionControl {
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 	
 	// image scaling box
-	final Tiles.LComboBox<String> imgScaleBox = 
-	    new Tiles.LComboBox<String>("Output", "raw", "clip", "clip&scale" );
+	final Tiles.LComboBox<SimParam.CLIPSCALE> imgScaleBox = 
+	    //new Tiles.LComboBox<String>("Output", "raw", "clip", "clip&scale" );
+	    new Tiles.LComboBox<SimParam.CLIPSCALE>("Output", 
+		SimParam.CLIPSCALE.values() );
 	imgScaleBox.box.setToolTipText("<html>raw: no scaling, keep negative values<br />"+
-	    "clip: remove negative values<br />"+
-	    "scale: scale output to 0..255<br />"+
+	    "clip zeros: remove negative values<br />"+
+	    "clip&scale: scale output to 0..255<br />"+
 	    "(only effects 3 main results, not intermediate output)");
-	imgScaleBox.box.setSelectedIndex( imgClipScale );
+	imgScaleBox.box.setSelectedIndex( 0 );
 	
 	p1.add( imgScaleBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
@@ -189,7 +189,7 @@ public class ReconstructionControl {
 		verbosity = verbosityBox.getSelectedIndex()-1;
 		simParam.setWienerFilter( wienerParam.getVal());
 		simParam.setApoCutoff( apoCutOff.getVal());
-		imgClipScale = imgScaleBox.box.getSelectedIndex();
+		simParam.setClipScale( imgScaleBox.getSelectedItem());
 		dialog.dispose();
 	    }
 	});
@@ -216,7 +216,6 @@ public class ReconstructionControl {
 	dialog.setVisible(true);
 
     }
-
 
 
 
@@ -283,7 +282,7 @@ public class ReconstructionControl {
 		    SimAlgorithm.runReconstruction( 
 			simParam, imgc.theFFTImages, 
 			idpFactory,  verbosity, false, 
-			imgClipScale, t1);
+			simParam.getClipScale(), t1);
 		/*} catch (Exception e) {
 		    Tool.trace("Problem: "+e);
 		    e.printStackTrace();

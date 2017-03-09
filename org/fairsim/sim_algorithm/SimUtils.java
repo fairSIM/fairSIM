@@ -143,11 +143,11 @@ public class SimUtils {
     
     /** Create an image by FFTin back 'in' to spatial,
      *  clipping and scaling it afterwards */
-    static Vec2d.Real spatial(Vec2d.Cplx in, int clipScale ) {
+    static Vec2d.Real spatial(Vec2d.Cplx in, SimParam.CLIPSCALE clipScale ) {
 	Vec2d.Real pw = spatial(in);
-	if (clipScale==1)
+	if (clipScale==SimParam.CLIPSCALE.CLIP)
 	    clipAndScale( pw, true, false ); 
-	if (clipScale==2)
+	if (clipScale==SimParam.CLIPSCALE.BOTH)
 	    clipAndScale( pw, true, true ); 
 	return pw;
     }

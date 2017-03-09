@@ -252,13 +252,15 @@ public class SimAlgorithm {
      * @param param  The SIM parameter instance to work on
      * @param inFFT  The input images (in Fourier space)
      * @param idf    ImageDisplayFactory for intermediate output (may be null)
-     * @param visualFeedback Feedback Amount of visual feedback, 0..4
+     * @param visualFeedback Feedback Amount of visual feedback, -1 (off) ..4
      * @param otfBeforeShift Apply the OTF before shifting bands
      * @param imgClipScale Clip zero values and scale (0..255) output images?
-     * @param tRec   Runtime measurement (may be null) */
-    public static void runReconstruction( final SimParam param, 
+     * @param tRec   Runtime measurement (may be null) 
+     * @return The reconstructed image */
+    public static Vec2d.Real runReconstruction( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, ImageDisplay.Factory idf, int visualFeedback, 
-	final boolean otfBeforeShift, final int imgClipScale, Tool.Timer tRec ) {
+	final boolean otfBeforeShift, final SimParam.CLIPSCALE imgClipScale, 
+	Tool.Timer tRec ) {
 
 	if (tRec != null) tRec.start();	
 
@@ -275,6 +277,12 @@ public class SimAlgorithm {
 	    spSt  = idf.create(w,h, "Spatial images");
 	    pwSt2 = idf.create(2*w,2*h, "Power Spectra" );
 	    spSt2 = idf.create(2*w,2*h, "Spatial images");
+	} else {
+	    if (visualFeedback>=0) {
+		Tool.trace("Reconstruction: No image display, turning off "+
+		"all intermediate output");
+		visualFeedback = -1;
+	    }
 	}
 	
 	// setup WienerFilter
@@ -444,7 +452,11 @@ public class SimAlgorithm {
 	Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
 	otfPr.writeApoVector( apo, apoB, apoF);
 	fullResult.times(apo);
-	spSt2.addImage( SimUtils.spatial( fullResult, imgClipScale), "full result");
+	
+	Vec2d.Real fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
+
+	if (spSt2 != null) 
+	    spSt2.addImage( fullResultImage, "full result");
 
 
 	if (visualFeedback>0) {
@@ -509,11 +521,16 @@ public class SimAlgorithm {
 	Tool.trace(" ---- Reconstruction ---- ");
 	Tool.trace( "\n"+param.prettyPrint(true));
 	
-	pwSt.display();
-	spSt.display();
-	pwSt2.display();
-	spSt2.display();
+	if (visualFeedback>=0) {
+	    pwSt.display();
+	    spSt.display();
+	    pwSt2.display();
+	}
+	
+	if (spSt2 != null)
+	    spSt2.display();
 
+	return fullResultImage;
     }
 
 

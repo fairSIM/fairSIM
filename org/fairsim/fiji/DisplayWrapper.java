@@ -43,6 +43,9 @@ import java.util.Arrays;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 
+import javax.swing.SwingUtilities;
+import java.lang.reflect.InvocationTargetException;
+
 /** A wrapper around ImageStack, ImagePlus and 
  *  ImageWindow, for interactive result display */
 public class DisplayWrapper implements ImageDisplay, ImageListener  {
@@ -99,22 +102,91 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	    ip = new ImagePlus(ourTitle, is );
 	    ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
 	    ip.setPosition( currentPosition+1 );
-	    ip.show();
 
+	    // display the ImagePlus, do this in the Swing Thread
+	    if (SwingUtilities.isEventDispatchThread()) {
+		ip.show();
+	    } else {
+	    try {
+		SwingUtilities.invokeAndWait(new Runnable() {
+		    public void run() {
+			ip.show();
+		    }
+		}); 
+	    } catch (InterruptedException ex) {
+		Tool.trace("ERR: DisplayWrapper interrupted");
+	    } catch (InvocationTargetException ex) {
+		Tool.trace("ERR: DisplayWrapper called wrong target");
+	    } }
+	    
 	    // register us as listener for image updates
 	    ImagePlus.addImageListener( this );
 	}
 	
 	// deactivate
 	if (shouldBeActive == false) {
-	    // deregister our Listener
-	    ImagePlus.removeImageListener(this);
 	    
-	    // throw away our ImageJ components
-	    if (ip!=null) {
-		ip.changes = false;
-		ip.close();
+	    final DisplayWrapper listener = this;
+	    
+	    if (SwingUtilities.isEventDispatchThread()) {
+
+		// deregister our Listener
+		ImagePlus.removeImageListener(listener);
+    
+		// throw away our ImageJ components
+		if (ip!=null) {
+		    ip.changes = false;
+		    ip.close();
+		}
+
+	    } else {
+		// TODO: for reasons currently unclear to me, this does not work
+		// at all, and just blocks the whole program. For now, only
+		// call 'drop' from the Swing thread, I guess
+		throw new RuntimeException("drop() called from Thread other"+
+		    "then EventDispatch, currently not supported");
+
+		/*
+		Tool.trace("DisplayWrapper: switching to EventDispatch");
+	
+		try {
+		    SwingUtilities.invokeAndWait(new Runnable() {
+			public void run() {
+		
+			    ImagePlus.removeImageListener(listener);
+			    ip.changes = false;
+			    ip.close();
+			}
+		    }); 
+		} catch (InterruptedException ex) {
+		    Tool.trace("ERR: DisplayWrapper interrupted");
+		} catch (InvocationTargetException ex) {
+		    Tool.trace("ERR: DisplayWrapper called wrong target");
+		} */
 	    }
+
+
+	    // display the ImagePlus, do this in the Swing Thread
+	    /*
+	    try {
+		SwingUtilities.invokeAndWait(new Runnable() {
+		    public void run() {
+		
+			// deregister our Listener
+			ImagePlus.removeImageListener(listener);
+	    
+			// throw away our ImageJ components
+			if (ip!=null) {
+			    ip.changes = false;
+			    ip.close();
+			}
+		    }
+		});
+	    } catch (InterruptedException ex) {
+		Tool.trace("ERR: DisplayWrapper interrupted");
+	    } catch (InvocationTargetException ex) {
+		Tool.trace("ERR: DisplayWrapper called wrong target");
+	    } */
 	    is=null; ip=null;
 	}
     }
@@ -143,6 +215,14 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     /** {@inheritDoc} */
     @Override
     public int getCount() { return refs.size(); }
+    
+    /** {@inheritDoc} */
+    @Override
+    public int width() { return width; }
+    
+    /** {@inheritDoc} */
+    @Override
+    public int height() { return height; }
 
 
     /** {@inheritDoc} */
@@ -160,6 +240,10 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	refLabels.add(  l );
 	refMarkers.add( new ArrayList<ImageDisplay.Marker>(Arrays.asList(m)) );
 
+	if (is!=null && ip!=null) {
+	    is.addSlice( img.img() );
+	    ip.setPosition( getCount());
+	}
     }
     
     /** {@inheritDoc} */
@@ -218,10 +302,23 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	    refMarkers.set( n, new ArrayList<ImageDisplay.Marker>() ); 
 	}
 
+	// update the image if we currently display it
+	if ( ip != null && ( ip.getCurrentSlice()-1 == n) ) {
+	    ip.updateAndDraw();
+	}
     }
 
 
     // ------ Object passable as ImageDisplay.Factory ------
+
+    /** Returns a Factory for DisplayWrappers, and starts an
+     * embedded instance of ImageJ */
+    public static ImageDisplay.Factory getTestingFactory() {
+	ij.ImageJ ijInstance  = new ij.ImageJ(ij.ImageJ.EMBEDDED);
+	return DisplayWrapper.getFactory();
+    }
+    
+
     /** Returns a Factory for DisplayWrappers */
     public static ImageDisplay.Factory getFactory() {
 	return new ImageDisplay.Factory() {
@@ -264,6 +361,9 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     public void imageUpdated(ImagePlus imp)  {
 	// check if the notification is for us
 	if (imp!=ip) return;
+
+	Tool.trace("Image update listener called");
+
 	if (currentPosition == ip.getCurrentSlice()-1)
 	    return;
 

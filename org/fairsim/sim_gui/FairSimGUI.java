@@ -78,8 +78,6 @@ public class FairSimGUI {
 	if ( logo != null) {
 	    baseframe.setIconImage(new ImageIcon( logo ).getImage());
 	}
-	    
-
 
 	imgc = new ImageControl(baseframe, is, imgFactory, sp );
 	simp = new SimParamGUI(baseframe, sp );
@@ -289,7 +287,7 @@ public class FairSimGUI {
 	    //SimParamGUI.dummySP(), 
 	    sp,
 	    new ImageSelector.Dummy(nImg),
-	    DisplayWrapper.getFactory(),
+	    DisplayWrapper.getTestingFactory(),
 	    load
 	    );
 	a.baseframe.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE);
