@@ -36,7 +36,7 @@ public class SimAlgorithm {
      * @param tEst   Runtime measurement (may be null) */
     public static void estimateParameters( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
-	ImageDisplay.Factory idf, 
+	final ImageDisplay.Factory idf, 
 	int visualFeedback, Tool.Timer tEst ) {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
@@ -48,6 +48,11 @@ public class SimAlgorithm {
 	    spSt  = idf.create(w,h, "Spatial images");
 	    pwSt2 = idf.create(2*w,2*h, "Power Spectra" );
 	    spSt2 = idf.create(2*w,2*h, "Spatial images");
+	}
+
+	// if no ImageFactory, do not generate feedback
+	if (idf==null) {
+	    visualFeedback = 0;
 	}
 
 	if (fitBand!=1 && fitBand!=2 ) throw new RuntimeException(
@@ -239,10 +244,13 @@ public class SimAlgorithm {
 	}
     
 	if (tEst!=null) tEst.stop();
-	pwSt.display();
-	spSt.display();
-	pwSt2.display();
-	spSt2.display();
+
+	if (idf!=null) {
+	    pwSt.display();
+	    spSt.display();
+	    pwSt2.display();
+	    spSt2.display();
+	}
 
 
     }

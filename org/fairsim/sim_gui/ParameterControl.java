@@ -296,6 +296,16 @@ public class ParameterControl {
 	configDialog.setVisible(true);
     
     }
-	
+
+
+    public int getFitBand() {
+	return fitBand;
+    }
+
+    public double getFitExclude() {
+	return fitExclude;
+    }
+
+
 }
 

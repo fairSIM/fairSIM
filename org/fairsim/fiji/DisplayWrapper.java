@@ -362,7 +362,7 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	// check if the notification is for us
 	if (imp!=ip) return;
 
-	Tool.trace("Image update listener called");
+	//Tool.trace("Image update listener called");
 
 	if (currentPosition == ip.getCurrentSlice()-1)
 	    return;

@@ -79,6 +79,7 @@ public class ImageControl {
     
     private final JFrame baseframe;
     private final SimParam simParam;
+    private final FairSimGUI fsGUI;
     private ImageDisplay.Factory idpFactory ;
 
     // global references to be accessed both by importImage and showSlices
@@ -99,7 +100,7 @@ public class ImageControl {
     final JLabel  videoPosLabel = new JLabel( String.format("t % 5d", 0));
     final JLabel maxTimePointsLabel;
     final Tiles.LNSpinner zSliceVideoSpinner ; 
-    final String [] updateModes = {"off", "widefield", "full"};
+    final String [] updateModes = {"off", "widefield", "recon", "recon+par.est."};
     final Tiles.LComboBox<String> videoAutoUpdateMode =
      new Tiles.LComboBox<String>("auto-update", updateModes); 
 
@@ -127,13 +128,14 @@ public class ImageControl {
 
     /** Contructor, initializes image list. */
     public ImageControl( final JFrame baseframe, ImageSelector is, 
-	final ImageDisplay.Factory imgFactory, 	SimParam sp ) {
+	final ImageDisplay.Factory imgFactory, 	FairSimGUI fsg, SimParam sp ) {
 
 	// initialize variables
-	this.baseframe = baseframe;
-	this.imgSelect = is;
-	this.simParam  = sp;
-	this.idpFactory = imgFactory;
+	this.baseframe    = baseframe;
+	this.imgSelect    = is;
+	this.simParam     = sp;
+	this.idpFactory   = imgFactory;
+	this.fsGUI        = fsg;
 
 	// create our pnael
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
@@ -516,7 +518,17 @@ public class ImageControl {
 
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    videoStackPositionTime, true ); 
+	    
+		// update the parameter estimation
+		if (updateMode>2) {
 
+		    SimAlgorithm.estimateParameters( 
+			simParam, theFFTImages, 
+			fsGUI.parc.getFitBand(), 
+			fsGUI.parc.getFitExclude(), 
+			null, 0, null);
+
+		}
 
 		// update the SIM reconstruction
 		if (updateMode>1) {
@@ -958,7 +970,7 @@ public class ImageControl {
 	p2.add(progressBar);
 
 	final BatchReconstructionThread brt = new BatchReconstructionThread(
-	    progressBar, ok, cl);
+	    progressBar, ok, cl, videoAutoUpdateMode.getSelectedIndex() );
 
 	// perform the image import
 	ok.addActionListener( new ActionListener() {
@@ -1005,10 +1017,13 @@ public class ImageControl {
 	JProgressBar jpBar;
 	JButton okButton, clButton;
 
-	BatchReconstructionThread( JProgressBar jp, JButton ok, JButton cl ) {
+	final int updateMode ;
+
+	BatchReconstructionThread( JProgressBar jp, JButton ok, JButton cl, int updateMode ) {
 	    jpBar = jp;
 	    okButton = ok;
 	    clButton = cl;
+	    this.updateMode = updateMode;
 	}
 
 	void setStartStop( int start, int stop) {
@@ -1029,7 +1044,16 @@ public class ImageControl {
 
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    timePos, true ); 
-			
+	
+		if (updateMode>2) {
+		    SimAlgorithm.estimateParameters( 
+			simParam, theFFTImages, 
+			fsGUI.parc.getFitBand(), 
+			fsGUI.parc.getFitExclude(), 
+			null, 0, null);
+		}
+
+
 		Vec2d.Real simRecon = SimAlgorithm.runReconstruction( 
 		    simParam, theFFTImages, null,  0, false, 
 		    simParam.getClipScale(), null);
@@ -1065,14 +1089,12 @@ public class ImageControl {
     /** for testing */
     public static void main( String [] arg ) {
 	JFrame main = new JFrame("Test");
-	
-
 
 	int nImg = ( arg.length > 0 )?(Integer.parseInt( arg[0] )):(5);
 	ImageControl ic  = new ImageControl(
 	    main,
 	    new ImageSelector.Dummy(nImg) , 
-	    org.fairsim.fiji.DisplayWrapper.getFactory(),
+	    org.fairsim.fiji.DisplayWrapper.getFactory(), null, 
 	    SimParamGUI.dummySP() );
 	
 	
