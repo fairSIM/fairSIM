@@ -31,7 +31,15 @@ import org.fairsim.linalg.Vec3d;
 public class SimParam implements Vec2d.Size, Vec3d.Size {
 
     public enum FilterStyle {
-	Wiener,	RLin, RLout, RLboth;
+	Wiener("Wiener filter"),	
+	RLin("RL on input"), 
+	RLout("RL on output"),
+	RLboth("RL on both");
+
+	final String name;
+	FilterStyle(String a) { name = a; };
+
+	@Override public String toString() { return name; };
     }
 
     /** number of angles/pattern directions */
@@ -240,6 +248,27 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     public FilterStyle getFilterStyle() {
 	return filterStyle;
     }
+
+    /** Determine if Wiener-filtering is used on output data*/
+    public boolean useWienerFilter() {
+	return ( filterStyle == FilterStyle.Wiener ||
+		 filterStyle == FilterStyle.RLin );
+    }
+
+
+
+    /** Determine if RL-filtering is used on input data*/
+    public boolean useRLonInput() {
+	return ( filterStyle == FilterStyle.RLboth || 
+		 filterStyle == FilterStyle.RLin   );
+    }
+    
+    /** Determine if RL-filtering is used on output data*/
+    public boolean useRLonOutput() {
+	return ( filterStyle == FilterStyle.RLboth || 
+		 filterStyle == FilterStyle.RLout   );
+    }
+
 
     /** Set the number of RL iterations */
     public void setRLiterations( int n ) {

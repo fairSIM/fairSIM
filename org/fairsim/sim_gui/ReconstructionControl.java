@@ -159,6 +159,13 @@ public class ReconstructionControl {
 	p1.add( imgScaleBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
+	// Filter selection
+	final Tiles.LComboBox<SimParam.FilterStyle> filterTypeBox = 
+	    new Tiles.LComboBox<SimParam.FilterStyle>("Filter type",
+		SimParam.FilterStyle.values());
+
+	p1.add( filterTypeBox );
+	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
 	// Wiener parameter
 	final Tiles.LNSpinner wienerParam = new Tiles.LNSpinner("Wiener parameter",
@@ -178,7 +185,12 @@ public class ReconstructionControl {
 	p1.add( apoCutOff );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 	    
+	// RL max iteration counter
+	final Tiles.LNSpinner rlInterationCount = new Tiles.LNSpinner("RL iterations",
+	    simParam.getRLiterations(), 1, 200, 1 );
 
+	p1.add( rlInterationCount );
+	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
 	
 	// ok and cancel buttons
@@ -187,8 +199,10 @@ public class ReconstructionControl {
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		verbosity = verbosityBox.getSelectedIndex()-1;
+		simParam.setFilterStyle( filterTypeBox.getSelectedItem() );
 		simParam.setWienerFilter( wienerParam.getVal());
 		simParam.setApoCutoff( apoCutOff.getVal());
+		simParam.setRLiterations( (int)rlInterationCount.getVal());	
 		simParam.setClipScale( imgScaleBox.getSelectedItem());
 		dialog.dispose();
 	    }
@@ -216,14 +230,6 @@ public class ReconstructionControl {
 	dialog.setVisible(true);
 
     }
-
-
-
-
-
-
-
-
 
 
 

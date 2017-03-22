@@ -41,7 +41,7 @@ public class RLDeconvolution {
      * @param inputIsInFreqSpace If input is already in freq. space, will set output to same space
      * */
     public static void deconvolve( Vec2d.Cplx img, Vec2d.Cplx otf, int steps, 
-	boolean inputIsInFreqSpace ) {
+	final boolean inputIsInFreqSpace ) {
 
 
 	// Richardson-Lucy: iterate each step j:
@@ -58,15 +58,16 @@ public class RLDeconvolution {
 	Vec2d.Cplx nextImg	= Vec2d.createCplx( img );
 	Vec2d.Cplx errEst	= Vec2d.createCplx( img );
 	
+	if (inputIsInFreqSpace)
+	    img.fft2d(true);
+
 	deconvImg.copy( img );	       // starting guess = observed image
 	nextImg.copy( deconvImg );     // last u_j = starting guess
 
 	for (int i=0; i<steps; i++) {
 
 	    // 1: compute u_j * psf
-	    if ( ! (i==0 && inputIsInFreqSpace) ) {
-		nextImg.fft2d(false);
-	    }
+	    nextImg.fft2d(false);
 	    nextImg.times( otf );
 	    nextImg.fft2d(true);
 
@@ -97,7 +98,7 @@ public class RLDeconvolution {
 	// copy back the result
 	img.copy( deconvImg );
 	if (inputIsInFreqSpace)
-	    img.fft2d(true);
+	    img.fft2d(false);
 
     }
 
