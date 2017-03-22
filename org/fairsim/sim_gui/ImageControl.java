@@ -815,14 +815,14 @@ public class ImageControl {
 
 		// import and store images  // TODO: move the FFT to somewhere else
 		Vec2d.Real curImg   = imgSelect.getImage(img,pos).duplicate();
-		SimUtils.fadeBorderCos( curImg , 10);
 
 		// if we have to do background subtraction
 		if (bgrBox.box.getSelectedIndex()==1) {
 		    double r = SimUtils.subtractBackground( curImg,
 			bgrSpinner.getVal());
 		}
-
+		
+		SimUtils.fadeBorderCos( curImg , 10);
 
 		// if we have to rescale the images...
 		if (doResize) {

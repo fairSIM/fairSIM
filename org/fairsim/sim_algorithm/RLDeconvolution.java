@@ -25,15 +25,23 @@ import org.fairsim.utils.Tool;
 /** Implementation of 2D Richardson-Lucy deconvolution steps */
 public class RLDeconvolution {
 
-
-
+    /** Run Richardson-Lucy deconvolution steps on img. 
+     * @param img   Input image, will be modified and contain result
+     * @param otf   The optical transfer function to use
+     * @param steps Maximum number of iteration steps
+    */
+    public static void deconvolve( Vec2d.Cplx img, Vec2d.Cplx otf, int steps) {
+	deconvolve( img, otf, steps, false);
+    }
 
     /** Run Richardson-Lucy deconvolution steps on img. 
      * @param img   Input image, will be modified and contain result
      * @param otf   The optical transfer function to use
      * @param steps Maximum number of iteration steps
+     * @param inputIsInFreqSpace If input is already in freq. space, will set output to same space
      * */
-    public static void deconvolve( Vec2d.Cplx img, Vec2d.Cplx otf, int steps ) {
+    public static void deconvolve( Vec2d.Cplx img, Vec2d.Cplx otf, int steps, 
+	boolean inputIsInFreqSpace ) {
 
 
 	// Richardson-Lucy: iterate each step j:
@@ -56,7 +64,9 @@ public class RLDeconvolution {
 	for (int i=0; i<steps; i++) {
 
 	    // 1: compute u_j * psf
-	    nextImg.fft2d(false);
+	    if ( ! (i==0 && inputIsInFreqSpace) ) {
+		nextImg.fft2d(false);
+	    }
 	    nextImg.times( otf );
 	    nextImg.fft2d(true);
 
@@ -86,7 +96,8 @@ public class RLDeconvolution {
 
 	// copy back the result
 	img.copy( deconvImg );
-
+	if (inputIsInFreqSpace)
+	    img.fft2d(true);
 
     }
 

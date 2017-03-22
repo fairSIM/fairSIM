@@ -309,6 +309,16 @@ public class SimAlgorithm {
 	// vectors to store the result
 	Vec2d.Cplx fullResult    = Vec2d.createCplx( param, 2);
 	
+	// zero-band OTF (for RL filtering)
+	Vec2d.Cplx inputOtf = null;
+	if ( param.getFilterStyle() == SimParam.FilterStyle.RLin ||
+	     param.getFilterStyle() == SimParam.FilterStyle.RLboth ) {
+
+	    inputOtf = Vec2d.createCplx(param);
+	    otfPr.writeOtfVector( inputOtf, 0,0,0);
+
+	}
+    
 	// loop all pattern directions
 	for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) 
 	{
@@ -317,16 +327,34 @@ public class SimAlgorithm {
 
 	    // ----- Band separation & OTF multiplication (if before shift) -------
 
+	   
+	    // Richardson-Lucy: Deconvolve input data here
+	    if ( param.getFilterStyle() == SimParam.FilterStyle.RLin ||
+		 param.getFilterStyle() == SimParam.FilterStyle.RLboth ) {
+		
+		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
+		    RLDeconvolution.deconvolve( inFFT[angIdx][i], inputOtf, 
+			param.getRLiterations(), true);
+		    if (visualFeedback>0) {
+			spSt.addImage( SimUtils.spatial( inFFT[angIdx][i]), 
+			    "Deconvolved input, ang "+angIdx+", phase "+i);
+		    }
+		}
+
+	    }
+
+
 	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
-	    
+
 	    BandSeparation.separateBands( inFFT[angIdx] , separate , 
 		    par.getPhases(), par.nrBand(), par.getModulations());
 
-	    if (otfBeforeShift)
+	    // Wiener filter: Apply OTF here
+	    if (otfBeforeShift && param.getFilterStyle() == SimParam.FilterStyle.Wiener )
 		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
 		    otfPr.applyOtf( separate[i], (i+1)/2);
 
-	    // ------- Shifts to correct position ----------
+	   	    // ------- Shifts to correct position ----------
 
 	    Vec2d.Cplx [] shifted		= Vec2d.createArrayCplx(5, 2*w, 2*h);
 
@@ -349,22 +377,23 @@ public class SimAlgorithm {
 	    }
 	   
 	    // ------ OTF multiplication or masking ------
-	    
-	    if (!otfBeforeShift) {
-		// multiply with shifted OTF
-		otfPr.applyOtf( shifted[0], 0 );
-		for (int b=1; b<par.nrBand(); b++) {
-		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
-		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
-		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+	   
+	    if ( param.getFilterStyle() == SimParam.FilterStyle.Wiener ) {
+		if (!otfBeforeShift) {
+		    // multiply with shifted OTF
+		    otfPr.applyOtf( shifted[0], 0 );
+		    for (int b=1; b<par.nrBand(); b++) {
+			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
+			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+		    }
+		} else {
+		    // or mask for OTF support
+		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+			//wFilter.maskOtf( shifted[i], angIdx, i);
+			otfPr.maskOtf( shifted[i], angIdx, i);
 		}
-	    } else {
-		// or mask for OTF support
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    otfPr.maskOtf( shifted[i], angIdx, i);
 	    }
-	    
 	    // ------ Sum up result ------
 	    
 	    for (int i=0;i<par.nrBand()*2-1;i++)  
