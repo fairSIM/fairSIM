@@ -585,7 +585,7 @@ public class SimAlgorithm {
 	    
 		final SimParam.Dir par = param.dir(ang);
 		
-		for (int b=0; b<param.nrDir(); b++) {
+		for (int b=0; b<param.nrBand(); b++) {
 		    
 		    otfPr.writeOtfVector( otfTmpPos, b,  par.px(b),  par.py(b));
 		    otfPr.writeOtfVector( otfTmpNeg, b, -par.px(b), -par.py(b));
