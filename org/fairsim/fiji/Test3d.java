@@ -61,7 +61,7 @@ public class Test3d implements PlugIn {
 
     boolean findPeak    = true;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
-    boolean doTheReconstruction = false; // if to run the reconstruction (for debug, mostly)
+    boolean doTheReconstruction = true; // if to run the reconstruction (for debug, mostly)
 	
     final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3,4)
 
@@ -155,7 +155,7 @@ public class Test3d implements PlugIn {
 	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
 
 	// Do some OTF testing for 3D OTF
-	if (false) {
+	if (true) {
 	    int otfdepth=128;
 	    otfPr.setPixelSize(0.0244,0.052);
 	    Vec3d.Cplx otfVec = Vec3d.createCplx(512,512,otfdepth);
@@ -172,7 +172,7 @@ public class Test3d implements PlugIn {
 		}
 		otfSt.display();
 	    }
-	    return;
+	    //return;
 	}
 
 	// Copy current stack into vectors, apotize borders, run fft 
@@ -199,11 +199,14 @@ public class Test3d implements PlugIn {
 	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
 	    
 	    // DEBUG output
-	    if (visualFeedback>3) {
+	    if (visualFeedback>-1) {
 		Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
 		tmp.slice( inFFT[a][p],0 );
 		spSt.addImage( 
-		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p);
+		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p+" freq 0");
+		tmp.slice( inFFT[a][p],1 );
+		spSt.addImage( 
+		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p+" freq 1");
 		pwSt.addImage( 
 		    SimUtils.pwSpec(inFFT[a][p]) , "input projected: a"+a+" p"+p);
 	    }
@@ -237,7 +240,7 @@ public class Test3d implements PlugIn {
 		// idx of low band (phase detection) and high band (shift vector detection)
 		// will be the same for two-beam
 		final int lb = 1;
-		final int hb = (param.dir(angIdx).nrBand()==3)?(3):(1);
+		final int hb = 3; //(param.dir(angIdx).nrBand()==3)?(3):(1);
 
 		// compute band separation
 		Vec3d.Cplx [] separate = Vec3d.createArrayCplx( dir.nrComp(), w, h, d);
@@ -256,12 +259,12 @@ public class Test3d implements PlugIn {
 		otf.reciproc();
 		c0.times( otf );
 		
-		otfPr.writeOtfVector( otf, 0, 1, 0);
+		otfPr.writeOtfVector( otf, 1, 0, 0);
 		otf.addConst( new Cplx.Float(0.01f,0));
 		otf.reciproc();
 		c1.times( otf );
 		
-		otfPr.writeOtfVector( otf, 0, 2, 0);
+		otfPr.writeOtfVector( otf, 2, 0, 0);
 		otf.addConst( new Cplx.Float(0.01f,0));
 		otf.reciproc();
 		c2.times( otf );
@@ -293,12 +296,11 @@ public class Test3d implements PlugIn {
 		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b1, a:"+angIdx+" z: "+z);
 		}
 		for (int z=0; z<d; z++) {
-		    pl.slice( c1 , z );
+		    pl.slice( c2 , z );
 		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b2, a:"+angIdx+" z: "+z);
 		}
 		
 		
-		/*
 		double [] peak = Correlation3d.locatePeak(  c2 , minDist );
 		
 		Tool.trace(String.format("a%1d: LocPeak (min %4.0f) --> Peak at x %5.0f y %5.0f",
@@ -308,18 +310,19 @@ public class Test3d implements PlugIn {
 		// Fourier-shifted components
 		ImageVector cntrl    = ImageVector.create(30,10);
 		peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
-		    -peak[0], -peak[1], 0.05, 2.5, cntrl );
+		    -peak[0], -peak[1], 0.005, 2.5, cntrl );
 
 		// Now, either three beam / 3 bands ...
 		if (lb!=hb) {
 
 		    // At the peak position found, extract phase and modulation from band0 <-> band 1
+		    // TODO: Using the band2 OTF is wrong....
 		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[lb], 
-			0, 1, otfPr, peak[0]/2, peak[1]/2, 0.05 );
+			0, 2, otfPr, peak[0]/2, peak[1]/2, 0.01 );
 
 		    // Extract modulation from band0 <-> band 2
 		    Cplx.Double p2 = Correlation3d.getPeak( separate[0], separate[hb], 
-			0, 2, otfPr, peak[0], peak[1], 0.05 );
+			0, 2, otfPr, peak[0], peak[1], 0.005 );
 
 		    Tool.trace(
 			String.format("a%1d: FitPeak --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
@@ -347,11 +350,9 @@ public class Test3d implements PlugIn {
 		    param.dir(angIdx).setPhaOff( p1.phase() );
 		    param.dir(angIdx).setModulation( 1, p1.hypot() );
 		}
-		*/
 
 
 		// --- output visual feedback of peak fit ---
-		/*
 		if (visualFeedback>0) {
 		    
 		    // mark region excluded from peak finder
@@ -375,7 +376,7 @@ public class Test3d implements PlugIn {
 		    if ((visualFeedback>1)&&(lb!=hb))
 			pwSt.addImage( SimUtils.pwSpec( c1 ), "dir "+angIdx+" c-corr band 0<>low",
 			    new ImageDisplay.Marker( w/2-peak[0]/2, h/2+peak[1]/2, 10, 10, true));
-		} */
+		} 
 		    
 
 		// --- output visual feedback of overlapping regions (for all bands) ---
@@ -518,9 +519,11 @@ public class Test3d implements PlugIn {
 		BandSeparation.separateBands( inFFT[angIdx] , separate , 
 			par.getPhases(), par.nrBand(), par.getModulations());
 
+		/*
 		if (otfBeforeShift)
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
 			otfPr.applyOtf( separate[i], (i+1)/2);
+		*/
 
 		// ------- Shifts to correct position ----------
 
@@ -541,11 +544,11 @@ public class Test3d implements PlugIn {
 
 		    // then, fourier shift
 		    shifted[pos].fft3d(true);
-		    shifted[pos].fourierShift(  par.px(b), -par.py(b), 0 );
+		    shifted[pos].fourierShift(  par.px(b),  par.py(b), 0 );
 		    shifted[pos].fft3d(false);
 
 		    shifted[neg].fft3d(true);
-		    shifted[neg].fourierShift( -par.px(b),  par.py(b), 0 );
+		    shifted[neg].fourierShift( -par.px(b), -par.py(b), 0 );
 		    shifted[neg].fft3d(false);
 		}
 	       
@@ -587,7 +590,7 @@ public class Test3d implements PlugIn {
 
 			// TODO: re-implement and re-enable this
 			// get wiener denominator for (direction, band), add to full denom for this band
-			Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+			//Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
 		    
 			// add up +- shift for this band
 			Vec3d.Cplx thisband   = shifted[i*2];
@@ -595,22 +598,23 @@ public class Test3d implements PlugIn {
 			    thisband.add( shifted[i*2-1] );
 	    
 			// output the wiener denominator
+			/*
 			if (visualFeedback>1) {
 			    Vec3d.Real wd = denom.duplicate();
 			    wd.reciproc();
 			    wd.normalize();
-			    Transforms.swapQuadrant( wd );
+			    //Transforms.swapQuadrant( wd );
 			    pwSt2.addImage( wd, false, String.format(
 				"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
-			} 
+			}  */
 			
 			// apply filter and output result
-			thisband.times( denom );
+			//thisband.times( denom );
 			
 			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
-			    "a%1d: band %1d",angIdx,(i/2)));
+			    "a%1d: band %1d",angIdx,i));
 			spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
-			    "a%1d: band %1d",angIdx,(i/2)));
+			    "a%1d: band %1d",angIdx,i));
 		    }
 
 		    // per direction wiener denominator	
@@ -647,14 +651,16 @@ public class Test3d implements PlugIn {
 	    
 	    // -- done loop all pattern directions, 'fullResult' now holds the image --
 	    
+	    
+	    //if (visualFeedback>0) {
+	    if (true) {
+		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO, WF)");
+		spSt2.addImage(  SimUtils.spatial(fullResult), "full (w/o APO, WF)");
+	    }
+	    
 	    // multiply by wiener denominator
 	    Vec3d.Real denom = wFilter.getDenominator( wienParam );
 	    fullResult.times(denom);
-	    
-	    if (visualFeedback>0) {
-		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
-		spSt2.addImage(  SimUtils.spatial(fullResult), "full (w/o APO)");
-	    }
 
 	    // apply apotization filter
 	    Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);

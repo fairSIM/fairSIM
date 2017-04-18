@@ -5,7 +5,7 @@
 # compiler (vers. 1.6), or change the line below to
 # 'java' instead of 'java6'
 
-JC = javac6
+JC = javac
 JAR = jar
 
 # Options for the java compiler

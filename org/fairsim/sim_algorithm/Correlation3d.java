@@ -94,6 +94,7 @@ public class Correlation3d {
 		    // get correlation by multiplication, summing elements, scaling by b0
 		    b1s.timesConj( b0 );
 		    corr[xi][yi] = Cplx.mult( b1s.sumElements(), scal);
+		    //Tool.trace("Correlation x "+xi+" y "+yi+" : "+corr[xi][yi].abs());
 		}
 	    };
 	    
@@ -229,7 +230,7 @@ public class Correlation3d {
 	double dist, double weightLimit, boolean divideByOtf ) {
 
 	// TODO: re-enable next line
-	//Vec3d.failSize( band0, band1 );
+	Vec3d.failSize( band0, band1 );
 	final int w = band0.vectorWidth(), h = band0.vectorHeight(), d=band0.vectorDepth();
 
 	// retrive the OTFs as vectors
@@ -249,9 +250,11 @@ public class Correlation3d {
 	for (int y=0; y<h; y++)
 	for (int x=0; x<w; x++) {
 	    
-	    // distance to DC component
+	    // distance to DC component // TOOO: This really needs to be in 3d :)
 	    double rad = Math.sqrt( 
-		((x<w/2)?(x*x):((x-w)*(x-w))) + ((y<h/2)?(y*y):((y-h)*(y-h)))  );
+		  ((x<w/2)?(x*x):((x-w)*(x-w))) 
+		+ ((y<h/2)?(y*y):((y-h)*(y-h)))  );
+	    
 	    double max = Math.sqrt( kx*kx+ ky*ky ); 
 
 	    double ratio = rad / max;
@@ -272,21 +275,22 @@ public class Correlation3d {
 		if (divideByOtf)
 		band1.set(x,y,z, band1.get(x,y,z).div( weight1.get(x,y,z)));
 	    }
-	    
+	   
 	    /*
 	    // set zero around DC component
-	    if ((ratio<dist )||(ratio>(1-dist))) {
-		band0.set(x,y, Cplx.Float.zero());
+	    // TODO: the 'z>2' avoids all axial contribution (fine for band 0<>2, but has to be fixed!)
+	    if ((ratio<dist )||(ratio>(1-dist)|| (z>2))) {
+		band0.set(x,y,z, Cplx.Float.zero());
 		band1.set(
 		    (x-(int)kx+w)%w,
-		    (y+(int)ky+h)%h, 
+		    (y+(int)ky+h)%h,
+		    z,
 		    Cplx.Float.zero());
 		cutCount++;
-	    }
-	    */
+	    } */
 	}
 	
-	Tool.trace("Cuts: "+cutCount+"/"+(w*h)+" --> "+(float)cutCount/(w*h));
+	Tool.trace("Cuts: "+cutCount+"/"+(w*h*d)+" --> "+(float)cutCount/(w*h*d));
 
     }
 
