@@ -139,6 +139,21 @@ public class SimUtils {
 	return pw;
     }
     
+    /** Create an image by FFTin back 'in' to spatial */
+    public static Vec2d.Real spatial( Vec3d.Cplx in, int sliceNr ) {
+
+	Vec3d.Cplx cpy = in.duplicate();
+	cpy.fft3d(true);
+	
+	Vec2d.Cplx tmp = Vec2d.createCplx( in.vectorWidth(), in.vectorHeight() );
+	tmp.slice( cpy, sliceNr );
+
+	Vec2d.Real img  = Vec2d.createReal(in.vectorWidth(), in.vectorHeight());
+	img.copy( tmp );
+	
+	return img;
+    }
+    
     
     
     /** Create an image by FFTin back 'in' to spatial,

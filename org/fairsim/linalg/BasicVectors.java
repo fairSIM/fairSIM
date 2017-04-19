@@ -519,8 +519,10 @@ class BasicVector implements VectorFactory {
 		public void at(int z) {
 		    for (int y=0; y<h; y++)
 		    for (int x=0; x<w; x++) {
-			float phaVal = (float)(2*Math.PI*(
-			    ((float)x*kx)/w+((float)y*ky)/h+((float)z*kz)/d));
+			
+			float phaVal = (float)
+			( 2*Math.PI* (x*kx/w + y*ky/h + z*kz/d) );
+			
 			float si,co;
 			if (fast) {
 			    co = (float)MTool.fcos( phaVal );

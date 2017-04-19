@@ -62,7 +62,7 @@ public class TestPlugin implements PlugIn {
 
     boolean otfBeforeShift = true;  // multiply the OTF before or after shift to px,py
 
-    boolean findPeak    = true;	    // run localization and fit of shfit vector
+    boolean findPeak    = false;	    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
 	
     final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3)
@@ -131,9 +131,15 @@ public class TestPlugin implements PlugIn {
 	
 	// green
 	if (true) {
-	    param.dir(0).setPxPy( 137.44, -140.91); 
-	    param.dir(1).setPxPy( -52.8,  -189.5);
-	    param.dir(2).setPxPy( 190.08,  49.96);
+	    //param.dir(0).setPxPy( 137.44, -140.91); 
+	    //param.dir(1).setPxPy( -52.8,  -189.5);
+	    //param.dir(2).setPxPy( 190.08,  49.96);
+	    param.dir(0).setPxPy( 137.44, -140.878); 
+	    param.dir(0).setPhaOff( 52.35 / 180. * Math.PI);
+	    param.dir(1).setPxPy( -52.856,  -189.478);
+	    param.dir(1).setPhaOff( 157.6 / 180. * Math.PI);
+	    param.dir(2).setPxPy( 190.078,  49.967);
+	    param.dir(2).setPhaOff( 107.4 / 180. * Math.PI);
 	}
 	// red
 	if (false) {
@@ -454,18 +460,34 @@ public class TestPlugin implements PlugIn {
 		
 		// first, copy to larger vectors
 		int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
-		/*
-		SimUtils.placeFreq( separate[pos] , shifted[pos]);
-		SimUtils.placeFreq( separate[neg] , shifted[neg]);
-
+		
+		//SimUtils.placeFreq( separate[pos] , shifted[pos]);
+		//SimUtils.placeFreq( separate[neg] , shifted[neg]);
+		shifted[pos].pasteFreq( separate[pos] );
+		shifted[neg].pasteFreq( separate[neg] );
+		
 		// then, fourier shift
-		SimUtils.fourierShift( shifted[pos] ,  par.px(b),  par.py(b) );
-		SimUtils.fourierShift( shifted[neg] , -par.px(b), -par.py(b) ); */
+		//SimUtils.fourierShift( shifted[pos] ,  par.px(b),  par.py(b) );
+		//SimUtils.fourierShift( shifted[neg] , -par.px(b), -par.py(b) ); 
 
+		
+		shifted[pos].fft2d(true);
+		shifted[pos].fourierShift(  par.px(b),-par.py(b) );
+		shifted[pos].fft2d(false);
+
+		
+		shifted[neg].fft2d(true);
+		shifted[neg].fourierShift( -par.px(b), par.py(b) );
+		shifted[neg].fft2d(false);
+
+
+		/*
 		SimUtils.pasteAndFourierShift( separate[pos], shifted[pos], 
 		     par.px(b),  par.py(b), doFastShift );
 		SimUtils.pasteAndFourierShift( separate[neg], shifted[neg], 
 		    -par.px(b), -par.py(b), doFastShift );
+
+		*/
 
 	    }
 	   

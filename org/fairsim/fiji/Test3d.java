@@ -55,11 +55,11 @@ public class Test3d implements PlugIn {
     double otfCorr   = 0.31;	    // OTF correction factor
     double pxSize    = 0.080;	    // pixel size (microns)
 
-    double wienParam   = 0.05;	    // Wiener filter parameter
+    double wienParam   = 0.005;	    // Wiener filter parameter
 
     boolean otfBeforeShift = true;  // multiply the OTF before or after shift to px,py
 
-    boolean findPeak    = true;    // run localization and fit of shfit vector
+    boolean findPeak    = false;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
     boolean doTheReconstruction = true; // if to run the reconstruction (for debug, mostly)
 	
@@ -124,13 +124,17 @@ public class Test3d implements PlugIn {
 	// (used for reconstruction, or as starting guess if 'locatePeak' is off, but 'findPeak' on)
 	
 	// green
-	if (false) {
-	    param.dir(0).setPxPy( 137.44, -140.91); 
-	    param.dir(1).setPxPy( -52.8,  -189.5);
-	    param.dir(2).setPxPy( 190.08,  49.96);
+	// these parameters match the "LSEC Actin" dataset, both in 2D and 3D
+	if (true) {
+	    param.dir(0).setPxPy( 137.44, -140.878); 
+	    param.dir(0).setPhaOff( 52.35 / 180. * Math.PI);
+	    param.dir(1).setPxPy( -52.856,  -189.478);
+	    param.dir(1).setPhaOff( 157.6 / 180. * Math.PI);
+	    param.dir(2).setPxPy( 190.078,  49.967);
+	    param.dir(2).setPhaOff( 107.4 / 180. * Math.PI);
 	}
 	// red
-	if (true) {
+	if (false) {
 	    param.dir(0).setPxPy( 121.303, -118.94 ); 
 	    param.dir(1).setPxPy(  -42.04, -164.68 );
 	    param.dir(2).setPxPy(  163.05,   46.81 );
@@ -544,11 +548,11 @@ public class Test3d implements PlugIn {
 
 		    // then, fourier shift
 		    shifted[pos].fft3d(true);
-		    shifted[pos].fourierShift(  par.px(b),  par.py(b), 0 );
+		    shifted[pos].fourierShift(  par.px(b), -par.py(b), 0 );
 		    shifted[pos].fft3d(false);
 
 		    shifted[neg].fft3d(true);
-		    shifted[neg].fourierShift( -par.px(b), -par.py(b), 0 );
+		    shifted[neg].fourierShift( -par.px(b), par.py(b), 0 );
 		    shifted[neg].fft3d(false);
 		}
 	       
@@ -613,8 +617,10 @@ public class Test3d implements PlugIn {
 			
 			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			    "a%1d: band %1d",angIdx,i));
-			spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
-			    "a%1d: band %1d",angIdx,i));
+//			spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
+//			    "a%1d: band %1d",angIdx,i));
+			spSt2.addImage( SimUtils.spatial( thisband,5 ) ,String.format(
+			    "a%1d: band %1d (slice 5)",angIdx,i));
 		    }
 
 		    // per direction wiener denominator	
@@ -634,8 +640,10 @@ public class Test3d implements PlugIn {
 		    
 		    pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
 			"a%1d: all bands",angIdx));
-		    spSt2.addImage( SimUtils.spatial( result ) ,String.format(
-			"a%1d: all bands",angIdx));
+		    
+		    for (int i=0; i<7; i++)
+			spSt2.addImage( SimUtils.spatial( result,i ) ,String.format(
+			    "a%1d: all bands: pl "+i,angIdx));
 		
 		    // power spectra before shift
 		    if (visualFeedback>2) { 
@@ -655,7 +663,8 @@ public class Test3d implements PlugIn {
 	    //if (visualFeedback>0) {
 	    if (true) {
 		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO, WF)");
-		spSt2.addImage(  SimUtils.spatial(fullResult), "full (w/o APO, WF)");
+		for (int i=0; i<7; i++)
+		    spSt2.addImage(  SimUtils.spatial(fullResult,i), "full (w/o APO, WF), pl: "+i);
 	    }
 	    
 	    // multiply by wiener denominator
@@ -663,10 +672,11 @@ public class Test3d implements PlugIn {
 	    fullResult.times(denom);
 
 	    // apply apotization filter
-	    Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
+	    
+	    //Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
 	    //otfPr.writeApoVector( apo, apoB, apoF);
 	    //fullResult.times(apo);
-	    spSt2.addImage( SimUtils.spatial( fullResult), "full result");
+	    spSt2.addImage( SimUtils.spatial( fullResult,5), "full result");
 	    
 	    if (visualFeedback>0) {
 		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
