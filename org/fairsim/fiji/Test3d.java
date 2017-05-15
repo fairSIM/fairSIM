@@ -55,9 +55,9 @@ public class Test3d implements PlugIn {
     double otfCorr   = 0.31;	    // OTF correction factor
     double pxSize    = 0.080;	    // pixel size (microns)
 
-    double wienParam   = 0.005;	    // Wiener filter parameter
+    double wienParam   = 0.05;	    // Wiener filter parameter
 
-    boolean otfBeforeShift = true;  // multiply the OTF before or after shift to px,py
+    boolean otfBeforeShift = false;  // multiply the OTF before or after shift to px,py
 
     boolean findPeak    = false;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
@@ -492,12 +492,15 @@ public class Test3d implements PlugIn {
 	
 	if (visualFeedback>0) {
 	    Vec3d.Real wd = wFilter.getDenominator(wienParam);
-	    Vec2d.Real wdpr = Vec2d.createReal(2*w, 2*h);
-	    wdpr.project( wd );
-	    wdpr.reciproc();
-	    wdpr.normalize();
-	    Transforms.swapQuadrant( wdpr );
-	    pwSt2.addImage(wdpr, "Wiener denominator");
+	    for (int z=0; z<7; z++) {
+	    
+		Vec2d.Real wdpr = Vec2d.createReal(2*w, 2*h);
+		wdpr.slice( wd, z );
+		wdpr.reciproc();
+		wdpr.normalize();
+		Transforms.swapQuadrant( wdpr );
+		pwSt2.addImage(wdpr, "Wiener denominator, z: "+z);
+	    }
 	}
 	
 	tWien.stop();
@@ -523,11 +526,9 @@ public class Test3d implements PlugIn {
 		BandSeparation.separateBands( inFFT[angIdx] , separate , 
 			par.getPhases(), par.nrBand(), par.getModulations());
 
-		/*
 		if (otfBeforeShift)
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
 			otfPr.applyOtf( separate[i], (i+1)/2);
-		*/
 
 		// ------- Shifts to correct position ----------
 
@@ -559,15 +560,17 @@ public class Test3d implements PlugIn {
 		// ------ OTF multiplication or masking ------
 		
 		// TODO: re-implement OTF mask support for 3D
-		/*
+		
 		if (!otfBeforeShift) { 
 		    // multiply with shifted OTF
 		    for (int b=0; b<par.nrBand(); b++) {
 			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
 			otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
-			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+			if (b>0)
+			    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
 		    }
-		} 
+		}
+		/*
 		else {
 		    // or mask for OTF support
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
@@ -594,7 +597,7 @@ public class Test3d implements PlugIn {
 
 			// TODO: re-implement and re-enable this
 			// get wiener denominator for (direction, band), add to full denom for this band
-			//Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+			Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
 		    
 			// add up +- shift for this band
 			Vec3d.Cplx thisband   = shifted[i*2];
@@ -602,33 +605,34 @@ public class Test3d implements PlugIn {
 			    thisband.add( shifted[i*2-1] );
 	    
 			// output the wiener denominator
-			/*
 			if (visualFeedback>1) {
 			    Vec3d.Real wd = denom.duplicate();
 			    wd.reciproc();
 			    wd.normalize();
-			    //Transforms.swapQuadrant( wd );
-			    pwSt2.addImage( wd, false, String.format(
+			    
+			    Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
+			    tmp.project(wd);
+			    Transforms.swapQuadrant( tmp );
+			    pwSt2.addImage( tmp, String.format(
 				"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
-			}  */
+			}  
 			
 			// apply filter and output result
-			//thisband.times( denom );
+			thisband.times( denom );
 			
 			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			    "a%1d: band %1d",angIdx,i));
-//			spSt2.addImage( SimUtils.spatial( thisband ) ,String.format(
-//			    "a%1d: band %1d",angIdx,i));
+			
 			spSt2.addImage( SimUtils.spatial( thisband,5 ) ,String.format(
 			    "a%1d: band %1d (slice 5)",angIdx,i));
 		    }
 
 		    // per direction wiener denominator	
-		    /*
-		    Vec2d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);	
+		    Vec3d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);
 		    result.times( fDenom );
 			
 		    // output the wiener denominator
+		    /*
 		    if (visualFeedback>1) {
 			Vec2d.Real wd = fDenom.duplicate();
 			wd.reciproc();
@@ -636,14 +640,20 @@ public class Test3d implements PlugIn {
 			Transforms.swapQuadrant( wd );
 			pwSt2.addImage( wd, String.format(
 			    "a%1d: OTF/Wiener all bands",angIdx ));
-		    } */
-		    
+		    } 
+		    */
+
 		    pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
 			"a%1d: all bands",angIdx));
 		    
+		    /*
 		    for (int i=0; i<7; i++)
 			spSt2.addImage( SimUtils.spatial( result,i ) ,String.format(
 			    "a%1d: all bands: pl "+i,angIdx));
+		    */
+		    
+		    spSt2.addImage( SimUtils.spatial( result,5 ) ,String.format(
+		        "a%1d: all band (slice 5)",angIdx));
 		
 		    // power spectra before shift
 		    if (visualFeedback>2) { 

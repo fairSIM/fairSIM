@@ -62,6 +62,7 @@ public class WienerFilter3d {
 		    double xh = (x<w/2)?( x):(x-w);
 		    double yh = (y<h/2)?(-y):(h-y);
 		    double zh = (z<dt/2)?( z):(dt-z);
+		    //double zh = z;
 		    zh *= cyclMicronInZ;
 
 		    // from these, calculate distance to +-(kx,ky), convert to cycl/microns
@@ -73,7 +74,10 @@ public class WienerFilter3d {
 		    float otfVal2 = sp.otf3d().getOtfVal(b, rad2, zh ).absSq();
 		    
 		    // store for Wiener denominator
-		    vec.set( x,y,z, vec.get(x,y,z) + otfVal1 + otfVal2 );
+		    if (b!=0)
+			vec.set( x,y,z, vec.get(x,y,z) + otfVal1 + otfVal2 );
+		    else
+			vec.set( x,y,z, vec.get(x,y,z) + otfVal1  );
 
 		}
 	    }

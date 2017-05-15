@@ -78,7 +78,6 @@ public class OtfProvider3D {
      *  @param band OTF band
      *  @param xycycl xy-lateral Position in cycles/micron
      *  @param zcycl z-axial Position in cycles/micron
-     *  @param att  If true, return attenuated value (see {@link #setAttenuation})
      * */
     public Cplx.Float getOtfVal(int band, double xycycl, double zcycl) {
 	// checks
