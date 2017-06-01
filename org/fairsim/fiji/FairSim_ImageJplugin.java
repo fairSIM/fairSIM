@@ -27,6 +27,10 @@ import org.fairsim.sim_algorithm.SimParam;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JEditorPane;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.event.HyperlinkEvent;
+import java.awt.Desktop;
+
 
 import java.util.Scanner;
 import java.io.InputStream;
@@ -170,7 +174,23 @@ public class FairSim_ImageJplugin implements PlugIn {
 	
 	JEditorPane jep = new JEditorPane("text/html", htmlContent);
 	jep.setEditable(false);
-	
+
+	jep.addHyperlinkListener( new HyperlinkListener() {
+	    public void hyperlinkUpdate( HyperlinkEvent e ) {
+
+		if ( e.getEventType() == HyperlinkEvent.EventType.ACTIVATED 
+		    && Desktop.isDesktopSupported() ) {
+		    
+		    try {
+			Desktop.getDesktop().browse( e.getURL().toURI());
+		    } catch ( Exception ex ) {
+			Tool.trace("Could not open URL: "+ex);
+		    }
+		}
+		
+	    }
+	});
+
 	JOptionPane.showMessageDialog( IJ.getInstance(),
 	    jep,
 	    "About fairSIM",
