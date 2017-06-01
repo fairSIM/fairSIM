@@ -5,15 +5,15 @@
 # compiler (vers. 1.6), or change the line below to
 # 'java' instead of 'java6'
 
-JC = javac6
+JC = javac
 JAR = jar
 
 # Options for the java compiler
 EXTDIR="./external"
 
-JFLAGS = -g -Xlint:unchecked -Xlint:deprecation -extdirs ${EXTDIR} -d ./
-#JFLAGS = -g -Xlint:unchecked -extdirs ${EXTDIR} -d ./
-JFLAGS+= -target 1.6 -source 1.6
+JFLAGS = -g -Xlint:unchecked -Xlint:deprecation -extdirs ./external -d ./
+JFLAGS+= -target 1.6 -source 1.6 -bootclasspath ./external/rt-1.6.jar
+#JFLAGS+= -release 6
 
 
 # remove command to clean up
