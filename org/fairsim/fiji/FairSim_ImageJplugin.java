@@ -166,11 +166,11 @@ public class FairSim_ImageJplugin implements PlugIn {
 	//String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
 
 	String htmlContent = 
-	    "<html>"+text+"<br /><p>"+
+	    "<html>"+text+"<h2>Version</h2>"+
 	    "version: "+version.substring(0, Math.min(12, version.length()))+
 	    "<br />git build id: "+
 	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+
-	    "</html>";
+	    "<br /><br />Please include version and git id when reporting bugs.</html>";
 	
 	JEditorPane jep = new JEditorPane("text/html", htmlContent);
 	jep.setEditable(false);
