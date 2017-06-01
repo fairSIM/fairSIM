@@ -228,7 +228,13 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     /** {@inheritDoc} */
     @Override
     public void addImage( Vec2d.Real v, String label, ImageDisplay.Marker ... m) {
-	
+
+	// check the marker list for null pointers
+	for ( ImageDisplay.Marker i : m ) {
+	    if (i==null)
+		throw new NullPointerException("Marker list contains an elements that is null");
+	}
+
 	// copy over the image content
 	ImageVector img = ImageVector.create( width, height );
 	Vec2d.failSize( img, v );
@@ -251,6 +257,12 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     public void addImage( Vec3d.Real v, boolean project, String label, ImageDisplay.Marker ... m) {
 	
 	String l = (label==null)?("no label"):label;
+	
+	// check the marker list for null pointers
+	for ( ImageDisplay.Marker i : m ) {
+	    if (i==null)
+		throw new NullPointerException("Marker list contains an elements that is null");
+	}
 	
 	// copy over the image content
 	if (project) {
@@ -283,6 +295,12 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
      *  */
     @Override
     public void setImage( Vec2d.Real v, int n, String label, ImageDisplay.Marker ... m) {
+	
+	// check the marker list for null pointers
+	for ( ImageDisplay.Marker i : m ) {
+	    if (i==null)
+		throw new NullPointerException("Marker list contains an elements that is null");
+	}
 	
 	// copy over content
 	ImageVector img = refs.get(n);
