@@ -326,30 +326,44 @@ public class SimAlgorithm {
 	{
 	    final SimParam.Dir par = param.dir(angIdx);
 	    Tool.tell("Reconstr. for angle "+(angIdx+1)+"/"+param.nrDir());
+	    
+	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
 	   
 	    // ---- Richardson-Lucy: Deconvolve input data here ----
 	    if ( param.useRLonInput() ) {
 		
+		// copy into temp. array to not override input data
+		Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
+		for (int i=0; i<(par.nrBand()*2-1) ;i++)
+		    tmpArray[i].copy( inFFT[angIdx][i] );
+
+		// deconvolve the input data
 		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
 
 		    if (visualFeedback>1) {
-			spSt.addImage( SimUtils.spatial( inFFT[angIdx][i]), 
+			spSt.addImage( SimUtils.spatial( tmpArray[i]), 
 			    "input before deconv., ang "+angIdx+", phase "+i);
 		    }
-		    RLDeconvolution.deconvolve( inFFT[angIdx][i], inputOtf, 
+
+		    RLDeconvolution.deconvolve( tmpArray[i], inputOtf, 
 			param.getRLiterations(), true);
+		    
 		    if (visualFeedback>0) {
-			spSt.addImage( SimUtils.spatial( inFFT[angIdx][i]), 
+			spSt.addImage( SimUtils.spatial( tmpArray[i]),
 			    "Deconvolved input, ang "+angIdx+", phase "+i);
 		    }
+		
 		}
 
-	    }
-
-	    // ----- Band separation & OTF multiplication (if before shift) -------
-	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
-	    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+		// use the temp array as input for the band separation
+		BandSeparation.separateBands( tmpArray , separate , 
 		    par.getPhases(), par.nrBand(), par.getModulations());
+	    
+	    } else {
+	    // ---- Wiener filtering: just band-separate the data
+		BandSeparation.separateBands( inFFT[angIdx] , separate , 
+		    par.getPhases(), par.nrBand(), par.getModulations());
+	    }
 
 	    // Wiener filter: Apply OTF here
 	    if (otfBeforeShift && param.useWienerFilter() )
