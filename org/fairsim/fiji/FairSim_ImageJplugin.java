@@ -26,6 +26,7 @@ import org.fairsim.sim_algorithm.SimParam;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JEditorPane;
 
 import java.util.Scanner;
 import java.io.InputStream;
@@ -160,12 +161,19 @@ public class FairSim_ImageJplugin implements PlugIn {
 
 	//String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
 
-	JOptionPane.showMessageDialog( IJ.getInstance(),
+	String htmlContent = 
 	    "<html>"+text+"<br /><p>"+
 	    "version: "+version.substring(0, Math.min(12, version.length()))+
 	    "<br />git build id: "+
 	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+
-	    "</html>", "About fairSIM",
+	    "</html>";
+	
+	JEditorPane jep = new JEditorPane("text/html", htmlContent);
+	jep.setEditable(false);
+	
+	JOptionPane.showMessageDialog( IJ.getInstance(),
+	    jep,
+	    "About fairSIM",
 	    JOptionPane.INFORMATION_MESSAGE);
     
     }
@@ -177,8 +185,11 @@ public class FairSim_ImageJplugin implements PlugIn {
     /** for testing */
     public static void main( String [] arg ) {
 
-	if (arg.length<1)
+	if (arg.length<1) {
+	    FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
+	    pl.showAbout();
 	    return;
+	}
 	
 	ImagePlus ip = IJ.openImage(arg[0]);
 	ip.show();
