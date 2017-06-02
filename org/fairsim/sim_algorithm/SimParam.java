@@ -30,6 +30,18 @@ import org.fairsim.linalg.Vec3d;
  * */
 public class SimParam implements Vec2d.Size, Vec3d.Size {
 
+    public enum FilterStyle {
+	Wiener("Wiener filter"),	
+	RLin("RL on input"), 
+	RLout("RL on output"),
+	RLboth("RL on both");
+
+	final String name;
+	FilterStyle(String a) { name = a; };
+
+	@Override public String toString() { return name; };
+    }
+
     /** number of angles/pattern directions */
     final protected int nrDirs;	
     final protected int nrBands;	
@@ -49,8 +61,16 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private IMGSEQ imgSeq = IMGSEQ.PAZ;		    // order of images in input
     private CLIPSCALE clipScaleMode 
 	= CLIPSCALE.BOTH;			    // clip&scale of output
+
+
+    private FilterStyle filterStyle = 
+		FilterStyle.Wiener;		    // which filter to use
+
     private double wienerFilterParameter = 0.05;    // Wiener filter parameter
     private double apoCutOff = 2;		    // Apo cutoff parameter
+
+    private int rlIterations = 5;		    // number of Richardson-Lucy iterations
+    
 
     double modLowLimit = 0.3, modHighLimit = 1.1;
 
@@ -216,6 +236,48 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	cyclesPerMicronInZ = 1/(stack*micronStack);
 	this.otf( currentOtf2D, currentOtf3D);
 	return this;
+    }
+
+
+    /** Set the filter type to use */
+    public void setFilterStyle( FilterStyle s ) {
+	filterStyle = s;
+    }
+
+    /** Get the filter type to use */
+    public FilterStyle getFilterStyle() {
+	return filterStyle;
+    }
+
+    /** Determine if Wiener-filtering is used on output data*/
+    public boolean useWienerFilter() {
+	return ( filterStyle == FilterStyle.Wiener ||
+		 filterStyle == FilterStyle.RLin );
+    }
+
+
+
+    /** Determine if RL-filtering is used on input data*/
+    public boolean useRLonInput() {
+	return ( filterStyle == FilterStyle.RLboth || 
+		 filterStyle == FilterStyle.RLin   );
+    }
+    
+    /** Determine if RL-filtering is used on output data*/
+    public boolean useRLonOutput() {
+	return ( filterStyle == FilterStyle.RLboth || 
+		 filterStyle == FilterStyle.RLout   );
+    }
+
+
+    /** Set the number of RL iterations */
+    public void setRLiterations( int n ) {
+	rlIterations = n;
+    }
+
+    /** Get the number of RL iterations */
+    public int getRLiterations() {
+	return rlIterations;
     }
 
 

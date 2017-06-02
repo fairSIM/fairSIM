@@ -309,25 +309,68 @@ public class SimAlgorithm {
 	// vectors to store the result
 	Vec2d.Cplx fullResult    = Vec2d.createCplx( param, 2);
 	
+	// zero-band OTF (for RL filtering)
+	Vec2d.Cplx inputOtf = null;
+	if ( param.useRLonInput() ) {
+	    inputOtf = Vec2d.createCplx(param);
+	    otfPr.writeOtfVector( inputOtf, 0,0,0);
+	    if ( visualFeedback>1 )  {
+		Vec2d.Real tmp  = Vec2d.createReal(param);
+		tmp.copy( inputOtf );
+		pwSt.addImage( tmp, "Widefield OTF" );
+	    }
+	}
+    
 	// loop all pattern directions
 	for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) 
 	{
 	    final SimParam.Dir par = param.dir(angIdx);
 	    Tool.tell("Reconstr. for angle "+(angIdx+1)+"/"+param.nrDir());
-
-	    // ----- Band separation & OTF multiplication (if before shift) -------
-
-	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
 	    
-	    BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
+	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
+	   
+	    // ---- Richardson-Lucy: Deconvolve input data here ----
+	    if ( param.useRLonInput() ) {
+		
+		// copy into temp. array to not override input data
+		Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
+		for (int i=0; i<(par.nrBand()*2-1) ;i++)
+		    tmpArray[i].copy( inFFT[angIdx][i] );
 
-	    if (otfBeforeShift)
+		// deconvolve the input data
+		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
+
+		    if (visualFeedback>1) {
+			spSt.addImage( SimUtils.spatial( tmpArray[i]), 
+			    "input before deconv., ang "+angIdx+", phase "+i);
+		    }
+
+		    RLDeconvolution.deconvolve( tmpArray[i], inputOtf, 
+			param.getRLiterations(), true);
+		    
+		    if (visualFeedback>0) {
+			spSt.addImage( SimUtils.spatial( tmpArray[i]),
+			    "Deconvolved input, ang "+angIdx+", phase "+i);
+		    }
+		
+		}
+
+		// use the temp array as input for the band separation
+		BandSeparation.separateBands( tmpArray , separate , 
+		    par.getPhases(), par.nrBand(), par.getModulations());
+	    
+	    } else {
+	    // ---- Wiener filtering: just band-separate the data
+		BandSeparation.separateBands( inFFT[angIdx] , separate , 
+		    par.getPhases(), par.nrBand(), par.getModulations());
+	    }
+
+	    // Wiener filter: Apply OTF here
+	    if (otfBeforeShift && param.useWienerFilter() )
 		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
 		    otfPr.applyOtf( separate[i], (i+1)/2);
 
 	    // ------- Shifts to correct position ----------
-
 	    Vec2d.Cplx [] shifted		= Vec2d.createArrayCplx(5, 2*w, 2*h);
 
 	    // band 0 is DC, so does not need shifting, only a bigger vector
@@ -349,26 +392,32 @@ public class SimAlgorithm {
 	    }
 	   
 	    // ------ OTF multiplication or masking ------
-	    
-	    if (!otfBeforeShift) {
-		// multiply with shifted OTF
-		otfPr.applyOtf( shifted[0], 0 );
-		for (int b=1; b<par.nrBand(); b++) {
-		    int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
-		    otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
-		    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+	   
+	    if ( param.useWienerFilter() ) {
+		if (!otfBeforeShift) {
+		    // multiply with shifted OTF
+		    otfPr.applyOtf( shifted[0], 0 );
+		    for (int b=1; b<par.nrBand(); b++) {
+			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
+			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
+		    }
+		} else {
+		    // or mask for OTF support
+		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+			//wFilter.maskOtf( shifted[i], angIdx, i);
+			otfPr.maskOtf( shifted[i], angIdx, i);
 		}
-	    } else {
-		// or mask for OTF support
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-		    //wFilter.maskOtf( shifted[i], angIdx, i);
-		    otfPr.maskOtf( shifted[i], angIdx, i);
 	    }
-	    
 	    // ------ Sum up result ------
 	    
-	    for (int i=0;i<par.nrBand()*2-1;i++)  
-		fullResult.add( shifted[i] ); 
+	    if (param.useRLonOutput()) {
+		    shifted[0].scal( 1.f / param.nrDir());
+	    }
+	    
+	    for (int i=0;i<par.nrBand()*2-1;i++) { 
+		    fullResult.add( shifted[i] ); 
+	    }
 	
 	    
 	    // ------ Output intermediate results ------
@@ -385,6 +434,7 @@ public class SimAlgorithm {
 		// loop bands in this direction
 		for (int i=0;i<par.nrBand();i++) {     
 
+		    // TODO: All these should also use RL-filtering if set!
 		    // get wiener denominator for (direction, band), add to full denom for this band
 		    Vec2d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
 		
@@ -444,81 +494,198 @@ public class SimAlgorithm {
 	}   
 	
 	// -- done loop all pattern directions, 'fullResult' now holds the image --
-	
-	Tool.tell("Applying filters");
-	
-	// multiply by wiener denominator
-	Vec2d.Real denom = wFilter.getDenominator( wienParam );
-	fullResult.times(denom);
-	
-	if (visualFeedback>0) {
-	    pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
-	    spSt2.addImage(  SimUtils.spatial(fullResult, imgClipScale), "full (w/o APO)");
-	}
 
-	// apply apotization filter
-	Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
-	otfPr.writeApoVector( apo, apoB, apoF);
-	fullResult.times(apo);
-	
-	Vec2d.Real fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
+	Vec2d.Real fullResultImage = null;
 
-	if (spSt2 != null) 
-	    spSt2.addImage( fullResultImage, "full result");
+	// ------------------------------------------------------------------------
+	// Wiener filter on outout
+	// ------------------------------------------------------------------------
 
+	if ( param.useWienerFilter() ) {
 
-	if (visualFeedback>0) {
-	    pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
-	}
+	    Tool.tell("Applying Wiener filter");
 
-	// Add wide-field for comparison
-	if (visualFeedback>=0) {
-	
-	    Tool.tell("Computing wide-field");
+	    // multiply by wiener denominator
+	    Vec2d.Real denom = wFilter.getDenominator( wienParam );
+	    fullResult.times(denom);
 	    
-	    // obtain the low freq result
-	    Vec2d.Cplx lowFreqResult = Vec2d.createCplx( param, 2);
+	    if (visualFeedback>0) {
+		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO)");
+		spSt2.addImage(  SimUtils.spatial(fullResult, imgClipScale), "full (w/o APO)");
+	    }
+
+	    // apply apotization filter
+	    Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
+	    otfPr.writeApoVector( apo, apoB, apoF);
+	    fullResult.times(apo);
 	    
-	    // have to do the separation again, result before had the OTF multiplied
-	    for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
+
+	    if (spSt2 != null) 
+		spSt2.addImage( fullResultImage, "full result");
+
+
+	    if (visualFeedback>0) {
+		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
+	    }
+
+
+	    // Add wide-field for comparison
+	    if (visualFeedback>=0) {
+	    
+		Tool.tell("Computing wide-field");
 		
-		final SimParam.Dir par = param.dir(angIdx);
+		// obtain the low freq result
+		Vec2d.Cplx lowFreqResult = Vec2d.createCplx( param, 2);
 		
-		Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
-		BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
+		// have to do the separation again, result before had the OTF multiplied
+		for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+		    
+		    final SimParam.Dir par = param.dir(angIdx);
+		    
+		    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
+		    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+			par.getPhases(), par.nrBand(), par.getModulations());
 
-		Vec2d.Cplx tmp  = Vec2d.createCplx( param, 2 );
-		SimUtils.placeFreq( separate[0],  tmp);
-		lowFreqResult.add( tmp );
-	    }	
+		    Vec2d.Cplx tmp  = Vec2d.createCplx( param, 2 );
+		    SimUtils.placeFreq( separate[0],  tmp);
+		    lowFreqResult.add( tmp );
+		}	
+		
+		// now, output the widefield
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
+		spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
 	    
-	    // now, output the widefield
-	    if (visualFeedback>0)
-		pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
-	    spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
-	
-	    // otf-multiply and wiener-filter the wide-field
-	    otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
+		// otf-multiply and wiener-filter the wide-field
+		otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
 
-	    Vec2d.Real lfDenom = wFilter.getWidefieldDenominator( wienParam );
-	    lowFreqResult.times( lfDenom );
-	   
-	    // mask out freq. that could not have passed 
-	    // (does not really change the image)
-	    otfPr.maskOtf( lowFreqResult, 0,0 );
-	    
-	    // could apodize the result, but that would just re-apply 
-	    // the OTF (more or less)
-	    // Vec2d.Cplx apoLowFreq = Vec2d.createCplx(2*w,2*h);
-	    // otfPr.writeApoVector( apoLowFreq, 0.4, 1.2);
-	    // lowFreqResult.times(apoLowFreq);
-	    
-	    if (visualFeedback>0)
-		pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
-	    spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+		Vec2d.Real lfDenom = wFilter.getWidefieldDenominator( wienParam );
+		lowFreqResult.times( lfDenom );
+	       
+		// mask out freq. that could not have passed 
+		// (does not really change the image)
+		otfPr.maskOtf( lowFreqResult, 0,0 );
+		
+		// could apodize the result, but that would just re-apply 
+		// the OTF (more or less)
+		// Vec2d.Cplx apoLowFreq = Vec2d.createCplx(2*w,2*h);
+		// otfPr.writeApoVector( apoLowFreq, 0.4, 1.2);
+		// lowFreqResult.times(apoLowFreq);
+		
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
+		spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
 
+	    }
 	}	
+
+	// ------------------------------------------------------------------------
+	// Richardson-Lucy deconvolution on output
+	// ------------------------------------------------------------------------
+
+	if ( param.useRLonOutput() ) {
+
+	    Tool.tell("Applying RL deconvolution filter");
+
+	    
+	    // generate the effective SIM OTF
+	    Vec2d.Cplx otfSim = Vec2d.createCplx( param, 2);
+	    
+	    Vec2d.Cplx otfTmpPos = Vec2d.createCplx( param, 2);
+	    Vec2d.Cplx otfTmpNeg = Vec2d.createCplx( param, 2);
+
+	    for (int ang = 0; ang<param.nrDir(); ang++) {
+	    
+		final SimParam.Dir par = param.dir(ang);
+		
+		for (int b=0; b<param.nrBand(); b++) {
+		    
+		    otfPr.writeOtfVector( otfTmpPos, b,  par.px(b),  par.py(b));
+		    otfPr.writeOtfVector( otfTmpNeg, b, -par.px(b), -par.py(b));
+		    
+		    if (b==0) {
+			otfTmpPos.scal( 1.f/param.nrDir());
+			otfSim.add( otfTmpPos );
+		    } else {
+			otfSim.add( otfTmpPos );
+			otfSim.add( otfTmpNeg );
+		    }
+
+		}
+	    } 
+
+	    
+	    // visualize the SIM OTF
+	    if (visualFeedback>1) {
+		Vec2d.Real otfVis = Vec2d.createReal( param,2);
+		otfVis.copy( otfSim );
+		Transforms.swapQuadrant( otfVis );
+		pwSt2.addImage( otfVis, "SIM OTF added up");
+	    }
+	    
+	    // output result before RL-filtering
+	    if (visualFeedback>0) {
+		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full unfiltered");
+		spSt2.addImage(  SimUtils.spatial(fullResult), "full unfiltered");
+	    }
+
+	    // deconvolve the result
+	    RLDeconvolution.deconvolve( fullResult, otfSim, 
+		param.getRLiterations(), true);
+	    
+	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
+
+	    if (spSt2 != null) 
+		spSt2.addImage( fullResultImage, "full result (RL)");
+
+
+	    if (visualFeedback>0) {
+		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (RL)");
+	    }
+
+
+	    // Add wide-field for comparison
+	    if (visualFeedback>=0) {
+	    
+		Tool.tell("Computing wide-field");
+		
+		// obtain the low freq result
+		Vec2d.Cplx lowFreqResult = Vec2d.createCplx( param, 2);
+		
+		// have to do the separation again, result before had the OTF multiplied
+		for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+		    
+		    final SimParam.Dir par = param.dir(angIdx);
+		    
+		    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
+		    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+			par.getPhases(), par.nrBand(), par.getModulations());
+
+		    Vec2d.Cplx tmp  = Vec2d.createCplx( param, 2 );
+		    SimUtils.placeFreq( separate[0],  tmp);
+		    lowFreqResult.add( tmp );
+		}	
+		
+		// now, output the widefield
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
+		spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
+	    
+		// deconvolve the wide-field 
+		Vec2d.Cplx zeroOrderOtf = Vec2d.createCplx(param,2);
+		otfPr.writeOtfVector( zeroOrderOtf, 0,0,0);
+		RLDeconvolution.deconvolve( lowFreqResult, zeroOrderOtf, 
+		    param.getRLiterations(), true);
+		
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
+		spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+
+	    }
+	}	
+
+	// -----------------------------------------------------------------------
 
 	// stop timers
 	if (tRec!=null) tRec.stop();	
