@@ -331,7 +331,7 @@ class BasicVector implements VectorFactory {
 	    for (int y=0; y<height; y++)
 	    for (int x=0; x<width; x++) {
 		out[(y * width + x)*2+0 ] += in[(z*width*height + y*width + x)*2+0];
-		out[(y * width + x)*2+1 ] += in[(z*width*height + y*width + x)*2+0];
+		out[(y * width + x)*2+1 ] += in[(z*width*height + y*width + x)*2+1];
 	    }
 	
 	}
