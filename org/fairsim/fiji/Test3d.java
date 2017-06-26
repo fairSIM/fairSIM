@@ -50,20 +50,24 @@ public class Test3d implements PlugIn {
     int nrDirs   = 3;		    // #angles or pattern orientations
     int nrPhases = 5;		    // #phases (at least 2*bands -1 )
 
-    double emWavelen = 680;	    // emission wavelength		    
+    double emWavelen = 525;	    // emission wavelength		    
     double otfNA     = 1.4;	    // NA of objective
     double otfCorr   = 0.31;	    // OTF correction factor
     double pxSize    = 0.080;	    // pixel size (microns)
 
-    double wienParam   = 0.05;	    // Wiener filter parameter
+    double wienParam   = 0.0075;    // Wiener filter parameter
 
     boolean otfBeforeShift = false;  // multiply the OTF before or after shift to px,py
 
-    boolean findPeak    = false;    // run localization and fit of shfit vector
+    boolean findPeak    = true;    // run localization and fit of shfit vector
     boolean refinePhase = false;    // run auto-correlation phase estimation (Wicker et. al)
     boolean doTheReconstruction = true; // if to run the reconstruction (for debug, mostly)
-	
-    final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3,4)
+
+
+    boolean disableFiltering = false;	// disables all OTF filtering in the reconstruction
+    
+
+    final int visualFeedback = 0;   // amount of intermediate results to create (-1,0,1,2,3,4)
 
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
 
@@ -159,7 +163,7 @@ public class Test3d implements PlugIn {
 	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
 
 	// Do some OTF testing for 3D OTF
-	if (true) {
+	if (false) {
 	    int otfdepth=128;
 	    otfPr.setPixelSize(0.0244,0.052);
 	    Vec3d.Cplx otfVec = Vec3d.createCplx(512,512,otfdepth);
@@ -523,10 +527,13 @@ public class Test3d implements PlugIn {
 
 		Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
 		
+		//BandSeparation.separateBands( inFFT[angIdx] , separate , 
+		//	par.getPhases(), par.nrBand(), par.getModulations());
+		
 		BandSeparation.separateBands( inFFT[angIdx] , separate , 
-			par.getPhases(), par.nrBand(), par.getModulations());
+			par.getPhases(), par.nrBand(), new double [] {1, 0.8, 0.8} );
 
-		if (otfBeforeShift)
+		if ( otfBeforeShift && !disableFiltering )
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
 			otfPr.applyOtf( separate[i], (i+1)/2);
 
@@ -561,7 +568,7 @@ public class Test3d implements PlugIn {
 		
 		// TODO: re-implement OTF mask support for 3D
 		
-		if (!otfBeforeShift) { 
+		if (!otfBeforeShift && !disableFiltering) { 
 		    // multiply with shifted OTF
 		    for (int b=0; b<par.nrBand(); b++) {
 			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
@@ -580,8 +587,10 @@ public class Test3d implements PlugIn {
 		
 		// ------ Sum up result ------
 		
-		for (int i=0;i<par.nrBand()*2-1;i++)  
+		for (int i=0;i<par.nrBand()*2-1;i++) { 
+		    //if (( i==1 || i==2 ) && ( angIdx==0)) continue;
 		    fullResult.add( shifted[i] ); 
+		}
 		
 		// ------ Output intermediate results ------
 		
@@ -618,7 +627,8 @@ public class Test3d implements PlugIn {
 			}  
 			
 			// apply filter and output result
-			thisband.times( denom );
+			if (!disableFiltering)
+			    thisband.times( denom );
 			
 			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			    "a%1d: band %1d",angIdx,i));
@@ -629,7 +639,8 @@ public class Test3d implements PlugIn {
 
 		    // per direction wiener denominator	
 		    Vec3d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);
-		    result.times( fDenom );
+		    if (!disableFiltering)
+			result.times( fDenom );
 			
 		    // output the wiener denominator
 		    /*
@@ -679,14 +690,17 @@ public class Test3d implements PlugIn {
 	    
 	    // multiply by wiener denominator
 	    Vec3d.Real denom = wFilter.getDenominator( wienParam );
-	    fullResult.times(denom);
+	    if (!disableFiltering)
+		fullResult.times(denom);
 
 	    // apply apotization filter
 	    
 	    //Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
 	    //otfPr.writeApoVector( apo, apoB, apoF);
 	    //fullResult.times(apo);
-	    spSt2.addImage( SimUtils.spatial( fullResult,5), "full result");
+	    
+	    for (int z=0; z<fullResult.vectorDepth(); z++)
+		spSt2.addImage( SimUtils.spatial( fullResult,z), "full result: z"+z);
 	    
 	    if (visualFeedback>0) {
 		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");

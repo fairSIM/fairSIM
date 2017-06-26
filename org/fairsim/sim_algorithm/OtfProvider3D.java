@@ -149,6 +149,8 @@ public class OtfProvider3D {
 	    throw new IllegalStateException("Vector pixel size not initialized");
 	final int w = vec.vectorWidth(), h = vec.vectorHeight(), d = vec.vectorDepth();
 
+	System.out.println(" Cycles: "+vecCyclesPerMicronLateral+" "+vecCyclesPerMicronAxial);
+
 	// loop output vector
 	new SimpleMT.StrPFor(0,d) {
 	    public void at(int z) {
@@ -178,6 +180,8 @@ public class OtfProvider3D {
 			// multiply to vector or write to vector
 			if (!write) {
 			    vec.set(x, y, z, vec.get(x,y,z).mult( val.conj() ) );
+			    //vec.set(x, y, z, vec.get(x,y,z).mult( val ) );
+
 			} else {
 			    vec.set(x, y, z, val );
 			}
@@ -325,20 +329,31 @@ public class OtfProvider3D {
 	    
 
 	    // output the vector as read in
-	    for (int z=0; z<otf.vals[0].vectorHeight();z++)  {
-		for (int l=0; l<otf.vals[0].vectorWidth();l++) {
+	    for (int l=1; l<otf.vals[0].vectorWidth();l++) {
+		
+		double accu0 = 0;
+		double accu1 = 0;
+
+		for (int z=1; z<otf.vals[0].vectorHeight();z++)  {
 			System.out.println(String.format(" %5.3f %5.3f %6.4f %6.4f %6.4f #A",
 			    l*otf.cyclesPerMicronLateral, z*otf.cyclesPerMicronAxial,
 			    //l*1., z*1.,
 			    otf.vals[0].get(l,z).re,
 			    otf.vals[1].get(l,z).re,
 			    otf.vals[2].get(l,z).re ));
+
+			accu0 += otf.vals[0].get(l,z).abs();
 		}
-		System.out.println("    #A");
+		System.out.println(String.format(" %5.3f %6.4f %6.4f %6.4f %6.4f %6.4f #A2d", 
+		    l*otf.cyclesPerMicronLateral, accu0+otf.vals[0].get(l,0).abs(), accu0,
+		    otf.vals[0].get(l,0).abs(),
+		    otf.vals[0].get(l,1).abs(),
+		    otf.vals[0].get(l,2).abs()
+		    ));
 	    }
 
-	    for (float cyclax = 0; cyclax < 8; cyclax +=0.025 ) {
-		for (float cycllat = 0; cycllat < 8; cycllat +=0.025 ) {
+	    for (float cycllat = 0; cycllat < 8; cycllat +=0.025 ) {
+		for (float cyclax = 0; cyclax < 8; cyclax +=0.025 ) {
 		    System.out.println(String.format(" %5.3f %5.3f %6.4f %6.4f %6.4f #B", 
 			cycllat, cyclax, 
 			otf.getOtfVal(0, cycllat, cyclax).re, 
