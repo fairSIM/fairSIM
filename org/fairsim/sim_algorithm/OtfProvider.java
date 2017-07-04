@@ -672,8 +672,15 @@ public class OtfProvider {
 	    OtfProvider otfl = OtfProvider.loadFromConfig( cfg ); 
 
 	    for (float cycl = 0; cycl < 6; cycl +=0.025 )
-		System.out.println(String.format(" %5.3f %6.4f A", 
-		    cycl, otfl.getOtfVal(0, cycl, false).re ));
+		System.out.println(String.format(" %5.3f %6.4f %6.4f %6.4f %6.4f %6.4f %6.4f A", 
+		    cycl, 
+		    otfl.getOtfVal(0, cycl, false).abs(), 
+		    otfl.getOtfVal(1, cycl, false).abs(), 
+		    otfl.getOtfVal(2, cycl, false).abs(), 
+		    otfl.getOtfVal(0, cycl, false).re, 
+		    otfl.getOtfVal(1, cycl, false).re, 
+		    otfl.getOtfVal(2, cycl, false).re 
+		    ));
 	    
 	    // save as test 
 	    if ( args.length >= 3 ) {
