@@ -110,7 +110,7 @@ public class Test3d implements PlugIn {
 
 	try {
 	    cfg	    = Conf.loadFile(cfgfile);
-	    otfPr   = OtfProvider3D.loadFromConfig( cfg );
+	    otfPr   = OtfProvider3D.loadFromConfig( cfg.r() );
 	    otfPr2D = OtfProvider.loadFromConfig( cfg );
 	} catch (Exception e) {
 	    Tool.trace(e.toString());

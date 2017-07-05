@@ -53,6 +53,9 @@ public class OtfProvider3D {
     private double vecCyclesPerMicronLateral=-1;
     private double vecCyclesPerMicronAxial=-1;
 
+    // meta information
+    String otfName = "no-name-yet";
+    String otfMeta = "no extra information";
 
     // ------ setup / access methods -------
 
@@ -230,10 +233,20 @@ public class OtfProvider3D {
      *  file. 
      *	@param cfg The config to load from
      *  */
+    @Deprecated
     public static OtfProvider3D loadFromConfig( Conf cfg ) 
 	throws Conf.EntryNotFoundException {
 
 	Conf.Folder fld = cfg.r().cd("otf3d");
+	return loadFromConfig( fld );
+    }
+
+    /** Create an OTF stored in a string representation, usually read from
+     *  file. 
+     *	@param cfg The config to load from
+     *  */
+    public static OtfProvider3D loadFromConfig( Conf.Folder fld ) 
+	throws Conf.EntryNotFoundException {
 
 	OtfProvider3D ret = new OtfProvider3D();
 
@@ -245,6 +258,12 @@ public class OtfProvider3D {
 	if (!fld.contains("data"))
 	    throw new RuntimeException("No data section found, needed for 3d");
 
+	// copy meta data
+	if (fld.contains("otf-name"))
+	    ret.otfName = fld.getStr("otf-name").val();
+
+	if (fld.contains("otf-metainfo"))
+	    ret.otfMeta = fld.getStr("otf-metainfo").val();
 	    
 	// copy parameters
 	Conf.Folder data = fld.cd("data");
@@ -283,6 +302,111 @@ public class OtfProvider3D {
     }
 
 
+    /** Initialize OTF from raw float arrays */
+    public static OtfProvider3D createFromData( 
+	int nrBands,
+	float [][] bandsData,
+	double cyclMicronLateral, double cyclMicronAxial,
+	int samplesLateral, int samplesAxial ) {
+
+	OtfProvider3D ret = new OtfProvider3D();
+	
+	ret.na = 1.4;
+	ret.lambda = 300;
+	ret.cutOff = 1000 / (ret.lambda / ret.na /2);
+
+	ret.maxBand = nrBands;
+
+	ret.samplesLateral = samplesLateral;
+	ret.samplesAxial   = samplesAxial;
+
+	ret.cyclesPerMicronLateral = cyclMicronLateral;
+	ret.cyclesPerMicronAxial   = cyclMicronAxial;
+	
+	// init bands
+	ret.vals	= Vec2d.createArrayCplx( ret.maxBand, 
+	    ret.samplesLateral, ret.samplesAxial );
+	
+	for (int b=0; b<ret.maxBand; b++) {
+	    if (bandsData[b].length != 2*ret.samplesAxial * ret.samplesLateral )
+		throw new RuntimeException("OTF read data length mismatch: "+bandsData[b].length+" "+
+		    ret.samplesAxial+" "+ret.samplesLateral);
+	   
+	    float [] val = bandsData[b];
+
+	    int i=0;
+	    for (int  z=0;  z< ret.samplesAxial   ;  z++)  
+	    for (int xy=0; xy< ret.samplesLateral ; xy++) { 
+		ret.vals[b].set(xy,z , new Cplx.Float( val[2*i], val[2*i+1]));	    
+		i++;
+	    }
+
+	}
+	return ret;
+    }
+
+	
+    public String getOtfInfoString() {
+
+	String ret ="OTF (meta)data\n------";
+	ret += "\nname:  "+otfName;
+	ret += "\nneta:  "+otfMeta;
+	ret += "\nNA:    "+String.format("%4.3f", na);
+	ret += "\nbands: "+maxBand;
+	ret += "\nem. wavelength: "+lambda;
+	ret += "\nsamples lateal:   "+samplesLateral;
+	ret += "\nsamples axial:    "+samplesAxial;
+	ret += "\npxl size lateral: "+String.format("%7.5f",cyclesPerMicronLateral);
+	ret += "\npxl size axial:   "+String.format("%7.5f",cyclesPerMicronAxial);
+	return ret;
+    }
+
+
+
+
+
+
+
+    // lots of setters / getters
+
+    @Override
+    public String toString() {
+	return "OTF " +otfName.trim()+ " (@" +String.format("%4d nm)",(int)lambda);
+    }
+
+
+    public String getName() {
+	return otfName;
+    }
+    public String getMeta() {
+	return otfName;
+    }
+
+    public void setName( String name ){
+	otfName = name.trim();
+    }
+    
+    public void setMeta( String meta ){
+	otfMeta = meta.trim();
+    }
+
+    public double getNA() {
+	return na;
+    }
+
+    public double getLambda() {
+	return lambda;
+    }
+
+    public void setNA( double in_na ) {
+	na = in_na;
+	cutOff = 1000 / (lambda / na /2);
+    }
+    
+    public void setLambda( double in_lambda ) {
+	lambda = in_lambda;
+	cutOff = 1000 / (lambda / na /2);
+    }
 
 
 

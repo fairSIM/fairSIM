@@ -29,6 +29,9 @@ import javax.swing.JComboBox;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JList;
 import javax.swing.JComponent;
+import javax.swing.DefaultListModel;
+import javax.swing.ListModel;
+
 
 import javax.swing.BoxLayout;
 import javax.swing.Box;
@@ -310,6 +313,22 @@ public class Tiles {
 	    super();
 	}
     };
+
+
+    /** Provides a type-save JList, like in java7 */
+    public static class TGuiList<T> extends JList {
+	
+	DefaultListModel dlm = new DefaultListModel();
+
+	public TGuiList() {
+	    super();
+	    this.setModel( dlm );
+	}
+    
+	public void addElement( T e ) {
+	    dlm.addElement( e );
+	}
+    }
 
     /** Container */
     public static class Container<T> {
