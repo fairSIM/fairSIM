@@ -320,14 +320,42 @@ public class Tiles {
 	
 	DefaultListModel dlm = new DefaultListModel();
 
+	/** Creates a List */
 	public TGuiList() {
 	    super();
 	    this.setModel( dlm );
 	}
     
+	/** Adds a new element to the end of the list */
 	public void addElement( T e ) {
 	    dlm.addElement( e );
 	}
+   
+	/** Returns the number of elements in the list */
+	public int getListLength() {
+	    return dlm.size();
+	}
+    
+	/** Return all list elements as an array */
+	public List<T> getAllElements() {
+	    @SuppressWarnings("unchecked")
+	    List<T> ret  = java.util.Collections.list( (java.util.Enumeration<T>)dlm.elements() );
+	    return ret;
+	}
+
+	/** Return the currently selected element, or null */
+	public T getSelectedElement() {
+	    @SuppressWarnings("unchecked")
+	    T ret =  (T)getSelectedValue();
+	    return ret;
+	}
+
+	/** Return the element at index i */
+	public T get(int i) {
+	    return (T)get(i);
+	}
+
+
     }
 
     /** Container */

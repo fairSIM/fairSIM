@@ -166,11 +166,13 @@ public class DefineMaschineGui {
 	for ( int ch = 0; ch < nrChannels; ch ++ ) {
 
 	    Conf.Folder chFldr = cfg.r().mk(String.format("channel-%02d", ch));
-	    chFldr.newInt("exitation-wavelength").setVal(300);
+	    chFldr.newInt("excitation-wavelength").setVal(300);
 	    chFldr.newStr("channel-name").val("no name set yet");
 
 	    SimParam sp = SimParam.create3d( nrBands, nrAngles, nrPhases );
 	    sp.saveConfig( chFldr );
+	
+	    chFldr.newInt("nr-OTFs").setVal( 0 );
 
 	}
 
@@ -214,6 +216,13 @@ public class DefineMaschineGui {
 	JButton saveConfigButton = new JButton("save config");
 	buttonPanel.add( saveConfigButton);
 
+	saveConfigButton.addActionListener( new ActionListener() {
+	    public void actionPerformed( ActionEvent e ) {
+		saveConfig();
+	    }
+	});
+
+
 	mainPanel.add( tabsPane );
 	mainPanel.add( buttonPanel );
 
@@ -224,7 +233,43 @@ public class DefineMaschineGui {
 
     }
 
-    
+    // save the current config
+    void saveConfig() {
+
+	JFileChooser saveFileChooser = new JFileChooser();
+	saveFileChooser.setDialogType( JFileChooser.SAVE_DIALOG );
+	int ret = saveFileChooser.showSaveDialog( baseframe );
+
+	if ( ret != JFileChooser.APPROVE_OPTION ) {
+	    return;
+	}
+
+
+	// setup new conf object to store
+	Conf cfg = new Conf("fairsim-3d");	
+	Conf.Folder fld = cfg.r();
+
+	fld.newInt("nr-channels").setVal( channels.size() );
+
+	// loop through all channels
+	int i=0;
+	for ( ChannelTab ct : channels ) {
+	    ct.saveTo( fld.mk(String.format("channel-%02d", i++) ));
+	}
+	
+	// store the full config
+	try {
+	    cfg.saveFile( saveFileChooser.getSelectedFile() );	
+	} catch (Conf.SomeIOException ex) {
+	    JOptionPane.showMessageDialog(baseframe, 
+	    ex.toString(), "Problem saving", JOptionPane.ERROR_MESSAGE);
+	}
+
+    }
+
+
+
+
     // display each channel    
     class ChannelTab {
 	
@@ -234,6 +279,9 @@ public class DefineMaschineGui {
 
 	final Conf.Folder ourFolder;
 	final Tiles.LNSpinner [][] modSpinners;
+	    
+	final JTextField simNameField = new JTextField("",20);
+	final Tiles.LNSpinner wavelengthSpinner ;
 	
 	final JTextComponent simParamAsText = new JEditorPane();
 	SimParam sp;
@@ -252,11 +300,10 @@ public class DefineMaschineGui {
 	    generalPanel.setBorder(BorderFactory.createTitledBorder("Name and wavelegth") );
 
 	    JLabel simNameLabel = new JLabel("ch-name:");
-	    JTextField simNameField = new JTextField("",20);
 	    simNameField.setText(chFld.getStr("channel-name").val());
 
-	    Tiles.LNSpinner wavelengthSpinner = new Tiles.LNSpinner( "exitation wavelength",
-		chFld.getInt("exitation-wavelength").val(), 200, 1000,1); 
+	    wavelengthSpinner = new Tiles.LNSpinner( "exitation wavelength",
+		chFld.getInt("excitation-wavelength").val(), 200, 1000,1); 
 
 	    generalPanel.add( simNameLabel );
 	    generalPanel.add( simNameField );
@@ -346,6 +393,15 @@ public class DefineMaschineGui {
 	    listPanel.add( otfList );
 
 
+	    // fill the OTF list
+	    for ( int i = 0 ; i<ourFolder.getInt("nr-OTFs").val() ; i++) {
+		OtfProvider3D newOtf = OtfProvider3D.loadFromConfig( 
+		    ourFolder.cd(String.format("otf-%02d",i)));
+		otfList.addElement( newOtf );
+	    }
+
+
+	    // create buttons to interact with OTFs
 	    JPanel buttonPanel = new JPanel();
 	    
 	    JButton loadOtfButton = new JButton("add fairSIM OTF");
@@ -373,10 +429,23 @@ public class DefineMaschineGui {
 		}
 	    });
 
+	    JButton editOtfButton = new JButton("edit OTF metadata");
+	    editOtfButton.addActionListener( new ActionListener(){
+		@Override
+		public void actionPerformed( ActionEvent e ) {
+		    OtfProvider3D otf = otfList.getSelectedElement();
+		    if (otf!=null) {
+			showOtfParamEditWindow( otf, baseframe );
+		    }
+		}
+	    });
 
 	    buttonPanel.setLayout( new BoxLayout( buttonPanel, BoxLayout.PAGE_AXIS));
 	    buttonPanel.add( loadOtfButton );
+	    buttonPanel.add( Box.createRigidArea( new Dimension(0,3)));
 	    buttonPanel.add( convertOtfButton );
+	    buttonPanel.add( Box.createRigidArea( new Dimension(0,3)));
+	    buttonPanel.add( editOtfButton );
 
 	    otfPanel.add( buttonPanel);
 	    otfPanel.add( listPanel);
@@ -488,6 +557,25 @@ public class DefineMaschineGui {
 
 	    }
 
+	}
+
+	// save everything in this channel to config
+	void saveTo( Conf.Folder chFldr ) {
+	    
+	    // save our metadata
+	    chFldr.newStr("channel-name").val( simNameField.getText() );
+	    chFldr.newInt("excitation-wavelength").setVal( (int)wavelengthSpinner.getVal() );
+	    
+	    // save the SIM parameters
+	    sp.saveConfig( chFldr );
+
+	    // save the OTFs
+	    chFldr.newInt("nr-OTFs").setVal( otfList.getListLength() );
+
+	    int i=0;
+	    for ( OtfProvider3D otf : otfList.getAllElements() ) {
+		otf.saveConfig( chFldr.mk(String.format("otf-%02d", i++)));
+	    }
 	}
 
     }
@@ -603,9 +691,16 @@ public class DefineMaschineGui {
     }
 	
 
-    public static void main( String [] arg ) {
-	setupDefineMaschineGui();
-	//new DefineMaschineGui();
+    /** For testing, start with or without config file as argument */
+    public static void main( String [] arg ) 
+	throws Conf.SomeIOException, Conf.EntryNotFoundException {
+	
+	if (arg.length==0) {
+	    setupDefineMaschineGui();
+	} else {
+	    Conf cfg = Conf.loadFile( arg[0]);
+	    new DefineMaschineGui( cfg.cd("fairsim-3d") );
+	}
     }
 
 

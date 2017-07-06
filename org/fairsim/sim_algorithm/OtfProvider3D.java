@@ -302,6 +302,47 @@ public class OtfProvider3D {
     }
 
 
+    /** Save the OTF to a conf object */
+    public void saveConfig( Conf.Folder fld ) {
+
+	fld.newDbl("NA").setVal( na );
+	fld.newInt("emission").setVal( (int)lambda );
+	
+	fld.newStr("otf-name").val( otfName.trim() );
+	fld.newStr("otf-meta").val( otfMeta );
+
+	// write out data
+	Conf.Folder data = fld.mk("data");
+	data.newInt("bands").setVal( maxBand );
+
+
+	data.newInt("samples-lateral").setVal( samplesLateral );
+	data.newInt("samples-axial").setVal( samplesAxial );
+
+	data.newDbl("cycles-lateral").setVal( cyclesPerMicronLateral );
+	data.newDbl("cycles-axial").setVal( cyclesPerMicronAxial );
+    
+	for (int b=0; b<maxBand; b++) {
+	    
+	    // write the band to a float array
+	    float [] fltBand = new float[  samplesAxial*samplesLateral*2 ];
+	    int i=0;
+
+	    for (int  z=0;  z< samplesAxial   ;  z++)  
+	    for (int xy=0; xy< samplesLateral ; xy++) { 
+		fltBand[i*2+0] = vals[b].get(xy,z).re;	    
+		fltBand[i*2+1] = vals[b].get(xy,z).im;	    
+		i++;
+	    }
+
+	    // store in a 'data' entry
+	    data.newData(String.format("band-%d",b)).setVal( Conf.toByte( fltBand));
+
+	}
+    }
+
+
+
     /** Initialize OTF from raw float arrays */
     public static OtfProvider3D createFromData( 
 	int nrBands,
@@ -371,7 +412,7 @@ public class OtfProvider3D {
 
     @Override
     public String toString() {
-	return "OTF " +otfName.trim()+ " (@" +String.format("%4d nm)",(int)lambda);
+	return otfName.trim()+ " (@" +String.format("%4d nm)",(int)lambda);
     }
 
 
