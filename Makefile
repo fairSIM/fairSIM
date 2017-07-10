@@ -49,33 +49,19 @@ org/fairsim/extern/jtransforms/FloatFFT_2D.class: $(wildcard org/fairsim/extern/
 
 
 git-version :
-	git rev-parse HEAD > org/fairsim/git-version.txt  ; \
-	git tag --contains >> org/fairsim/git-version.txt ; \
-	echo "n/a" >> org/fairsim/git-version.txt
+	git rev-parse HEAD > resources/org/fairsim/git-version.txt  ; \
+	git tag --contains >> resources/org/fairsim/git-version.txt ; \
+	echo "n/a" >> resources/org/fairsim/git-version.txt
 	 	
 
-jarsrc	: git-verison
-	$(JAR) -cvfm fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).jar \
-	Manifest.txt plugins.config \
-	org/fairsim/git-version.txt \
-	org/fairsim/*/*.class  org/fairsim/extern/*/*.class  \
-	org/fairsim/resources/* \
-	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
-
-tarsrc	: git-version
-	tar -cvjf fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).tar.bz2 \
-	Manifest.txt plugins.config \
-	org/fairsim/git-version.txt \
-	org/fairsim/resources/* \
-	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
-    
 
 jar:	git-version	
-	$(JAR) -cvfm fairSIM_plugin_$(shell head -c 10 org/fairsim/git-version.txt).jar \
-	Manifest.txt plugins.config \
-	org/fairsim/git-version.txt \
-	org/fairsim/resources/* \
-	org/fairsim/*/*.class  org/fairsim/extern/*/*.class 
+	$(JAR) -cvfm fairSIM_plugin_$(shell head -c 10 resources/org/fairsim/git-version.txt).jar \
+	Manifest.txt \
+	org/fairsim/*/*.class  org/fairsim/extern/*/*.class \
+	-C ./resources org/fairsim/git-version.txt \
+	-C ./resources org/fairsim/resources/. \
+	-C ./resources plugins.config 
 
 
 doc:	doc/index.html
