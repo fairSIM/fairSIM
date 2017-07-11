@@ -41,7 +41,6 @@ import org.w3c.dom.NodeList;
 // Data structure
 import java.util.Map;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Locale;
@@ -50,14 +49,16 @@ import java.util.Locale;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.DoubleBuffer;
-import javax.xml.bind.DatatypeConverter;
-
 
 /** Wrappers around entries to a configuration file */
 public class Conf {
 
     final String namespace;
     final Folder root;
+    
+    static {
+        Locale.setDefault(Locale.ENGLISH);
+    }
 
     /** Create a new configuration with a namespace */
     public Conf(String namespace) {
@@ -222,9 +223,22 @@ public class Conf {
 	    return getEntryOrFail( name, DoubleEntry.class ); 
 	}
 	
+	/** Return the TimeDateEntry named 'name', or null.
+	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
+	public TimeDateEntry getTDE(String name) throws EntryNotFoundException {    
+	    return getEntryOrFail( name, TimeDateEntry.class ); 
+	}
+
 	/** Create a new Double 'd' named 'name' */
 	public DoubleEntry newDbl(String name ) {
 	    DoubleEntry e = new DoubleEntry();
+	    setEntry(name, e);
+	    return e;
+	}
+	
+	/** Create a new TimeDateEntry 'd' named 'name' */
+	public TimeDateEntry newTDE(String name ) {
+	    TimeDateEntry e = new TimeDateEntry();
 	    setEntry(name, e);
 	    return e;
 	}
@@ -526,6 +540,53 @@ public class Conf {
 
     }
 
+    /** Entry for storing a time and date */
+    public static class TimeDateEntry extends Entry {
+
+	long ourTime = 0;
+
+	/** Get first value */
+	public long val() {
+	    return ourTime;
+	}
+	/** Sets the entry to the current timestamp */
+	public TimeDateEntry setToCurrent() {
+	    ourTime = System.currentTimeMillis();
+	    return this;
+	}
+
+	/** Sets the entry to a timestamp provided in ms since 1 Jan 1970 */
+	public TimeDateEntry set( long ms ) {
+	    ourTime = ms;
+	    return this;
+	}
+
+	@Override
+	String prettyPrint() {
+	    String ret  = "(TIME/DATE) "+Tool.readableTimeStampMillis(ourTime,true);
+	    return ret;
+	}
+	
+	@Override
+	String getText() {
+	    String inttext=" "+ourTime+" ";
+	    return inttext;
+	}
+	
+	@Override
+	String getType() { return "timepoint"; }
+	
+	@Override
+	void fromText( String text ) {
+	    Scanner sc = new Scanner(text);
+	    sc.useLocale( Locale.US );
+	   
+	    if ( sc.hasNextLong() )
+		ourTime = sc.nextLong();
+	}
+	
+    }
+   
 
     
     // ========================================================================
@@ -541,7 +602,7 @@ public class Conf {
     /** Write the config to an XML file */
     public boolean saveFile( File xmlfile ) 
 	throws SomeIOException {
-	
+        
 	DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 	dbf.setNamespaceAware(false);
 	dbf.setValidating(false);
@@ -569,7 +630,7 @@ public class Conf {
 	} catch (java.lang.Exception e) {
 	    throw new SomeIOException(e);
 	}
-
+        
 	return true;
     }
     
@@ -651,7 +712,7 @@ public class Conf {
 		if ( t.equals( "int" )) 
 		    fdl.newInt( name ).fromText( c );
 		
-		if ( t.equals( "decimal" )) 
+		if ( t.equals( "decimal" ))
 		    fdl.newDbl( name ).fromText( c );
 		
 		if ( t.equals( "string" )) 
@@ -659,6 +720,9 @@ public class Conf {
 		
 		if ( t.equals( "data" )) 
 		    fdl.newData( name ).fromText( c );
+		
+		if ( t.equals( "timepoint" )) 
+		    fdl.newTDE( name ).fromText( c );
 	    
 	    
 	    } catch ( Exception ex ) {

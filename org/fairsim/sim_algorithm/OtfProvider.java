@@ -125,6 +125,41 @@ public class OtfProvider {
 	return ret;
     }
 
+    /** Copy an existing OTF */
+    public OtfProvider duplicate( ) {
+	
+	OtfProvider ret = new OtfProvider();
+	
+	ret.cyclesPerMicron	= this.cyclesPerMicron;
+	ret.na			= this.na;
+	ret.lambda		= this.lambda;
+	ret.cutOff		= this.cutOff;
+	ret.isEstimate		= this.isEstimate;
+	ret.isMultiBand		= this.isMultiBand;
+	ret.maxBand		= this.maxBand;
+	ret.samplesLateral	= this.samplesLateral;
+	ret.vecSize		= this.vecSize;
+	ret.vecCyclesPerMicron	= this.vecCyclesPerMicron;
+	
+	ret.vals	= new Cplx.Float[ ret.maxBand ][ ret.samplesLateral ];
+	ret.valsAtt	= new Cplx.Float[ ret.maxBand ][ ret.samplesLateral ];
+	ret.valsOnlyAtt = new float[ ret.maxBand ][ ret.samplesLateral ];
+
+	for (int b=0; b<this.maxBand; b++) {
+	    for ( int s=0; s<this.samplesLateral; s++ ) {
+		ret.vals[b][s]		= this.vals[b][s];
+		ret.valsAtt[b][s]	= this.valsAtt[b][s];
+		ret.valsOnlyAtt[b][s]	= this.valsOnlyAtt[b][s];
+	    }
+	}
+
+	ret.setAttenuation( this.attStrength, this.attFWHM );
+	ret.switchAttenuation( this.useAttenuation );
+	
+	return ret;
+    }
+
+
     /** Returns a short description (GUI display, etc) */
     public String printState(boolean html) {
 	String ret ="";
@@ -389,6 +424,8 @@ public class OtfProvider {
 
     // ------ Other vectors ------
 
+    // TODO: Deprecate this function, as the APO should not need to be cplx?
+
     /** Creates an apotization vector.
      *  This yields an ideal OTF, with some 'bend' (augmenting medium frequencies),
      *  and a new cutoff value. Usually, cutoff is set to 2x original cutoff.
@@ -420,6 +457,39 @@ public class OtfProvider {
 	    }
 	}; 
     }
+
+    /** Creates an apotization vector.
+     *  This yields an ideal OTF, with some 'bend' (augmenting medium frequencies),
+     *  and a new cutoff value. Usually, cutoff is set to 2x original cutoff.
+     *  Bend is used as "apo = idealOtf^bend"
+     *  @param vec  Vector to write to
+     *  @param bend Bend to augment medium frequencies, 0..1, 1 for ideal OTF
+     *  @param cutOff Cutoff, as factor to the OTF cutoff (so e.g. 2 for 2x lateral improvement) */
+    public void writeApoVector(final Vec2d.Real vec, final double bend, final double cutOff ) {
+	if (vecCyclesPerMicron <=0)
+	    throw new IllegalStateException("Vector pixel size not initialized");
+	final int w = vec.vectorWidth(), h = vec.vectorHeight();
+
+	//for (int y=0; y<h; y++)
+	new SimpleMT.PFor(0,h) {
+	    public void at(int y) {
+		for (int x=0; x<w; x++) {
+		    // wrap to coordinates: x in [-w/2,w/2], y in [-h/2, h/2]
+		    double xh = (x<w/2)?( x):(x-w);
+		    double yh = (y<h/2)?(-y):(h-y);
+		    // from these, calculate distance to 0, convert to phys. units
+		    double rad = MTool.fhypot( xh, yh );
+		    double cycl = rad * vecCyclesPerMicron;
+		    // calculate fraction of cutoff, get idealOTF, augment with 'bend'
+		    double frac = cycl / (getCutoff()*cutOff);
+		    double val  = Math.pow( valIdealOTF( frac ), bend );
+		    // set output to that value	
+		    vec.set(x,y, (float)val);
+		}
+	    }
+	}; 
+    }
+
 
     /** Creates an attenuation vector (for optical sectioning).
      *  Pixel size of output has to be set via {@link #setPixelSize}.
@@ -489,13 +559,22 @@ public class OtfProvider {
 
     // ------ Load / Save operations ------
 
+
     /** Create an OTF stored in a config.
      *	@param cfg The config to load from
      *  */
     public static OtfProvider loadFromConfig( Conf cfg ) 
 	throws Conf.EntryNotFoundException {
+	    return loadFromConfig( cfg.r() );
+	}
 
-	Conf.Folder fld = cfg.r().cd("otf2d");
+	/** Create an OTF stored in a config folder.
+	 *	@param cfg The config to load from
+	 *  */
+	public static OtfProvider loadFromConfig( Conf.Folder cfg ) 
+	    throws Conf.EntryNotFoundException {
+
+	    Conf.Folder fld = cfg.cd("otf2d");
 	OtfProvider ret = null;
 	boolean estimate = (!fld.contains("data"));
 	

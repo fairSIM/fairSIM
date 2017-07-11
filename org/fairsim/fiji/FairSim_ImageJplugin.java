@@ -103,6 +103,12 @@ public class FairSim_ImageJplugin implements PlugIn {
 		    IJ.log(w);
 		}
 		@Override
+		public void writeError(final String w, boolean fatal) {
+		    IJ.log("ERR: "+w);
+		    if (fatal)
+			IJ.error(w);
+		}
+		@Override
 		public void writeShortMessage(String w) {
 		    IJ.showStatus(w);
 		}
@@ -119,7 +125,12 @@ public class FairSim_ImageJplugin implements PlugIn {
 		public void writeShortMessage(String w) {
 		    IJ.showStatus(w);
 		}
-
+		@Override
+		public void writeError(final String w, boolean fatal) {
+		    IJ.log("ERR: "+w);
+		    if (fatal)
+			IJ.error(w);
+		}
 	    });
 
 	}

@@ -78,6 +78,8 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private OtfProvider   currentOtf2D=null;
     private OtfProvider3D currentOtf3D=null;
 
+    // creation/modification date
+    private long paramDate = System.currentTimeMillis();
     private long runtimeTimestamp = 0;
 
 
@@ -122,7 +124,6 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     }
    
 
-
     /** New set of SIM reconstruction parameters for 3D reconstruction. 
      *	@param bands  Number of bands
      *	@param dirs   Number of pattern orientations
@@ -152,11 +153,40 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	return sp;
     }
    
+    /** Copy an existing SimParam dataset */
+    public SimParam duplicate() {
+	SimParam ret = new SimParam(nrBands, nrDirs, nrPhases, this.is3D);
 
+	// copy the simple variables
+	ret.imgSize		    = this.imgSize;
+	ret.micronsPerPixel	    = this.micronsPerPixel;
+	ret.cyclesPerMicron	    = this.cyclesPerMicron;
+	ret.stackSize		    = this.stackSize;
+	ret.micronsPerSlice	    = this.micronsPerSlice;
+	ret.cyclesPerMicronInZ	    = this.cyclesPerMicronInZ;
+	ret.imgSeq		    = this.imgSeq;
+	ret.wienerFilterParameter   = this.wienerFilterParameter;
+	ret.apoCutOff		    = this.apoCutOff;
+	ret.modLowLimit		    = this.modLowLimit;
+	ret.modHighLimit	    = this.modHighLimit;
+	ret.paramDate		    = this.paramDate;
+
+	// copy the OTFs
+	if ( this.currentOtf2D!=null )
+	    ret.currentOtf2D = this.currentOtf2D.duplicate();
+	if ( this.currentOtf3D!=null )
+	    ret.currentOtf3D = this.currentOtf3D.duplicate();
+	
+	// copy the directions
+	for (int d=0; d<this.nrDirs; d++)
+	    ret.directions[d] = this.directions[d].duplicate();
+
+	return ret;
+
+    }
 
 
     
-
     /** Get parameter subset for pattern direction 'i' */
     public Dir dir(int i) {
 	return directions[i];
@@ -223,6 +253,15 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	cyclesPerMicron = 1/(pxl*microns);
 	this.otf( currentOtf2D );	// propagate size to OTF
 	return this;
+    }
+
+
+    /** Set the width / height of the raw images to process.
+     *  @see setPxlSize
+     *  @param pxl width / height of raw images
+     */
+    public SimParam setPxlSize(int pxl) {
+        return setPxlSize( pxl, micronsPerPixel );
     }
 
 
@@ -371,6 +410,22 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	
 	}
 
+	/** copy these direction values */
+	Dir duplicate() {
+	    Dir ret = new Dir(nrBands, nrPhases, thisBand);
+
+	    ret.pX		    = this.pX;
+	    ret.pY		    = this.pY;
+	    ret.phaOff		    = this.phaOff;
+	    ret.hasIndividualPhases = this.hasIndividualPhases;
+	    
+	    System.arraycopy( this.phases , 0 , ret.phases, 0, this.phases.length);
+	    System.arraycopy( this.modul  , 0 , ret.modul , 0, this.modul.length );
+
+	    return ret;
+	}
+
+
 	void failBand(int i) {
 	    if ((i<0)||(i>=nrBands))
 		throw new RuntimeException("Wrong band index");
@@ -514,6 +569,23 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 
     // ----------------------------------------------------------------------------------
     
+    /** get the timestamp associated with this parameter set */
+    public long getParamTimestamp() {
+	return paramDate; 
+    }
+
+    /** set the timestamp associated with this 
+     *	parameter set to current system time */
+    public void setParamTimestamp() {
+	paramDate = System.currentTimeMillis();
+    }
+    
+    /** set the timestamp associated with this parameter set */
+    public void setParamTimestamp( long ms ) {
+	paramDate = ms;
+    }
+
+
     /** Save the parameters to a configuration folder.
 	Creates sub-folders 'sim-param'  */
     public void saveConfig( Conf.Folder cfg ) {
@@ -528,6 +600,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
 	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );
 	fd.newDbl("apodization-cutoff").setVal( apoCutOff );
+	fd.newTDE("timestamp").set( paramDate );
     
 	for ( int d=0; d < nrDirs; d++ ) {
 	    Conf.Folder df = fd.mk(String.format("dir-%d",d));
@@ -563,6 +636,10 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	ret.setPxlSize( fd.getInt("img-size-pxl").val(),
 			fd.getDbl("microns-per-pxl").val() );
 
+	// timestamp of config
+	if ( fd.contains("timestamp") ) {
+	    ret.setParamTimestamp( fd.getTDE("timestamp").val());
+	} 
 	// image type
 	IMGSEQ isq = IMGSEQ.fromName( fd.getStr("img-seq").val() );
 	ret.setImgSeq(isq);
@@ -734,12 +811,15 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     /** Returns a multi-line, human-readable output of parameters */
     public String prettyPrint(boolean phaInDeg) {
 	final double pf = ((phaInDeg)?(180/Math.PI):(1));
-	String ret = "#--- SIM parameter summary ---\n";
-	ret += String.format("# pxl %7.5f microns (freq pxl %8.6f cycles/micron)\n ----\n",
+	String ret = "--- SIM parameter summary ---\n";
+	ret += String.format("pxl %7.5f microns (freq pxl %8.6f cycles/micron)\n",
 	     micronsPerPixel, cyclesPerMicron);
+	    
+	ret += String.format("Nr bands: %d, timestamp: %s\n ------\n", 
+	    nrBands, Tool.readableTimeStampMillis(paramDate, true));
+	
 	for ( Dir d : directions ) {
 	    int b = d.nrBand()-1; 
-	    ret += String.format("Nr bands: %d, shift of outer-most band:\n", b);
 	    ret += String.format("px: %6.3f py: %6.3f (len %6.3f) \n",
 		d.px(b), d.py(b), Math.sqrt(d.px(b)*d.px(b)+d.py(b)*d.py(b)));
 	    ret += String.format("phases (%s) [ ",((phaInDeg)?("deg"):("rad")) );

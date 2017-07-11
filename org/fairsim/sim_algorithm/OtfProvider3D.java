@@ -226,7 +226,31 @@ public class OtfProvider3D {
 	final double kx, final double ky) {
 	otfToVector( vec, band, kx, ky, true ) ; 
     }
-    
+
+    /** Copy an existing OTF */
+    public OtfProvider3D duplicate() {
+	
+	OtfProvider3D ret = new OtfProvider3D();
+
+	ret.cyclesPerMicronLateral	= this.cyclesPerMicronLateral;
+	ret.cyclesPerMicronAxial	= this.cyclesPerMicronAxial;
+	ret.na				= this.na;
+	ret.lambda			= this.lambda;
+	ret.cutOff			= this.cutOff;
+	ret.samplesLateral		= this.samplesLateral;
+	ret.samplesAxial		= this.samplesAxial;
+	ret.isMultiBand			= this.isMultiBand;
+	ret.maxBand			= this.maxBand;
+	ret.vecCyclesPerMicronLateral	= this.vecCyclesPerMicronLateral;
+	ret.vecCyclesPerMicronAxial	= this.vecCyclesPerMicronAxial;
+
+	ret.vals = new Vec2d.Cplx[ this.vals.length ];
+	for (  int i=0; i< this.vals.length; i++)
+	    ret.vals[i] = this.vals[i].duplicate();
+
+	return ret;
+    }
+
     // ------ Load / Save operations ------
 
     /** Create an OTF stored in a string representation, usually read from
