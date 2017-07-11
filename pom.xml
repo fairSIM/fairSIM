@@ -1,0 +1,192 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <properties>
+    <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
+  </properties>
+
+  <groupId>org.fairsim</groupId>
+  <artifactId>fairSIM</artifactId>
+  <version>1.1.0-beta4</version>
+  <packaging>jar</packaging>
+
+  <name>fairSIM</name>
+  <description>Free Analysis and Interactive Reconstruction for Structured Illumination Microscopy</description>
+  <url>http://www.fairsim.org</url>
+  <inceptionYear>2013</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>GNU General Public License</name>
+      <url>https://gnu.org/licenses/gpl.html</url>
+      <distribution>repo</distribution>
+      <comments>Version 2 of the License or (at your option) any later version.</comments>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Marcel Müller</name>
+      <email>muellerphysics@gmail.com</email>
+      <roles>
+        <role>developer</role>
+      </roles>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/fairSIM/fairSIM</connection>
+    <developerConnection>scm:git:git@github.com:fairSIM/fairSIM</developerConnection>
+    <tag>HEAD</tag>
+    <url>http://github.com/fairSIM/fairSIM</url>
+  </scm>
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>http://github.com/fairSIM/fairSIM/issues</url>
+  </issueManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>net.imagej</groupId>
+      <artifactId>ij</artifactId>
+      <version>RELEASE</version>
+    </dependency>
+
+<!-- not yet 
+    <dependency>
+	<groupId>com.github.wendykierp</groupId>
+	<artifactId>JTransforms</artifactId>
+	<version>3.1</version>
+    </dependency>
+-->
+
+    <!-- Test dependencies -->
+<!-- not yet 
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>RELEASE</version>
+      <scope>test</scope>
+    </dependency>
+-->
+
+  </dependencies>
+
+  <repositories>
+    <repository>
+      <id>imagej.public</id>
+      <url>http://maven.imagej.net/content/groups/public</url>
+    </repository>
+  </repositories>
+
+
+  <build>
+
+    <!-- ImageJ plugins need an underscore on the filename of the jar. -->
+    <finalName>${project.artifactId}_plugin_mvn-${buildNumber}</finalName>
+
+    <sourceDirectory>./</sourceDirectory>
+
+    <resources>
+	<resource>
+	    <directory>./</directory>
+	    <filtering>true</filtering>
+	    <includes>
+		<include>org/fairsim/git-version-maven.txt</include>
+	    </includes>
+	</resource>
+	<resource>
+	    <directory>./</directory>
+	    <filtering>false</filtering>
+	    <includes>
+		<include>org/fairsim/resources/*</include>
+		<include>plugins.config</include>
+	    </includes>
+	</resource>
+    </resources>
+
+    <plugins>
+      <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <!--
+          Since Maven 3, we really need to specify a version number for
+          plugins, but RELEASE and LATEST are only valid for dependencies.
+        -->
+        <version>2.3.2</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>buildnumber-maven-plugin</artifactId>
+        <version>1.4</version>
+        <executions>
+          <execution>
+            <phase>validate</phase>
+            <goals>
+              <goal>create</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+        	<doCheck>false</doCheck>
+		<doUpdate>false</doUpdate>
+		<shortRevisionLength>10</shortRevisionLength>
+	</configuration>
+      </plugin>
+
+     <!-- Javadoc and Sources attachments are OSSRH requirements -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+	<configuration>
+	    <excludeResources>true</excludeResources>
+	    <includes>
+		<include>org/fairsim/**/*.java</include>
+		<include>org/fairsim/resources/*</include>
+	    </includes>
+	    <excludes>
+		<exclude>target</exclude>
+	    </excludes>
+	</configuration>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9.1</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <!-- <additionalparam>-Xdoclint:none</additionalparam> -->
+		<quiet>true</quiet>
+	    
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+     </plugins>
+  </build>
+</project>

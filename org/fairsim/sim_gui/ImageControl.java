@@ -881,13 +881,10 @@ public class ImageControl {
 	// images per z-plane, z-planes
 	int ipz = simParam.getImgPerZ(); 
 	
-	Vec2d.Real [] images = new Vec2d.Real[zpl];
-	
-	//Tool.trace("Name: "+img.name+": "+img.id+" "+images.length);
 	Tool.tell("computing widefield projection");
 
 	// sum up images for z-plane
-	Vec2d.Real imgZ   = Vec2d.createReal( simParam );
+	Vec2d.Real imgZ   = Vec2d.createReal( img.width, img.height );
 
 	sliceSelector = idpFactory.create( 
 	    imgZ.vectorWidth(), imgZ.vectorHeight(), "Slice selector"); 

@@ -54,28 +54,14 @@ git-version :
 	echo "n/a" >> org/fairsim/git-version.txt
 	 	
 
-jarsrc	: git-verison
-	$(JAR) -cvfm fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).jar \
-	Manifest.txt plugins.config \
-	org/fairsim/git-version.txt \
-	org/fairsim/*/*.class  org/fairsim/extern/*/*.class  \
-	org/fairsim/resources/* \
-	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
-
-tarsrc	: git-version
-	tar -cvjf fairSIM-source_$(shell head -c 10 org/fairsim/git-version.txt).tar.bz2 \
-	Manifest.txt plugins.config \
-	org/fairsim/git-version.txt \
-	org/fairsim/resources/* \
-	Makefile org/fairsim/*/*.java  org/fairsim/extern/*/*.java
-    
 
 jar:	git-version	
 	$(JAR) -cvfm fairSIM_plugin_$(shell head -c 10 org/fairsim/git-version.txt).jar \
-	Manifest.txt plugins.config \
+	Manifest.txt \
+	org/fairsim/*/*.class  org/fairsim/extern/*/*.class \
 	org/fairsim/git-version.txt \
 	org/fairsim/resources/* \
-	org/fairsim/*/*.class  org/fairsim/extern/*/*.class 
+	plugins.config 
 
 
 doc:	doc/index.html
@@ -89,6 +75,7 @@ clean :
 	$(RM) fairSIM_*.jar fairSIM_*.tar.bz2
 	$(RM) org/fairsim/*/*.class org/fairsim/git-version.txt
 	$(RM) -r doc/*
+	$(RM) -rf target
 
 clean-all: clean
 	$(RM) org/fairsim/extern/*/*.class
