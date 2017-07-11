@@ -19,7 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.fiji;
 
 import org.fairsim.utils.ImageSelector;
-//import org.fairsim.utils.Tool;
+import org.fairsim.utils.Tool;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -30,6 +30,8 @@ import ij.ImageStack;
 import ij.ImageListener;
 import ij.measure.Calibration;
 import ij.IJ;
+import ij.ImageJ;
+
 
 
 // The automated list update (ImageOpen listeners ...) seems to
@@ -91,7 +93,10 @@ public class ImageOpener
 	    al.add( new ImageSelector.ImageInfo(
 		curImg.getWidth(),
 		curImg.getHeight(),
-		curImg.getStackSize(),	// stack size	
+		//curImg.getStackSize(),	// stack size
+		curImg.getNSlices(),
+		curImg.getNChannels(),
+		curImg.getNFrames(),
 		microns,		// microns
 		curImg.getTitle(),
 		curImg.getID()
@@ -102,22 +107,51 @@ public class ImageOpener
     }
 
     @Override
-    public ImageVector getImage( ImageSelector.ImageInfo info, int pos ) {
+    public ImageVector getImage( ImageSelector.ImageInfo info, int z, int c, int t ) {
 	ImagePlus ip = WindowManager.getImage( info.id );
 	if (ip==null) return null;
+	
+	// compute position
+	int pos = c + z * info.nrChannels + t * info.nrChannels * info.nrSlices ;
 	return ImageVector.copy( ip.getStack().getProcessor( pos+1));
     }
 
+    // TODO: this could have a default implementation in the interace once
+    // we can switch to java8
     @Override
-    public ImageVector [] getImages( ImageSelector.ImageInfo info ) {
+    public ImageVector [] getImages( ImageSelector.ImageInfo info, int c, int t ) {
 	
-	ImageVector [] ret = new ImageVector[ info.depth ];
-	for ( int i=0; i<info.depth; i++)
-	    ret[i] = getImage( info, i);
+	ImageVector [] ret = new ImageVector[ info.nrSlices ]; 
+	for ( int z=0; z<info.nrSlices; z++) {
+	    ret[z] = getImage( info, z, c, t);
+	}
 	
 	return ret;
 
     }
+
+
+    /** For testing, this opens whatever many images passed on command line and
+     *  generated an ImageSelector for them */
+    public static void main( String [] args ) {
+   
+	ImageJ ij = new ImageJ( ImageJ.EMBEDDED );
+
+	for (String a : args ) {
+	    IJ.open(a);
+	}
+
+	ImageOpener io = new ImageOpener();
+
+	ImageSelector.ImageInfo [] iInfo = io.getOpenImages();
+
+	for (ImageSelector.ImageInfo ii : iInfo ) {
+	    Tool.trace( ii.toString() );
+	}
+
+
+    }
+
 
     // ------ ImageListener interface ------
     
@@ -142,20 +176,5 @@ public class ImageOpener
 
     }
     */
-
-    // ------ ImageSelector interface ------
-
-    /*
-    @Override
-    public void addCallback( ImageSelector.Callback b ) {
-	if (!isActive)
-	    throw new RuntimeException("Connector was dropped.");
-	iscb.add( b );
-    }
-    
-    @Override
-    public void removeCallback( ImageSelector.Callback b ) {
-	iscb.remove( b );
-    } */
 
 }

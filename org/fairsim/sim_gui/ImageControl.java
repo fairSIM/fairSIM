@@ -120,6 +120,9 @@ public class ImageControl {
     boolean sucessfulImport = false;
     int totalTimePoints = 1;
 
+    // channel functions (see issue #13)
+    int imgChannel = 0;
+
     AutoUpdateThread autoUpdater = null;
 
     public JPanel getPanel() {
@@ -242,7 +245,12 @@ public class ImageControl {
 	// import images / time-lapse
 	importImageButton.addActionListener( new ActionListener() {
 	    public void actionPerformed( ActionEvent e ) {
-		
+	
+		if ( imgBox.getSelectedItem() == null ) {
+		    // TODO: output error that no image is open
+		    return;
+		}
+
 		if ( isVideoStack ) {
 		    // import as time-laspe stack
 		    importImageDialog( imgBox.getSelectedItem(), 
@@ -252,7 +260,7 @@ public class ImageControl {
 		    // import as stadard stack
 		    importImageDialog( 
 			imgBox.getSelectedItem(), 
-			imgBox.getSelectedItem().depth / simParam.getImgPerZ(), 0 );
+			imgBox.getSelectedItem().nrSlices / simParam.getImgPerZ(), 0 );
 		
 		    isVideoStack = false;
 		}
@@ -337,8 +345,8 @@ public class ImageControl {
     }
 
     /** check if the image is o.k. */
-    boolean checkImage( ImageSelector.ImageInfo img, int zSlices ) {
-	if ((img==null)||(img.depth==0)) {
+    boolean checkImage( ImageSelector.ImageInfo img) {
+	if ((img==null)||(img.nrSlices==0)) {
 	    JOptionPane.showMessageDialog( baseframe,
 	     "No image selected", "fairSIM error",
 	     JOptionPane.ERROR_MESSAGE);
@@ -346,11 +354,11 @@ public class ImageControl {
 	}
 
 	int ipz = simParam.getImgPerZ(); 
-	if ( img.depth % ipz != 0 || (img.depth/ipz) % zSlices != 0 ) {
+	if ( img.nrSlices % ipz != 0 ) {
 	    String err=String.format(
-		"<html>Number of images should be a multiple of<br>"+
-		"ang x pha (%d) x z (%d), but is %d. </html>",
-		simParam.getImgPerZ(), zSlices, img.depth );
+		"<html>Stack length should be a multiple of<br>"+
+		"ang x pha (%d), but is %d. </html>",
+		simParam.getImgPerZ(), img.nrSlices );
 	    JOptionPane.showMessageDialog( baseframe,
 	     err, "fairSIM error",
 	     JOptionPane.ERROR_MESSAGE);
@@ -378,7 +386,7 @@ public class ImageControl {
 	// check if with the currently selected number of images,
 	// the image could be imported as video
 	
-	if ( inf.depth % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
+	if ( inf.nrSlices % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
 	    videoPosSlider.setEnabled(false);
 	    importImageButton.setEnabled(false);
 	    videoAutoUpdateMode.setEnabled(false);
@@ -393,7 +401,7 @@ public class ImageControl {
 	    videoPosSlider.setEnabled(true);
 	    videoAutoUpdateMode.setEnabled(true);
 
-	    totalTimePoints = inf.depth / zplSel / simParam.getImgPerZ(); 
+	    totalTimePoints = inf.nrSlices / zplSel / simParam.getImgPerZ(); 
 	    if ( videoPosSlider.getValue() >= totalTimePoints ) {
 		videoPosSlider.setValue(0);
 	    } else {
@@ -568,11 +576,11 @@ public class ImageControl {
 	Tool.trace("zSlice: "+zSlices);
 
 	// TODO: Image size checks!
-	if (!checkImage( img, zSlices ))
+	if (!checkImage( img ))
 	    return;
 	importImageButton.setEnabled(false);
 
-	totalTimePoints = img.depth / zSlices / simParam.getImgPerZ();
+	totalTimePoints = img.nrTimepoints;
 
 	pxlSet  = ( img.micronsPerPxl > 0);
 	pxlSize = ( pxlSet )?(img.micronsPerPxl*1000):(80);
@@ -596,10 +604,10 @@ public class ImageControl {
 	sliceBox = new Tiles.LComboBox<Integer>("#",1);
 	sliceBox.box.setPrototypeDisplayValue("123");
 	
-	if (img.depth/totalTimePoints > simParam.getImgPerZ() ) {
+	if (img.nrSlices > simParam.getImgPerZ() ) {
 	    // only enable the box if there is more than one slice
 	    Integer [] n = new Integer[ 
-		img.depth/simParam.getImgPerZ()/totalTimePoints ];
+		img.nrSlices/simParam.getImgPerZ() ];
 	    for (int i=0; i<n.length; i++) {
 		n[i] = i+1;
 	    }
@@ -614,7 +622,7 @@ public class ImageControl {
 	showSlicesButton.setToolTipText("Display wide-field projection of slices");
 	showSlicesButton.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		showSlices(img, zSlices);
+		showSlices(img);
 	    }
 	});
 
@@ -756,7 +764,6 @@ public class ImageControl {
     
 	// images per z-plane, z-planes
 	int ipz  = simParam.getImgPerZ(); 
-	int zpl  = img.depth / ipz / totalTimePoints ;
 
 	theImages    = new Vec2d.Real[ simParam.nrDir() ][];
 	theFFTImages = new Vec2d.Cplx[ simParam.nrDir() ][];
@@ -808,13 +815,13 @@ public class ImageControl {
 
 	    for (int p=0; p<simParam.dir(d).nrPha(); p++) {
 	    
-		int pos = simParam.getImgSeq().calcPosWithTime( d,p,zPos, tPos,
-		    simParam.nrDir(), simParam.dir(d).nrPha(), zpl );
+		int pos = simParam.getImgSeq().calcPos( d,p,zPos, 
+		    simParam.nrDir(), simParam.dir(d).nrPha(), img.nrSlices/ipz );
 
 		imageCount++;
 
 		// import and store images  // TODO: move the FFT to somewhere else
-		Vec2d.Real curImg   = imgSelect.getImage(img,pos).duplicate();
+		Vec2d.Real curImg   = imgSelect.getImage(img, pos, imgChannel, tPos).duplicate();
 
 		// if we have to do background subtraction
 		if (bgrBox.box.getSelectedIndex()==1) {
@@ -845,7 +852,7 @@ public class ImageControl {
 		    String.format( 
 		    "Image p: %2d/%2d a: %2d/%2d z: %2d/%2d t: %2d",
 		    p+1, simParam.dir(d).nrPha(),
-		    d+1, simParam.nrDir(), zPos+1, zpl, tPos+1 ));
+		    d+1, simParam.nrDir(), zPos+1, img.nrSlices, tPos+1 ));
 		    
 		    widefield.add( theImages[d][p]);
 		}
@@ -866,8 +873,8 @@ public class ImageControl {
 
 
     /** shows the slice selector */
-    void showSlices( final ImageSelector.ImageInfo img, final int zpl ) {
-	if (!checkImage( img, zpl))
+    void showSlices( final ImageSelector.ImageInfo img ) {
+	if (!checkImage( img ))
 	    return;
 
 	showSlicesButton.setEnabled(false);
@@ -889,15 +896,16 @@ public class ImageControl {
 	sliceSelector = idpFactory.create( 
 	    imgZ.vectorWidth(), imgZ.vectorHeight(), "Slice selector"); 
 
-	for (int z=0; z< zpl; z++) {
+	for (int z=0; z< img.nrSlices/ipz; z++) {
 	    imgZ.zero();
 	    for (int d=0; d<simParam.nrDir(); d++) {
 		for (int p=0; p<simParam.dir(d).nrPha(); p++) {
 	    
 		    int pos = simParam.getImgSeq().calcPos( d,p,z,
-			simParam.nrDir(), simParam.dir(d).nrPha(), zpl );
-		  
-		    Vec2d.Real imgSlice = imgSelect.getImage( img, pos );
+			simParam.nrDir(), simParam.dir(d).nrPha(), img.nrSlices/ipz );
+		 
+		    //Tool.trace("Trying to pull image: "+pos+" "+imgChannel);
+		    Vec2d.Real imgSlice = imgSelect.getImage( img, pos, imgChannel, 0 );
 		    
 		    if (imgSlice == null) {
 			Tool.tell("Image has been closed!");

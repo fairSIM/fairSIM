@@ -29,26 +29,53 @@ public interface ImageSelector {
 	/** Image width and height (pxl) */
 	public final int width, height;
 	/** Depth / length of stack */
-	public final int depth;
+	protected final int depth;
+	
 	/** Size of pxl in microns (or -1 if not available) */
 	public final double micronsPerPxl;
 	/** "Name" of the image (or null if not available) */
 	public final String name;
 	/** ID, free to be set by implementors of ImageInfo */
 	public int id;
-		
-	public ImageInfo( int width, int height, int depth,
+
+	/** Number of color / wavelengths channels */
+	public final int nrChannels;
+
+	/** Number of timepoints */
+	public final int nrTimepoints;
+
+	/** Number of z-slices */
+	public final int nrSlices;
+
+
+	/** Construct an info-object for a multi-dimensional image set.
+	 *  nrSlices * nrTimepoints * nrChannels has to match 'depth'. */
+	public ImageInfo( int width, int height, 
+	    int nrSlices, int nrChannels, int nrTimepoints, 
 	    double micronsPerPxl, String name, int id ) {
 	    this.width		= width;
 	    this.height		= height;
-	    this.depth		= depth;
+	   
 	    this.micronsPerPxl	= micronsPerPxl;
 	    this.name		= name;
 	    this.id		= id;
+
+	    this.nrSlices	= nrSlices;
+	    this.nrChannels	= nrChannels;
+	    this.nrTimepoints	= nrTimepoints;
+	
+	    this.depth = nrChannels * nrTimepoints * nrSlices;
+	    if (nrChannels < 0 || nrTimepoints < 0 || nrSlices < 0 ) 
+		throw new IndexOutOfBoundsException("Size index should not be < 0");
 	}
 
 	@Override
-	public String toString() { return name; }
+	public String toString() { 
+	    
+	    return String.format("%20s (%dx%d, %dz, %dt, %dc)",
+		name, width, height, nrSlices, nrTimepoints, nrChannels);
+	    
+	}
 
 	/** Compares images on size and id only.
 	 *  ImageInfo's are defined to be the same for
@@ -95,13 +122,12 @@ public interface ImageSelector {
     /** Get list of open images */
     public ImageInfo [] getOpenImages();
 
-    /** Returns the image referred to by an ImageInfo, at position pos
-     * (or null if not found) */
-    public Vec2d.Real getImage( ImageInfo which, int pos );
+    /** Returns the image referred to by an ImageInfo (or null if not found) */
+    public Vec2d.Real getImage( ImageInfo which, int z, int c, int t );
     
     /** Returns the image stack referred to by an ImageInfo, 
      * (or null if not found) */
-    public Vec2d.Real [] getImages( ImageInfo which );
+    public Vec2d.Real [] getImages( ImageInfo which, int c, int t );
 
 
     /** Dummy implementation for testing (GUI) */
@@ -120,17 +146,17 @@ public interface ImageSelector {
 	public ImageInfo [] getOpenImages() {
 	    ImageInfo [] ret = new ImageInfo[ n ];
 	    for (int i=0; i<n; i++)
-		ret[i] = new ImageInfo(512, 512, idxToZ(i),
+		ret[i] = new ImageInfo(512, 512, 1, idxToZ(i), 1,
 		    ((i!=2)?(0.082):(-1)),
 		    names[i%names.length], i );
 	    return ret;
 	}
 	@Override
-	public Vec2d.Real getImage(ImageInfo w, int pos) {
+	public Vec2d.Real getImage(ImageInfo w, int z, int c, int t) {
 	    return Vec2d.createReal( 512, 512 );
 	}
 	@Override
-	public Vec2d.Real [] getImages(ImageInfo w) {
+	public Vec2d.Real [] getImages(ImageInfo w, int c, int t) {
 	    return Vec2d.createArrayReal( idxToZ(w.id) , 512, 512 );
 	}
 
