@@ -130,6 +130,13 @@ public class FairSim_ImageJplugin implements PlugIn {
 
 	InputStream is1 = getClass().getResourceAsStream("/org/fairsim/resources/about.html");
 	InputStream is2 = getClass().getResourceAsStream("/org/fairsim/git-version.txt");
+
+	boolean mavenBuild = false;
+	if (is2==null) {
+	    is2 = getClass().getResourceAsStream("/org/fairsim/git-version-maven.txt");
+	    mavenBuild = true;
+	}
+	
 	if ( is1 == null ) {
 		JOptionPane.showMessageDialog( IJ.getInstance(),
 		 "About information not found", "about fairSIM",
@@ -151,6 +158,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 	// get the version information
 	String gitCommit = "not found";
 	String version   = "not found";
+	String buildType = (mavenBuild)?("(maven build)"):("(standard build)");
 	if ( is2 != null ) {
 	    BufferedReader br2 = new BufferedReader( new InputStreamReader( is2 ) );
 	    try {
@@ -169,7 +177,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 	    "<html>"+text+"<h2>Version</h2>"+
 	    "version: "+version.substring(0, Math.min(12, version.length()))+
 	    "<br />git build id: "+
-	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+
+	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+" "+buildType+
 	    "<br /><br />Please include version and git id when reporting bugs.</html>";
 	
 	JEditorPane jep = new JEditorPane("text/html", htmlContent);

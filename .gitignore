@@ -4,6 +4,6 @@ doc/
 *.jar
 test*.xml
 *.tar.bz2
-resources/org/fairsim/git-version.txt
+org/fairsim/git-version.txt
 target/*
 

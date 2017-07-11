@@ -10,7 +10,7 @@
 
   <groupId>org.fairsim</groupId>
   <artifactId>fairSIM</artifactId>
-  <version>1.1</version>
+  <version>1.1.0-beta4</version>
   <packaging>jar</packaging>
 
   <name>fairSIM</name>
@@ -86,12 +86,26 @@
   <build>
 
     <!-- ImageJ plugins need an underscore on the filename of the jar. -->
-    <finalName>${project.artifactId}_plugin-${buildNumber}</finalName>
+    <finalName>${project.artifactId}_plugin_mvn-${buildNumber}</finalName>
 
     <sourceDirectory>./</sourceDirectory>
 
     <resources>
-	<resource><directory>resources/</directory></resource>
+	<resource>
+	    <directory>./</directory>
+	    <filtering>true</filtering>
+	    <includes>
+		<include>org/fairsim/git-version-maven.txt</include>
+	    </includes>
+	</resource>
+	<resource>
+	    <directory>./</directory>
+	    <filtering>false</filtering>
+	    <includes>
+		<include>org/fairsim/resources/*</include>
+		<include>plugins.config</include>
+	    </includes>
+	</resource>
     </resources>
 
     <plugins>
@@ -125,6 +139,7 @@
         <configuration>
         	<doCheck>false</doCheck>
 		<doUpdate>false</doUpdate>
+		<shortRevisionLength>10</shortRevisionLength>
 	</configuration>
       </plugin>
 
@@ -134,11 +149,13 @@
         <artifactId>maven-source-plugin</artifactId>
         <version>2.2.1</version>
 	<configuration>
+	    <excludeResources>true</excludeResources>
 	    <includes>
-		<include>./org</include>
+		<include>org/fairsim/**/*.java</include>
+		<include>org/fairsim/resources/*</include>
 	    </includes>
 	    <excludes>
-	    <exclude>./target</exclude>
+		<exclude>target</exclude>
 	    </excludes>
 	</configuration>
         <executions>
@@ -162,7 +179,9 @@
               <goal>jar</goal>
             </goals>
             <configuration>
-              <additionalparam>-Xdoclint:none</additionalparam>
+              <!-- <additionalparam>-Xdoclint:none</additionalparam> -->
+		<quiet>true</quiet>
+	    
             </configuration>
           </execution>
         </executions>
