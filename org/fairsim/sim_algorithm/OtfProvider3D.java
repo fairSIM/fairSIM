@@ -286,8 +286,8 @@ public class OtfProvider3D {
 	if (fld.contains("otf-name"))
 	    ret.otfName = fld.getStr("otf-name").val();
 
-	if (fld.contains("otf-metainfo"))
-	    ret.otfMeta = fld.getStr("otf-metainfo").val();
+	if (fld.contains("otf-meta"))
+	    ret.otfMeta = fld.getStr("otf-meta").val();
 	    
 	// copy parameters
 	Conf.Folder data = fld.cd("data");
@@ -444,7 +444,7 @@ public class OtfProvider3D {
 	return otfName;
     }
     public String getMeta() {
-	return otfName;
+	return otfMeta;
     }
 
     public void setName( String name ){

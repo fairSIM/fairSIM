@@ -68,9 +68,13 @@ public class DefineMaschineGui {
 
     final JFrame baseframe;
     final private JPanel mainPanel;
-    
+    final JTextField confNameField;
+    final private JTabbedPane tabsPane;
+
     List<ChannelTab> channels = new ArrayList<ChannelTab>();
-   
+
+    String confName = null;
+
 
     /** Display a small frame to setup the DefineMaschineGui */
     public static void setupDefineMaschineGui() {
@@ -128,7 +132,7 @@ public class DefineMaschineGui {
 			nrAngles.getSelectedItem(),
 			nrPhases.getSelectedItem());
 		    try {
-			new DefineMaschineGui( newConfig.r() );
+			new DefineMaschineGui( newConfig.r(), true );
 		    } catch ( Conf.EntryNotFoundException ex ) {
 			Tool.trace("this should not happen:\n"+ex);
 			
@@ -182,13 +186,13 @@ public class DefineMaschineGui {
 
 
     // create and pack the control interface
-    public DefineMaschineGui( Conf.Folder fld ) 
+    public DefineMaschineGui( Conf.Folder fld, boolean becomeVisible ) 
 	throws Conf.EntryNotFoundException {
 	baseframe = new JFrame("Define SIM microscope");
 	mainPanel = new JPanel();
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.PAGE_AXIS));
 	
-	JTabbedPane tabsPane = new JTabbedPane();
+	tabsPane = new JTabbedPane();
 
 
 	// set the logo
@@ -198,6 +202,31 @@ public class DefineMaschineGui {
 	}
 
 
+	// add a 'maschine name' panel
+	JPanel namePanel = new JPanel();
+	//namePanel.setBorder(BorderFactory.createTitledBorder("Name and wavelegth") );
+	JLabel confNameLabel = new JLabel("Config name:");
+
+
+	if (fld.contains("config-name")) {
+	    confName = fld.getStr("config-name").val();
+	} else {
+	    confName= "not set";
+	}
+	
+	confNameField = new JTextField(confName,20);
+    
+	confNameField.addActionListener( new ActionListener() {
+	    @Override
+	    public void actionPerformed( ActionEvent e ) {
+		confName = confNameField.getText();
+		Tool.trace("updated config name to: "+confName);
+	    }
+	});
+
+	namePanel.add( confNameLabel );
+	namePanel.add( confNameField );
+
 	// loop the channels, add a tab for each channel
 	int nrChannels = fld.getInt("nr-channels").val();
 
@@ -206,7 +235,11 @@ public class DefineMaschineGui {
 	    Conf.Folder chFldr = fld.cd(String.format("channel-%02d", ch));
 	    ChannelTab chTab = new ChannelTab( chFldr );
 
-	    tabsPane.add( String.format("new ch %d", ch), chTab.getPanel() );
+	    String chName = String.format("unknown ch %d", ch);
+	    if ( chFldr.contains("channel-name") ) {
+		chName = chFldr.getStr("channel-name").val();
+	    }
+	    tabsPane.add( chName, chTab.getPanel() );
 	    channels.add( chTab );
 
 	}
@@ -223,13 +256,14 @@ public class DefineMaschineGui {
 	});
 
 
+	mainPanel.add( namePanel );
 	mainPanel.add( tabsPane );
 	mainPanel.add( buttonPanel );
 
 	baseframe.add( mainPanel );
 	baseframe.pack();
 	baseframe.setLocation( 100,100);
-	baseframe.setVisible( true );
+	baseframe.setVisible( becomeVisible );
 
     }
 
@@ -250,6 +284,7 @@ public class DefineMaschineGui {
 	Conf.Folder fld = cfg.r();
 
 	fld.newInt("nr-channels").setVal( channels.size() );
+	fld.newStr("config-name").val( confName );
 
 	// loop through all channels
 	int i=0;
@@ -282,7 +317,7 @@ public class DefineMaschineGui {
 	    
 	final JTextField simNameField = new JTextField("",20);
 	final Tiles.LNSpinner wavelengthSpinner ;
-	
+
 	final JTextComponent simParamAsText = new JEditorPane();
 	SimParam sp;
 	
@@ -301,6 +336,14 @@ public class DefineMaschineGui {
 
 	    JLabel simNameLabel = new JLabel("ch-name:");
 	    simNameField.setText(chFld.getStr("channel-name").val());
+
+	    simNameField.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed( ActionEvent e ) {
+		   tabsPane.setTitleAt( tabsPane.getSelectedIndex(), simNameField.getText()); 
+		}
+	    });
+
 
 	    wavelengthSpinner = new Tiles.LNSpinner( "exitation wavelength",
 		chFld.getInt("excitation-wavelength").val(), 200, 1000,1); 
@@ -699,7 +742,7 @@ public class DefineMaschineGui {
 	    setupDefineMaschineGui();
 	} else {
 	    Conf cfg = Conf.loadFile( arg[0]);
-	    new DefineMaschineGui( cfg.cd("fairsim-3d") );
+	    new DefineMaschineGui( cfg.cd("fairsim-3d"), true );
 	}
     }
 
