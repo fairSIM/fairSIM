@@ -101,7 +101,12 @@ public class Tiles {
 	public double getVal() {
 	    return ((Number)spr.getValue()).doubleValue();
 	}
-    
+   
+	/** set the spinners current value */
+	public void setVal(double v) {
+		spr.setValue(v);
+	}
+
 	/** Add a NumberListener */
 	public void addNumberListener( NumberListener l ) {
 	    listener.add( l );
@@ -352,9 +357,23 @@ public class Tiles {
 
 	/** Return the element at index i */
 	public T get(int i) {
-	    return (T)get(i);
+	    @SuppressWarnings("unchecked")
+	    T ret =  (T)dlm.get(i);
+	    
+	    return ret;
 	}
 
+	/** Return all elements in the list as arrra */
+	public T [] getArray() {
+	    Object [] ret = new Object[ dlm.size() ];
+	    for ( int i=0 ; i<ret.length; i++)
+		ret[i] = this.get(i);
+
+	    @SuppressWarnings("unchecked")
+	    T [] ret2 = (T [])ret;
+	    
+	    return ret2;
+	}
 
     }
 

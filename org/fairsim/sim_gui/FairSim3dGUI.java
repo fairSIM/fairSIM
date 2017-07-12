@@ -20,7 +20,7 @@ package org.fairsim.sim_gui;
 
 
 import org.fairsim.sim_algorithm.SimParam;
-import org.fairsim.sim_algorithm.OtfProvider;
+import org.fairsim.sim_algorithm.OtfProvider3D;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
 import org.fairsim.utils.Tool;
@@ -46,6 +46,10 @@ import javax.swing.BoxLayout;
 import java.awt.GridLayout;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
+
+import java.util.List;
+import java.util.ArrayList;
 
 // only for testing, remove..
 import org.fairsim.fiji.DisplayWrapper;
@@ -61,6 +65,31 @@ public class FairSim3dGUI {
 
     final int imgPerZ;
 
+    final ImageSelector.ImageInfo ourRawImages ;
+    final JCheckBox propToOtherCh = new JCheckBox("propagate changes to other channels");
+    
+    List<ChannelPanel> channelPanelList = new ArrayList<ChannelPanel>();
+
+    enum FITTYPES {
+	FULL("full parameter search"),
+	REFINE("refine k0 and phase"),
+	PHASEONLY("fit only phase"),
+	RECONSTONLY("use preset values");
+
+	final String ourName;
+	
+	FITTYPES(String name) {
+	    ourName=name;
+	}
+
+	@Override 
+	public String toString() {
+	    return ourName;
+	}
+
+
+    }
+
 
 
     public FairSim3dGUI( Conf.Folder cfg, ImageSelector.ImageInfo imgs ) 
@@ -72,6 +101,7 @@ public class FairSim3dGUI {
 	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
 
 	imgPerZ = dmg.channels.get(0).sp.getImgPerZ();
+	ourRawImages = imgs;
 
 	if ( imgs.nrSlices % imgPerZ != 0 ) {
 	    Tool.error(" Image length not a multiple of raw images per z-plane",true);
@@ -81,7 +111,7 @@ public class FairSim3dGUI {
 
 	// 1 -- position selector
 	JPanel posSelector = new JPanel();
-	posSelector.setBorder(BorderFactory.createTitledBorder("Name and wavelegth") );
+	posSelector.setBorder(BorderFactory.createTitledBorder("Stack size") );
 
 
 	Tiles.LNSpinner zBottom = new Tiles.LNSpinner("z bottom", 1, 1, imgs.nrSlices/imgPerZ, 1);
@@ -94,18 +124,23 @@ public class FairSim3dGUI {
 	posSelector.add( zTop );
 	posSelector.add( tStart );
 	posSelector.add( tEnd );
+	
+	mainPanel.add( posSelector );
 
 
 	// 2 -- channel-specific settings
+	for ( int ch =0 ; ch<imgs.nrChannels; ch++) {
+	    ChannelPanel chPnl = new ChannelPanel(ch);
+	    channelPanelList.add( chPnl );
+	    mainPanel.add( chPnl.ourPanel );
+	}
+
 
 
 
 
 
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.PAGE_AXIS));
-	mainPanel.add( posSelector );
-
-
 	baseframe.add( mainPanel );
 	baseframe.pack();
 	baseframe.setVisible(true);
@@ -115,11 +150,135 @@ public class FairSim3dGUI {
 
     }
 
-
+    /** subclass for channel-specific settings */
     class ChannelPanel {
 
 	JPanel ourPanel = new JPanel();
+	    
+	final JCheckBox channelEnabled;
+	final Tiles.LComboBox< FITTYPES > fitTypeList;
+	final Tiles.LComboBox< DefineMaschineGui.ChannelTab > channelSelector;
+	final Tiles.LComboBox< OtfProvider3D > otfSelector;
+	final Tiles.LNSpinner wienerParam;
 
+	final int chNr ;
+
+	ChannelPanel(int ch) {
+	    chNr = ch;
+	    ourPanel.setBorder( BorderFactory.createTitledBorder(
+		String.format("Channel %d",chNr+1)));
+	    ourPanel.setLayout( new BoxLayout( ourPanel, BoxLayout.PAGE_AXIS));
+
+	    // Select if channel is reconstructed
+	    channelEnabled = new JCheckBox("reconstruct this channel");
+	    channelEnabled.setSelected(true);
+	    ourPanel.add( (new JPanel()).add( channelEnabled ) );
+
+	    // Box to select the channel
+	    DefineMaschineGui.ChannelTab [] channelsAvailable = 
+		new DefineMaschineGui.ChannelTab[ dmg.channels.size() ];
+
+	    for (int i=0; i<channelsAvailable.length; i++)
+		channelsAvailable[i] = dmg.channels.get( i );
+
+	    channelSelector = new Tiles.LComboBox< DefineMaschineGui.ChannelTab >(
+		    "Channel set", channelsAvailable );
+
+	    if ( dmg.channels.size() > chNr )
+		channelSelector.setSelectedIndex( chNr );
+
+	    // Box tot select the OTF
+	    otfSelector = new Tiles.LComboBox< OtfProvider3D >( "OTF", 
+		    channelSelector.getSelectedItem().otfList.getArray());
+
+	    // reset the OTF list if the channel is changed
+	    channelSelector.addSelectListener( 
+		new Tiles.SelectListener< DefineMaschineGui.ChannelTab >() {
+		@Override
+		public void selected( DefineMaschineGui.ChannelTab elem, int idx ){
+		    otfSelector.newElements( elem.otfList.getArray() ); 
+		}
+	    });
+	    JPanel selectPanel = new JPanel();
+	    selectPanel.add( channelSelector );
+	    selectPanel.add( otfSelector );
+
+	    // settings for the parameter fit
+	    JPanel fitPanel = new JPanel();
+	
+	    fitTypeList = new Tiles.LComboBox<FITTYPES>("SIM param fit", 
+		FITTYPES.values());
+
+	    fitTypeList.setSelectedIndex(1);
+
+	    fitPanel.add( fitTypeList );
+
+	    wienerParam = new Tiles.LNSpinner("Wiener filter",
+		0.005, 0.001, 0.2, 0.002 );
+
+	    fitPanel.add( wienerParam );
+		
+	    ourPanel.add( selectPanel );
+	    ourPanel.add( fitPanel );
+
+	    // propagate changes to other channels
+	    if ( chNr == 0 && ourRawImages.nrChannels > 1 ) {
+		ourPanel.add( propToOtherCh );
+		
+		// enable / disable the components
+		propToOtherCh.addActionListener( new ActionListener() {
+		    @Override
+		    public void actionPerformed( ActionEvent e ) {
+			
+			boolean state = propToOtherCh.isSelected();
+			for ( ChannelPanel c : channelPanelList ) {
+			    if ( c != channelPanelList.get(0) ) {
+				c.fitTypeList.setEnabled( !state );
+				c.wienerParam.setEnabled( !state );
+			    }
+			}
+		    }
+		});
+
+
+		// propagate change in fit type
+		fitTypeList.addSelectListener( new Tiles.SelectListener<FITTYPES>() {
+		    @Override
+		    public void selected( FITTYPES e, int i ) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.fitTypeList.setSelectedIndex( i );
+				}
+			    }
+			}
+		    }
+		});
+	   
+		// propagate change in Wiener filter parameter
+		wienerParam.addNumberListener( new Tiles.NumberListener() {
+		    @Override
+		    public void number( double nbr, Tiles.LNSpinner e) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.wienerParam.setVal( nbr );
+				}
+			    }
+			}
+
+		    }
+		});
+
+	    
+	    }
+
+
+
+
+	}
+
+	
 
     }
 

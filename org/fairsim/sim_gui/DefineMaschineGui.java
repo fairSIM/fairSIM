@@ -71,7 +71,7 @@ public class DefineMaschineGui {
     final JTextField confNameField;
     final private JTabbedPane tabsPane;
 
-    List<ChannelTab> channels = new ArrayList<ChannelTab>();
+    ArrayList<ChannelTab> channels = new ArrayList<ChannelTab>();
 
     String confName = null;
 
@@ -619,6 +619,12 @@ public class DefineMaschineGui {
 	    for ( OtfProvider3D otf : otfList.getAllElements() ) {
 		otf.saveConfig( chFldr.mk(String.format("otf-%02d", i++)));
 	    }
+	}
+
+
+	@Override
+	public String toString() {
+	    return simNameField.getText(); 
 	}
 
     }
