@@ -18,13 +18,13 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.sim_gui;
 
-import de.bio_photonics.omxtools.OTFConverter;
 
 import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.OtfProvider3D;
 import org.fairsim.utils.ImageDisplay;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
+import org.fairsim.misc.OtfFileConverter;
 
 import java.awt.Frame;
 import java.awt.event.ActionListener;
@@ -704,16 +704,10 @@ public class DefineMaschineGui {
 	}
 
 	// run the OTF converter
-	OTFConverter otfConv = null;
-
-	OTFConverter.setLogger( new OTFConverter.Logger() {
-	    public void log(String what) {
-		Tool.trace(what);
-	    };
-	});
+	OtfFileConverter otfConv = null;
 
 	try {
-	    otfConv = new OTFConverter( fObj );	
+	    otfConv = new OtfFileConverter( fObj );	
 	} catch (java.io.IOException ex ) {
 	    JOptionPane.showMessageDialog(base,
 	    ex.toString(),
@@ -751,10 +745,5 @@ public class DefineMaschineGui {
 	    new DefineMaschineGui( cfg.cd("fairsim-3d"), true );
 	}
     }
-
-
-    
-
-
 
 }
