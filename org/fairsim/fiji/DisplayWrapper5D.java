@@ -59,7 +59,7 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
     }
     
 
-    DisplayWrapper5D( int w, int h, int d, int c, int t, String title ) {
+    public DisplayWrapper5D( int w, int h, int d, int c, int t, String title ) {
 	
 	if ( w<1 || h <1 || d<1 || c<1 || t < 1 ) {
 	    throw new IndexOutOfBoundsException("size should not be < 1");

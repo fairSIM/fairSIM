@@ -361,6 +361,15 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	    otf.setPixelSize( cyclesPerMicron );
 	}
     }
+    /** Set a new 3D OTF */
+    public void otf3d(OtfProvider3D otf) {
+
+	if (otf!=null) { 
+	    currentOtf3D=otf;
+	    //otf.setPixelSize( cyclesPerMicron );
+	}
+    }
+
 
     
     /** Set a new OTF */
@@ -623,6 +632,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	throws Conf.EntryNotFoundException {
 	
 	// TODO: This wont handle 3D currently!!
+	// TODO: check why not!
 
 	Conf.Folder fd = cfg.cd("sim-param");
 	
@@ -630,7 +640,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	int nDirs = fd.getInt("nr-angles").val();
 	int nBand = fd.getInt("nr-bands").val();
 	int nPhas = fd.getInt("nr-phases").val();
-	SimParam ret = new SimParam( nBand, nDirs, nPhas, false );
+	SimParam ret = new SimParam( nBand, nDirs, nPhas, true );
 	
 	// pixel size
 	ret.setPxlSize( fd.getInt("img-size-pxl").val(),

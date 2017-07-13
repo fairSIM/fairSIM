@@ -137,12 +137,22 @@ public final class Vec2d {
 	/** project (sum along z, from start to end) a Vec3d into this vector */
 	public void project( Vec3d.Real in, int start, int end );
 	
+	/** project (sum along z, from start to end) the real part of a Vec3d into this vector */
+	public void project( Vec3d.Cplx in, int start, int end );
+	
 	/** project (sum along z) a Vec3d into this vector */
 	public void project( Vec3d.Real in );
 	
-	/** get slice nr n */
+	/** project (sum along z) the real part of a Vec3d into this vector */
+	public void project( Vec3d.Cplx in );
+	
+	
+	/** copy slice nr n into this vector */
 	public void slice( Vec3d.Real in, int n );
     
+	/** copy the real part of slice nr n into this vector */
+	public void slice( Vec3d.Cplx in, int n );
+
     }
     
     // =======================================================

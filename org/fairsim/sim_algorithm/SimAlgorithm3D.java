@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package org.fairsim.fiji;
+package org.fairsim.sim_algorithm;
 
 import org.fairsim.linalg.*;
 import org.fairsim.fiji.ImageVector;
@@ -24,12 +24,11 @@ import org.fairsim.fiji.DisplayWrapper;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageDisplay;
-import org.fairsim.sim_algorithm.*;
 
-public class Run3d {
+public class SimAlgorithm3D {
 
    /** Step-by-step reconstruction process. */
-    public Vec3d.Cplx runReconstruction( Vec2d.Real [] inSt, 
+    public static Vec3d.Cplx runReconstruction( Vec2d.Real [] inSt, 
 	final OtfProvider3D otfPr, final SimParam param,
 	final int visualFeedback , final double wienParam ) {
 

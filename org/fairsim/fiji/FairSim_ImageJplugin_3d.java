@@ -73,7 +73,7 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	IJ.open( arg[1] );
 	ImageSelector is = new ImageOpener();
 
-	new FairSim3dGUI(cfg, is.getOpenImages()[0]);
+	new FairSim3dGUI(cfg, is.getOpenImages()[0], is);
 
     }
 

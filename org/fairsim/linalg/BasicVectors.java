@@ -184,12 +184,46 @@ class BasicVector implements VectorFactory {
 	}
 	
 	@Override
+	public void project(Vec3d.Cplx inV, int start, int end) {
+	    
+	    final float [] out = this.vectorData();
+	    final float [] in  =  inV.vectorData();
+	    
+	    if (inV.vectorWidth() != width || inV.vectorHeight() != height)
+		throw new RuntimeException("Wrong vector size when projecting");
+	    
+	    if (start<0 || end >= inV.vectorDepth() || start > end )
+		throw new RuntimeException("z-index out of vector depth bounds");
+
+
+	    // TODO: This could be more efficient in the loop??
+	    this.zero();
+
+	    for (int z=start; z<=end; z++)
+	    for (int y=0; y<height; y++)
+	    for (int x=0; x<width; x++) {
+		out[y * width + x ] += in[2*(z*width*height + y*width + x)];
+	    }
+	
+	}
+	
+	@Override
 	public void project(Vec3d.Real inV) {
+	    project( inV, 0, inV.vectorDepth()-1);
+	}
+	
+	@Override
+	public void project(Vec3d.Cplx inV) {
 	    project( inV, 0, inV.vectorDepth()-1);
 	}
 
 	@Override
 	public void slice(Vec3d.Real inV, int n) {
+	    project( inV, n, n );
+	}
+	
+	@Override
+	public void slice(Vec3d.Cplx inV, int n) {
 	    project( inV, n, n );
 	}
 

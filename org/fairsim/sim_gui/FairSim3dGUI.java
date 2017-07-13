@@ -23,8 +23,12 @@ import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.OtfProvider3D;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
+import org.fairsim.utils.ImageStackOutput;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
+import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.Vec3d;
+import org.fairsim.sim_algorithm.SimAlgorithm3D;
 
 import java.awt.Frame;
 import java.awt.event.ActionListener;
@@ -67,6 +71,7 @@ public class FairSim3dGUI {
     final int imgPerZ;
 
     final ImageSelector.ImageInfo ourRawImages ;
+    final ImageSelector imgSrc ;
     final JCheckBox propToOtherCh = new JCheckBox("propagate changes to other channels");
     
     List<ChannelPanel> channelPanelList = new ArrayList<ChannelPanel>();
@@ -91,12 +96,17 @@ public class FairSim3dGUI {
 
     }
 
+    final Tiles.LNSpinner zBottom;
+    final Tiles.LNSpinner zTop; 
+    final Tiles.LNSpinner tStart; 
+    final Tiles.LNSpinner tEnd; 
 
 
-    public FairSim3dGUI( Conf.Folder cfg, ImageSelector.ImageInfo imgs ) 
+    public FairSim3dGUI( Conf.Folder cfg, ImageSelector.ImageInfo imgs, ImageSelector imgSrc ) 
 	throws Conf.EntryNotFoundException, Conf.SomeIOException {
 
 	baseframe.setLocation(100,100);
+	this.imgSrc = imgSrc;
 
 	dmg = new DefineMaschineGui( cfg, false );
 	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
@@ -106,7 +116,7 @@ public class FairSim3dGUI {
 
 	if ( imgs.nrSlices % imgPerZ != 0 ) {
 	    Tool.error(" Image length not a multiple of raw images per z-plane",true);
-	    return;
+	    throw new RuntimeException("wrong image passed");
 	    // TODO: throw a proper exception here
 	}
 
@@ -132,11 +142,11 @@ public class FairSim3dGUI {
 
 
 	// position in stack
-	Tiles.LNSpinner zBottom = new Tiles.LNSpinner("z bottom", 1, 1, imgs.nrSlices/imgPerZ, 1);
-	Tiles.LNSpinner zTop = new Tiles.LNSpinner("z top", imgs.nrSlices/imgPerZ, 0, imgs.nrSlices/imgPerZ, 1);
+	zBottom = new Tiles.LNSpinner("z bottom", 1, 1, imgs.nrSlices/imgPerZ, 1);
+	zTop = new Tiles.LNSpinner("z top", imgs.nrSlices/imgPerZ, 0, imgs.nrSlices/imgPerZ, 1);
 	
-	Tiles.LNSpinner tStart = new Tiles.LNSpinner("t start", 1, 1, imgs.nrTimepoints, 1);
-	Tiles.LNSpinner tEnd = new Tiles.LNSpinner("t end", imgs.nrTimepoints, 1, imgs.nrTimepoints, 1);
+	tStart = new Tiles.LNSpinner("t start", 1, 1, imgs.nrTimepoints, 1);
+	tEnd = new Tiles.LNSpinner("t end", imgs.nrTimepoints, 1, imgs.nrTimepoints, 1);
 
 	posSelector.add( zBottom );
 	posSelector.add( zTop );
@@ -146,6 +156,13 @@ public class FairSim3dGUI {
 
 	JPanel buttonPanel = new JPanel();
 	JButton start3dReconButton = new JButton("run!");
+
+	start3dReconButton.addActionListener( new ActionListener () {
+	    @Override
+	    public void actionPerformed(ActionEvent e){
+		runReconstruction();
+	    }
+	});
 
 	buttonPanel.add( start3dReconButton );
 
@@ -306,6 +323,75 @@ public class FairSim3dGUI {
 
     }
 
+
+    void runReconstruction() {
+	
+	// figure out how many channels to reconstruct
+	List<ChannelPanel> channelMap = new ArrayList<ChannelPanel>();
+	for ( ChannelPanel a : channelPanelList ) {
+	    if ( a.channelEnabled.isSelected() ) {
+		channelMap.add( a );
+	    }
+	}
+
+	int numChannels = channelMap.size();
+	//int numZSlices  = (int)(zTop.getVal() - zBottom.getVal());
+	int numZSlices  = ourRawImages.nrSlices / imgPerZ;
+	int numTimesteps  = (int)(tStart.getVal() - tEnd.getVal()+1);
+	
+	// TODO: implement the z-top, z-bottom values here
+
+	Tool.trace("Reconstructing: c "+numChannels+" t "+numTimesteps );
+
+	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
+	    ourRawImages.width*2, ourRawImages.height*2,
+	    numZSlices, numChannels , numTimesteps, "3D SIM result");
+
+	// loop the channels
+	for (int ch = 0; ch<numChannels; ch++) {
+	    ChannelPanel channel = channelMap.get( ch );
+
+	    // loop the timepoints TODO: this is not thread-save (user might change value)
+	    for (int t=(int)tStart.getVal()-1; t<(int)tEnd.getVal(); t++) {
+
+		// generate the input vector
+		Vec2d.Real [] inputImgs = imgSrc.getImages( ourRawImages, channel.chNr, t ); 	
+
+		SimParam sp = channel.channelSelector.getSelectedItem().sp;
+		
+		sp.setPxlSize3d( ourRawImages.width, numZSlices,
+		    ourRawImages.micronsPerPxl, 0.125 ); 
+
+		sp.otf3d( channel.otfSelector.getSelectedItem() );
+		sp.otf3d().setPixelSize(  1/ourRawImages.micronsPerPxl/ourRawImages.width, 
+		    1/0.125/numZSlices );
+
+
+		// run the reconstruction
+		Vec3d.Cplx result = SimAlgorithm3D.runReconstruction(
+			inputImgs, 
+			channel.otfSelector.getSelectedItem(),
+			channel.channelSelector.getSelectedItem().sp,
+			-2, channel.wienerParam.getVal());
+
+		result.fft3d(true);
+
+		// copy the result to output
+		Vec2d.Real  res = Vec2d.createReal(  ourRawImages.width*2, ourRawImages.height*2 );
+		for (int z=0; z<numZSlices; z++) {
+			res.slice( result, z );
+			iso.setImage( res, z, ch, t, "" );
+		}
+
+
+	    }
+	}
+
+	iso.update();
+
+
+
+    }
 
 
 
