@@ -56,10 +56,13 @@ public class SimAlgorithm3D {
 	tAll.start();
 	
 	// Output displays to show the intermediate results
+	/*
 	ImageDisplay pwSt  = new DisplayWrapper(w,h, "Power Spectra" );
 	ImageDisplay spSt  = new DisplayWrapper(w,h, "Spatial images");
 	ImageDisplay pwSt2 = new DisplayWrapper(2*w,2*h, "Power Spectra" );
 	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
+	*/
+
 
 	// Copy current stack into vectors, apotize borders, run fft 
 	Vec3d.Cplx inFFT[][] = new Vec3d.Cplx[ nrDirs ][ nrPhases ];
@@ -85,6 +88,7 @@ public class SimAlgorithm3D {
 	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
 	    
 	    // DEBUG output
+	    /*
 	    if (visualFeedback>-1) {
 		Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
 		tmp.slice( inFFT[a][p],0 );
@@ -96,6 +100,8 @@ public class SimAlgorithm3D {
 		pwSt.addImage( 
 		    SimUtils.pwSpec(inFFT[a][p]) , "input projected: a"+a+" p"+p);
 	    }
+	    */
+	
 	}
 
 
@@ -155,8 +161,6 @@ public class SimAlgorithm3D {
 		otf.reciproc();
 		c2.times( otf );
 
-
-
 		// dampen region around DC // TODO: is this needed for 3D?
 		//c0.times( otfAtt );
 		//c1.times( otfAtt );
@@ -177,6 +181,7 @@ public class SimAlgorithm3D {
 	
 		Vec2d.Cplx pl = Vec2d.createCplx(w,h);
 
+		/*
 		for (int z=0; z<d; z++) {
 		    pl.slice( c1 , z );
 		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b1, a:"+angIdx+" z: "+z);
@@ -185,7 +190,8 @@ public class SimAlgorithm3D {
 		    pl.slice( c2 , z );
 		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b2, a:"+angIdx+" z: "+z);
 		}
-		
+		*/
+
 		
 		double [] peak = Correlation3d.locatePeak(  c2 , minDist );
 		
@@ -239,6 +245,7 @@ public class SimAlgorithm3D {
 
 
 		// --- output visual feedback of peak fit ---
+		/*
 		if (visualFeedback>0) {
 		    
 		    // mark region excluded from peak finder
@@ -263,7 +270,7 @@ public class SimAlgorithm3D {
 			pwSt.addImage( SimUtils.pwSpec( c1 ), "dir "+angIdx+" c-corr band 0<>low",
 			    new ImageDisplay.Marker( w/2-peak[0]/2, h/2+peak[1]/2, 10, 10, true));
 		} 
-		    
+		*/  
 
 		// --- output visual feedback of overlapping regions (for all bands) ---
 		/*
@@ -371,7 +378,7 @@ public class SimAlgorithm3D {
 	
 	tWien.start();
 	WienerFilter3d wFilter = new WienerFilter3d( param );
-	
+	/*
 	if (visualFeedback>0) {
 	    Vec3d.Real wd = wFilter.getDenominator(wienParam);
 	    for (int z=0; z<7; z++) {
@@ -384,7 +391,7 @@ public class SimAlgorithm3D {
 		pwSt2.addImage(wdpr, "Wiener denominator, z: "+z);
 	    }
 	}
-	
+	*/
 	tWien.stop();
 	
 	
@@ -471,7 +478,8 @@ public class SimAlgorithm3D {
 		}
 		
 		// ------ Output intermediate results ------
-		
+
+		/*
 		if (visualFeedback>0) {
 	    
 		    // per-direction results
@@ -521,7 +529,6 @@ public class SimAlgorithm3D {
 			result.times( fDenom );
 			
 		    // output the wiener denominator
-		    /*
 		    if (visualFeedback>1) {
 			Vec2d.Real wd = fDenom.duplicate();
 			wd.reciproc();
@@ -530,16 +537,10 @@ public class SimAlgorithm3D {
 			pwSt2.addImage( wd, String.format(
 			    "a%1d: OTF/Wiener all bands",angIdx ));
 		    } 
-		    */
 
 		    pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
 			"a%1d: all bands",angIdx));
 		    
-		    /*
-		    for (int i=0; i<7; i++)
-			spSt2.addImage( SimUtils.spatial( result,i ) ,String.format(
-			    "a%1d: all bands: pl "+i,angIdx));
-		    */
 		    
 		    spSt2.addImage( SimUtils.spatial( result,5 ) ,String.format(
 		        "a%1d: all band (slice 5)",angIdx));
@@ -552,6 +553,7 @@ public class SimAlgorithm3D {
 		    }
 	       
 		}
+		*/
 
 
 	    }   
@@ -559,17 +561,15 @@ public class SimAlgorithm3D {
 	    // -- done loop all pattern directions, 'fullResult' now holds the image --
 	    
 	    
-	    //if (visualFeedback>0) {
-	    if (true) {
+	    /*if (visualFeedback>0) {
 		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO, WF)");
 		for (int i=0; i<7; i++)
 		    spSt2.addImage(  SimUtils.spatial(fullResult,i), "full (w/o APO, WF), pl: "+i);
-	    }
+	    } */
 	    
 	    // multiply by wiener denominator
 	    Vec3d.Real denom = wFilter.getDenominator( wienParam );
-	    if (!disableFiltering)
-		fullResult.times(denom);
+	    fullResult.times(denom);
 
 	    // apply apotization filter
 	    
@@ -577,14 +577,17 @@ public class SimAlgorithm3D {
 	    //otfPr.writeApoVector( apo, apoB, apoF);
 	    //fullResult.times(apo);
 	    
+	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)
 		spSt2.addImage( SimUtils.spatial( fullResult,z), "full result: z"+z);
 	    
 	    if (visualFeedback>0) {
 		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
 	    }
+	    */
 
 	    // Add wide-field for comparison
+	    /*
 	    if (visualFeedback>=0) {
 		
 		// obtain the low freq result
@@ -624,6 +627,7 @@ public class SimAlgorithm3D {
 		spSt2.addImage( SimUtils.spatial( lowFreqResult), "filtered Widefield" );
 
 	    }	
+	    */
 	}
 	// stop timers
 	tRec.stop();	
@@ -642,10 +646,12 @@ public class SimAlgorithm3D {
 	Tool.trace(" All:                         "+tAll);
 
 	// DONE, display all results
+	/*
 	pwSt.display();
 	pwSt2.display();
 	spSt.display();
 	spSt2.display();
+	*/
 
 	return fullResult;
 
