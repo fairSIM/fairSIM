@@ -37,6 +37,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JDialog;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JTabbedPane;
 
 import java.net.URL;
 
@@ -109,11 +110,28 @@ public class FairSim3dGUI {
 	    // TODO: throw a proper exception here
 	}
 
-	// 1 -- position selector
+	
+	// Channel-specific settings
+	for ( int ch =0 ; ch<imgs.nrChannels; ch++) {
+	    ChannelPanel chPnl = new ChannelPanel(ch);
+	    channelPanelList.add( chPnl );
+	    mainPanel.add( chPnl.ourPanel );
+	}
+
+
+	// 3D and 2D reconstruction tabs
+	
+	// ------ 3D --------
+
+
+
+	// 3D control
+	JPanel recon3dPanel = new JPanel();
 	JPanel posSelector = new JPanel();
 	posSelector.setBorder(BorderFactory.createTitledBorder("Stack size") );
 
 
+	// position in stack
 	Tiles.LNSpinner zBottom = new Tiles.LNSpinner("z bottom", 1, 1, imgs.nrSlices/imgPerZ, 1);
 	Tiles.LNSpinner zTop = new Tiles.LNSpinner("z top", imgs.nrSlices/imgPerZ, 0, imgs.nrSlices/imgPerZ, 1);
 	
@@ -124,21 +142,27 @@ public class FairSim3dGUI {
 	posSelector.add( zTop );
 	posSelector.add( tStart );
 	posSelector.add( tEnd );
+
+
+	JPanel buttonPanel = new JPanel();
+	JButton start3dReconButton = new JButton("run!");
+
+	buttonPanel.add( start3dReconButton );
+
+	recon3dPanel.add( posSelector );
+	recon3dPanel.add( buttonPanel );
+
+	// ------ 2D --------
+
+	JPanel recon2dPanel = new JPanel();
+	recon2dPanel.add( new JLabel("not implemented here yet"));
+
+	// ------ ----- -----
 	
-	mainPanel.add( posSelector );
-
-
-	// 2 -- channel-specific settings
-	for ( int ch =0 ; ch<imgs.nrChannels; ch++) {
-	    ChannelPanel chPnl = new ChannelPanel(ch);
-	    channelPanelList.add( chPnl );
-	    mainPanel.add( chPnl.ourPanel );
-	}
-
-
-
-
-
+	JTabbedPane reconTabs = new JTabbedPane();
+	reconTabs.add( recon3dPanel, "full 3D");
+	reconTabs.add( recon2dPanel, "2D / single slice");
+	mainPanel.add( reconTabs );
 
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.PAGE_AXIS));
 	baseframe.add( mainPanel );
