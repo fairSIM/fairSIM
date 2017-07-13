@@ -23,6 +23,7 @@ import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.OtfProvider;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
+import org.fairsim.utils.ImageOutputFactory;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 
@@ -66,7 +67,7 @@ public class FairSimGUI {
     // create and pack the control interface
     public FairSimGUI( 
 	SimParam sp, ImageSelector is, 
-	ImageDisplay.Factory imgFactory,
+	ImageOutputFactory imgFactory,
 	boolean initialized
 	) {
 	baseframe = new JFrame("fairSIM");

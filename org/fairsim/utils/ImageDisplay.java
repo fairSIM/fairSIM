@@ -95,16 +95,6 @@ public interface ImageDisplay {
     }
 
 
-    /** Creation of ImageDisplays */
-    public interface Factory {
-	/** Create a new ImageDiplay.
-	 *  @param w Width of the display
-	 *  @param h Height of the display 
-	 *  @param t Title of the display */
-	public ImageDisplay create(int w, int h, String t);
-
-    }
-
 
 }
 

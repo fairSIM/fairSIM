@@ -22,6 +22,7 @@ import org.fairsim.linalg.*;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageDisplay;
+import org.fairsim.utils.ImageOutputFactory;
 
 /** High-level parts of the SIM algorithm */
 public class SimAlgorithm {
@@ -36,7 +37,7 @@ public class SimAlgorithm {
      * @param tEst   Runtime measurement (may be null) */
     public static void estimateParameters( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
-	final ImageDisplay.Factory idf, 
+	final ImageOutputFactory idf, 
 	int visualFeedback, Tool.Timer tEst ) {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
@@ -266,7 +267,7 @@ public class SimAlgorithm {
      * @param tRec   Runtime measurement (may be null) 
      * @return The reconstructed image */
     public static Vec2d.Real runReconstruction( final SimParam param, 
-	Vec2d.Cplx [][] inFFT, ImageDisplay.Factory idf, int visualFeedback, 
+	Vec2d.Cplx [][] inFFT, ImageOutputFactory idf, int visualFeedback, 
 	final boolean otfBeforeShift, final SimParam.CLIPSCALE imgClipScale, 
 	Tool.Timer tRec ) {
 

@@ -44,6 +44,7 @@ import java.awt.event.ActionEvent;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
+import org.fairsim.utils.ImageOutputFactory;
 
 import org.fairsim.sim_algorithm.OtfProvider;
 import org.fairsim.sim_algorithm.SimParam;
@@ -64,7 +65,7 @@ public class ReconstructionControl {
     private final SimParam simParam;
     private final SimParamGUI simp;
     private final ImageControl imgc;
-    private ImageDisplay.Factory idpFactory ;
+    private ImageOutputFactory idpFactory ;
 
     private String [] verbosityString
 	= new String [] { "result only", "standard", "more", "most", "full" };
@@ -79,7 +80,7 @@ public class ReconstructionControl {
 
     /** Contructor, initializes image list. */
     public ReconstructionControl( final JFrame baseframe, 
-	final ImageDisplay.Factory idpFactory,
+	final ImageOutputFactory idpFactory,
 	final ImageControl imgc, 
 	final SimParam simParam, final SimParamGUI simp ) {
 

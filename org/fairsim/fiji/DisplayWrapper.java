@@ -20,6 +20,8 @@ package org.fairsim.fiji;
 
 
 import org.fairsim.utils.ImageDisplay; 
+import org.fairsim.utils.ImageStackOutput;
+import org.fairsim.utils.ImageOutputFactory; 
 import org.fairsim.utils.Tool; 
 
 import org.fairsim.linalg.Vec;
@@ -48,7 +50,7 @@ import java.lang.reflect.InvocationTargetException;
 
 /** A wrapper around ImageStack, ImagePlus and 
  *  ImageWindow, for interactive result display */
-public class DisplayWrapper implements ImageDisplay, ImageListener  {
+public class DisplayWrapper implements ImageDisplay, ImageListener {
 
     // for convenience
     final private int width, height;
@@ -331,17 +333,20 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 
     /** Returns a Factory for DisplayWrappers, and starts an
      * embedded instance of ImageJ */
-    public static ImageDisplay.Factory getTestingFactory() {
+    public static ImageOutputFactory getTestingFactory() {
 	ij.ImageJ ijInstance  = new ij.ImageJ(ij.ImageJ.EMBEDDED);
 	return DisplayWrapper.getFactory();
     }
     
 
     /** Returns a Factory for DisplayWrappers */
-    public static ImageDisplay.Factory getFactory() {
-	return new ImageDisplay.Factory() {
+    public static ImageOutputFactory getFactory() {
+	return new ImageOutputFactory() {
 	    public ImageDisplay create(int w, int h, String title) {
 		return new DisplayWrapper(w,h, title);	
+	    }
+	    public ImageStackOutput create(int w, int h, int d, int c, int t, String title) {
+		return new DisplayWrapper5D(w,h,d,c,t, title);	
 	    }
 	};
     }

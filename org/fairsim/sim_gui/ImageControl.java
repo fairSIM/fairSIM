@@ -56,6 +56,7 @@ import javax.swing.event.PopupMenuEvent;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
+import org.fairsim.utils.ImageOutputFactory;
 
 import org.fairsim.sim_algorithm.OtfProvider;
 import org.fairsim.sim_algorithm.SimParam;
@@ -80,7 +81,7 @@ public class ImageControl {
     private final JFrame baseframe;
     private final SimParam simParam;
     private final FairSimGUI fsGUI;
-    private ImageDisplay.Factory idpFactory ;
+    private ImageOutputFactory idpFactory ;
 
     // global references to be accessed both by importImage and showSlices
     private JButton importImageButton	= null;
@@ -131,7 +132,7 @@ public class ImageControl {
 
     /** Contructor, initializes image list. */
     public ImageControl( final JFrame baseframe, ImageSelector is, 
-	final ImageDisplay.Factory imgFactory, 	FairSimGUI fsg, SimParam sp ) {
+	final ImageOutputFactory imgFactory, 	FairSimGUI fsg, SimParam sp ) {
 
 	// initialize variables
 	this.baseframe    = baseframe;
