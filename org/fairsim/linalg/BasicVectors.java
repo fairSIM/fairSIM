@@ -386,8 +386,11 @@ class BasicVector implements VectorFactory {
 
 	@Override
 	public void setSlice( int z, Vec2d.Real vec ) {
-	    // TODO: Actually implement this
-	    throw new RuntimeException("Not jet implemented");
+
+	    if ( z <0 || z>depth || vec.vectorWidth() != width || vec.vectorHeight() != height )
+		throw new RuntimeException("Vector dimension mismatch");
+
+	    System.arraycopy( vec.vectorData(), 0, data, z*width*height, width*height );
 	}
 
     }
