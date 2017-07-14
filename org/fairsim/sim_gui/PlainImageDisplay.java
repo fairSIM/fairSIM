@@ -31,6 +31,7 @@ import javax.swing.JButton;
 import javax.swing.JTabbedPane;
 import java.awt.GridBagLayout;
 import javax.swing.BoxLayout;
+import java.awt.BorderLayout;
 import javax.swing.Box;
 import java.awt.GridBagConstraints;
 import javax.swing.event.ChangeListener;
@@ -41,6 +42,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import javax.swing.JCheckBox;
+import javax.swing.SwingConstants;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -63,6 +65,7 @@ public class PlainImageDisplay {
 	ic.paintImage();
     }
 
+
     enum LUT {
 
 	GREY(0), 
@@ -81,6 +84,8 @@ public class PlainImageDisplay {
     public PlainImageDisplay(int nrChannels, int w, int h, String ... names) {
 	this(nrChannels, w, h, true, names );
     }
+    
+   
 
     public PlainImageDisplay(int nrChannels, int w, int h, boolean slidersOnTop,
 	String ... names) {
@@ -96,41 +101,52 @@ public class PlainImageDisplay {
 	// panel containing the channels
 	JPanel channelsPanel = new JPanel();
 	channelsPanel.setLayout( new BoxLayout( channelsPanel, BoxLayout.PAGE_AXIS ));
+	    
+	
 
 
 	for (int ch = 0; ch < nrChannels; ch++) {
 	    
 	    final int channel = ch;
 
-	    // sliders and buttons
+	    final JLabel  lValues ;
 	    final JSlider sMin = new JSlider(JSlider.HORIZONTAL, 0, 16*100, 0);
 	    final JSlider sMax = new JSlider(JSlider.HORIZONTAL, 200, 16*100, 12*100);
+	    final JSlider sGamma = new JSlider(JSlider.HORIZONTAL, 10, 300,100);
+
+
+	    // sliders and buttons
 	    final JButton autoMin = new JButton("auto");
 	    final JButton autoMax = new JButton("auto");
-	    final JLabel  valMin = new JLabel( String.format("% 5d",sMin.getValue()));
-	    final JLabel  valMax = new JLabel( String.format("% 5d",sMax.getValue()));
 	    
-	    final JSlider sGamma = new JSlider(JSlider.HORIZONTAL, 10, 300,100);
-	    final JLabel  lGamma = new JLabel(String.format("g%4.2f", sGamma.getValue()/100.));
 	    final JButton bGamma1 = new JButton("1.0");
 	    final JButton bGamma2 = new JButton("2.2");
+	    
+	    lValues = new JLabel(String.format("min % 5d max % 5d gamma %3.2f", 
+		sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 
 	    final HistogramDisplay hist = new HistogramDisplay(300,100);
+	    
+	    sMin.setPreferredSize( new Dimension(305,20));
+	    sMax.setPreferredSize( new Dimension(305,20));
+	    sGamma.setPreferredSize( new Dimension(305,25));
 
 	    histList.add( hist );
 
 	    sMin.addChangeListener( new ChangeListener() {
 		public void stateChanged(ChangeEvent e) {
-		    double exponent = sMin.getValue()/100.;
-		    int val = (int)Math.pow( 2, exponent );
-
-		    if (sMax.getValue() -200 < exponent*100 )
-			sMax.setValue( (int)(exponent*100)+200 );
 		    
-		    //valMin.setText(String.format("2^%4.2f -> % 5d",exponent, val));
-		    valMin.setText(String.format("% 5d",val));
+		    int val = sMin.getValue();
+		    if (sMax.getValue()-9<val)
+		        sMax.setValue(val+9);
 
-		    ic.scalMin[0] = val;
+		    //updateMinMaxGamma();
+		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
+		    
+		    hist.setMinMarker( val );
+		    
+		    ic.scalMin[channel] = val;
 		    ic.paintImage();
 		}
 	    });
@@ -138,19 +154,15 @@ public class PlainImageDisplay {
 	    sMax.addChangeListener( new ChangeListener() {
 		public void stateChanged(ChangeEvent e) {
 		    
-		    double exponent = sMax.getValue()/100.;
-		    int val = (int)Math.pow( 2, exponent );
-
-		    if (sMin.getValue() +200 > exponent*100 )
-			sMin.setValue( (int)(exponent*100)-200 );
+		    int val = sMax.getValue();
+		    if (sMin.getValue()+9>val)
+		        sMin.setValue(val-10);
 		    
-		    //valMax.setText(String.format("2^%4.2f -> % 5d",exponent, val));
-		    valMax.setText(String.format("% 5d",val));
+		    //updateMinMaxGamma();
+		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 		    
-		    //int val = sMax.getValue();
-		    //if (sMin.getValue()+9>val)
-		    //    sMin.setValue(val-10);
-		    //valMax.setText(String.format("% 5d",val));
+		    hist.setMaxMarker( val );
 		    
 		    ic.scalMax[channel] = val;
 		    ic.paintImage();
@@ -173,8 +185,13 @@ public class PlainImageDisplay {
 	    sGamma.addChangeListener( new ChangeListener() {
 		public void stateChanged(ChangeEvent e) {
 		    double gamma = sGamma.getValue()/100.;
-		    lGamma.setText(String.format("g%4.2f",gamma));
+		    //updateMinMaxGamma();
+		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 		    ic.recalcGammaTable( channel, gamma );
+		    
+		    hist.setGamma( gamma );
+		    
 		    ic.paintImage();
 		}
 	    });
@@ -190,46 +207,6 @@ public class PlainImageDisplay {
 		}
 	    });
 
-	    // sliders setting min/max
-	    JPanel sliders = new JPanel(new GridBagLayout());
-	    GridBagConstraints c = new GridBagConstraints();	
-	    
-    
-	    // min slider, histogram, max slider
-	    c.gridx=1; c.gridy=1; c.gridwidth=10; c.gridheight=1;
-	    sliders.add( sMin, c );
-	    c.gridx=1; c.gridy=2; c.gridwidth=10; c.gridheight=5;
-	    sliders.add( hist,c );
-	    c.gridx=1; c.gridy=7; c.gridwidth=10; c.gridheight=1;
-	    sliders.add( sMax, c );
-
-	    
-	    c.gridx=1; c.gridy=1; c.gridwidth=1; c.gridheight=1;
-	    sliders.add( valMin,c );
-	    c.gridx=10; c.gridy=7;
-	    sliders.add( valMax,c);
-	
-
-	    c.gridx=1; c.gridy=8; c.gridwidth=2; c.gridheight=1;
-	    sliders.add( lGamma , c);
-	    c.gridx=4; c.gridy=8; c.gridwidth=8; c.gridheight=1;
-	    sliders.add( sGamma , c);
-	    
-	    /* 
-	    c.gridx=7; c.gridy=0; c.gridwidth=2;
-	    sliders.add( autoMin, c );
-	    c.gridy=1;
-	    sliders.add( autoMax, c ); */
-	
-	    /*
-	    c.gridx=7; c.gridwidth=1;
-	    sliders.add( bGamma1 ,c );
-	    c.gridx=8; 
-	    sliders.add( bGamma2 ,c ); */
-	    
-
-	    // Lut selector
-            
 	    Tiles.LComboBox<LUT> lutSelector = 
 		new Tiles.LComboBox<LUT>("LUT", LUT.values()); 
 	    lutSelector.addSelectListener( new Tiles.SelectListener<LUT>() {
@@ -242,23 +219,62 @@ public class PlainImageDisplay {
 
 	    lutSelector.box.setSelectedIndex( (channel+1)%7 );
 	    
-	    c.gridx=1; c.gridy=11; c.gridwidth=4;
-	    sliders.add(lutSelector,c);
-            
-            // show checkBox
+	    // show checkBox
             final JCheckBox showCheckBox = new JCheckBox("Show Channel", true);
             showCheckBox.addActionListener( new ActionListener() {
 		public void actionPerformed( ActionEvent e ) {
 		    ic.show[channel] = showCheckBox.isSelected();
 		}
 	    });
-            c.gridx=6; c.gridy=11; c.gridwidth=4;
-            sliders.add(showCheckBox,c);
-	   
+
+
 	    String chName="Ch "+channel;
 	    if ( names.length > channel )
 		chName = names[channel];
+	    
+	    // ==== LAYOUT ====
+	    
+	    // sliders setting min/max
+	    JPanel sliders = new JPanel(new GridBagLayout());
+	    GridBagConstraints c = new GridBagConstraints();	
+	    
 
+	    c.weightx=1;
+    
+	    // min slider, histogram, max slider
+	    c.gridx=0; c.gridy=0; c.gridwidth=10; c.gridheight=1;
+	    sliders.add( sMin, c );
+	    c.gridx=0; c.gridy=1; c.gridwidth=10; c.gridheight=5;
+	    sliders.add( hist,c );
+	    c.gridx=0; c.gridy=6; c.gridwidth=10; c.gridheight=1;
+	    sliders.add( sMax, c );
+
+	    // Lut selector and "show image"
+	    c.gridx=0; c.gridy=7; c.gridwidth=4;
+	    sliders.add(lutSelector,c);
+	    c.gridx=4; c.gridy=7; c.gridwidth=4;
+            sliders.add(showCheckBox,c);
+	    
+	    
+	    // gamma slider
+	    c.gridx=0; c.gridy=8; c.gridwidth=10; c.gridheight=1;
+	    sliders.add( sGamma , c);
+	   
+	    // label
+	    c.gridx=2; c.gridy=9; c.gridwidth=GridBagConstraints.REMAINDER; c.gridheight=1;
+	    c.fill = GridBagConstraints.BOTH;
+	    c.anchor = GridBagConstraints.CENTER;
+	    //lValues.setHorizontalAlignment(SwingConstants.CENTER);
+	    sliders.add( (new JPanel()).add(lValues),c);
+
+	    /* 
+	    c.gridx=7; c.gridy=0; c.gridwidth=2;
+	    sliders.add( autoMin, c );
+	    c.gridy=1;
+	    sliders.add( autoMax, c ); */
+	
+	    
+	   
 	    JPanel perChannelPanel = new JPanel();
 	    perChannelPanel.setBorder( BorderFactory.createTitledBorder(chName));
 	    perChannelPanel.add( sliders );
@@ -317,7 +333,15 @@ public class PlainImageDisplay {
 
 
 	private int pointCounter =0;
-    
+   
+	int minMarker, maxMarker;
+	double gamma;
+
+	void setMinMarker( int val ) { minMarker = val; }
+	void setMaxMarker( int val ) { maxMarker = val; }
+	void setGamma( double val ) { gamma = val; }
+
+
 	void setData( float [] dat, float min, float max) {
 
 
