@@ -65,6 +65,26 @@ public class PlainImageDisplay {
 	ic.paintImage();
     }
 
+    // store the sRGB gamma as precomputed array
+    final static private byte [] gammaSRGB = new byte[ 2048 ];
+    static {
+	for (int i=0; i<gammaSRGB.length; i++) {
+	    double pos = (float)i/gammaSRGB.length;
+
+	    if (pos < 0.0031308 ) {
+		gammaSRGB[i] = (byte)(256 * 12.92 * pos);
+	    } else {
+		double val = 1.055 * Math.pow( pos, 1./2.4 ) - 0.055;
+		val *= 256;
+		if (val>127) val-=256;
+		gammaSRGB[i] = (byte)(val);
+	    }
+	    
+	    // for deubg, output the table
+	    //System.out.println(String.format("%d %7.5f %d #srgb-gamma", i, pos, gammaSRGB[i]));
+	}
+    }
+
 
     enum LUT {
 
@@ -76,9 +96,30 @@ public class PlainImageDisplay {
 	BLUE(1),
 	YELLOW(6);
 	
-	int val=0;
-	public int getInt() { return val; }
-	LUT(int i) { val=i; }
+	int color=0;
+	public int getInt() { return color; }
+	LUT(int i) { color=i; }
+    
+	public float [] getColorCoeff() {
+	    
+	    float [] values = new float[3];
+	    // gray
+	    if (color==0) {
+                values[0] = .3f; // blue
+                values[1] = .3f; // green
+                values[2] = .3f; // red
+             } else {
+             // 1-6: blue, green, cyan, red, magenta, yellow
+                 if ((color&4)!=0)
+                      values[2] = .3f; // red
+                 if ((color&2)!=0)
+                      values[1] = .3f; // green
+                 if ((color&1)!=0)
+                      values[0] = .3f; // blue
+             }
+	     return values;
+	}
+    
     };
 
     public PlainImageDisplay(int nrChannels, int w, int h, String ... names) {
@@ -439,11 +480,12 @@ public class PlainImageDisplay {
 	double [] gamma;
         final boolean[] show;
 
-	final float [][] imgBuffer ;
-	final byte  [] imgData   ;
-	final byte  [] imgDataBuffer ;
-	final short  [][]   gammaLookupTable ;
-	final short  [][][] colorLookupTable ;
+	final float [][] imgBufferLinearChannels ;
+	final byte  [] imgDataBufferSRGB ;
+	final byte  [] imgDataOnScreen   ;
+
+	float [][] colorCoeff;
+	final float [][] gammaLookupTable ;
 
 	int zoomLevel=1, zoomX=0, zoomY=0;
 
@@ -452,15 +494,16 @@ public class PlainImageDisplay {
 	    width=w; height=h; nrChannels = ch;
 	   
 	    setIgnoreRepaint(true);
-	    bufferedImage = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
-	    imgBuffer	  = new float[nrChannels][w*h];
+	    bufferedImage   = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
 	    
-	    imgDataBuffer = new  byte[3*w*h];
+	    imgBufferLinearChannels = new float[nrChannels][w*h];
 	    
-	    imgData = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
+	    imgDataBufferSRGB = new  byte[3*w*h];
 	    
-	    gammaLookupTable = new short[nrChannels][ gammaLookupTableSize ];
-	    colorLookupTable = new short[nrChannels][256][3];
+	    imgDataOnScreen   = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
+
+	    colorCoeff = new float[nrChannels][3];
+	    gammaLookupTable = new float[nrChannels][ gammaLookupTableSize ];
 
 	    // init values
 	    scalMax = new int[ch];
@@ -515,35 +558,10 @@ public class PlainImageDisplay {
 	    });
 	}
 
-	// adapted from imageJ
-	void primaryColor(int color, short[][] values) {
-	    // gray
-	    if (color==0) {
-		for (short i=0; i<256; i++) {
-                    values[i][0] = i; // blue
-                    values[i][1] = i; // green
-                    values[i][2] = i; // red
-		}
-	    } else {
-	    // 1-6: blue, green, cyan, red, magenta, yellow
-            for (short i=0; i<256; i++) {
-		values[i][0]=values[i][1]=values[i][2]=0;
-		
-		if ((color&4)!=0)
-                    values[i][2] = i; // red
-            	if ((color&2)!=0)
-                    values[i][1] = i; // green
-            	if ((color&1)!=0)
-                    values[i][0] = i; // blue
-        	}
-	    }
-	}
-
-
 	public void setImage( int ch, float [] img ) {
 	    if (img.length != width*height )
 		throw new RuntimeException("Input array size does not match " + img.length + "/" + width + "/" + height);
-	    System.arraycopy( img, 0, imgBuffer[ch], 0, width*height);
+	    System.arraycopy( img, 0, imgBufferLinearChannels[ch], 0, width*height);
 	}
 	
 	public void setImage( int ch, Vec2d.Real img ) {
@@ -559,7 +577,7 @@ public class PlainImageDisplay {
 	    for (int i=0; i<width*height; i++) {
 		int val = (int)pxl[i];
 		if (val<0) val+=65535;
-		imgBuffer[ch][i] = val;
+		imgBufferLinearChannels[ch][i] = val;
 	    }
 	}
 
@@ -567,64 +585,89 @@ public class PlainImageDisplay {
 	public void recalcGammaTable( int ch, double gamma ) {
 	    this.gamma[ch] = gamma;
 	    for (int i=0; i<gammaLookupTableSize; i++) {
-		gammaLookupTable[ch][i] = (short)(255*Math.pow(1.*i / gammaLookupTableSize, gamma));
+		gammaLookupTable[ch][i] = (float)(Math.pow(1.*i / gammaLookupTableSize, gamma));
 	    }
 	}
 
 	public void setColorTable( int channel, LUT lut ) {
-	    primaryColor( lut.getInt(), colorLookupTable[channel]);	   
-	    //Tool.trace("set lut to: "+lut.toString()+" "+lut.getInt());
+	    colorCoeff[channel] = lut.getColorCoeff();
+	    for (int c=0; c<3; c++) {
+		System.out.println(" color-coeff "+c+" "+colorCoeff[channel][c]);
+	    }
+
 	}
 
 
+	// TOOD: move this to an "image processing" class, I guess
 	public void paintImage() {
 
+
+	    float [] linRGB = new float[3];
+	    float [] cieXYZ = new float[3];
+
+	    // for all pixels
 	    for (int y=0; y<height; y++)
 	    for (int x=0; x<width; x++) {
 	
-		short r=0,g=0,b=0;
+		// 0 - zero current pixel
+		for (int col=0; col<3; col++) {
+		    cieXYZ[ col ] =0;
+		    linRGB[ col ] =0;
+		}
 
+		// 1 - convert all channels pixels to linear CIE XYZ
 		for (int ch=0; ch<nrChannels; ch++) {
                     if(show[ch]) {
-                        // scale
-                        float val = imgBuffer[ch][ x + y*width ];
+                        // find min / max (not needed here, but stored for histogram)
+			float val = imgBufferLinearChannels[ch][ x + y*width ];
                         if (val> currentImgMax[ch]) currentImgMax[ch] = (int)val;
                         if (val< currentImgMin[ch]) currentImgMin[ch] = (int)val;
-                        float out=0;
-                        if ( val >= scalMax[ch] ) out=1;
-                        if ( val <  scalMin[ch] ) out=0;
-                        if ( val >= scalMin[ch] && val < scalMax[ch] ) 
-                            out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
-
-                        // correct for gamma
-                        short pxl = gammaLookupTable[ch][ (int)(out*(gammaLookupTableSize-1)) ];
-
-                        // apply lookup
-                        b+= colorLookupTable[ch][pxl][0];
-                        g+= colorLookupTable[ch][pxl][1];
-                        r+= colorLookupTable[ch][pxl][2];
+                        // scale to set min / max values
+			float out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
+			if (out<0) out=0;
+			if (out>=1) out=1-.5f/gammaLookupTableSize;
+			// apply channel-specific gamma
+			out = gammaLookupTable[ch][ (int)(out*gammaLookupTableSize) ];
+			// add to the linear RGB buffer
+			for (int col=0; col<3; col++) {
+			    cieXYZ[ col ] += colorCoeff[ch][col] * out;
+			}
                     }
 		}
-		
-		// clip to 0..255
-		if (b>255) b=255;
-		if (g>255) g=255;
-		if (r>255) r=255;
+	
+		// 2 - clip the conversion input
+		for (int col=0; col<3; col++) {
+		    if ((cieXYZ[col]) > 1.0f) cieXYZ[col]=1.0f;
+		    if ((cieXYZ[col]) < 0.0f) cieXYZ[col]=0.0f;
+		}
 
-		// set to output
-		imgDataBuffer[3 * (y*width + x ) + 0 ] = (byte)b;
-		imgDataBuffer[3 * (y*width + x ) + 1 ] = (byte)g;
-		imgDataBuffer[3 * (y*width + x ) + 2 ] = (byte)r;
-	    
+		// 3 - threat input as CIE XYZ
+		linRGB[0] = (float)(cieXYZ[0] * 3.2406 + cieXYZ[1] * -1.5372 + cieXYZ[2] * -0.4986);
+		linRGB[1] = (float)(cieXYZ[0] * -.9689 + cieXYZ[1] *  1.8758 + cieXYZ[2] *  0.0415);
+		linRGB[2] = (float)(cieXYZ[0] * 0.0557 + cieXYZ[1] * -0.2040 + cieXYZ[2] *  1.0570);
+
+		// 4 - clip the conversion output
+		for (int col=0; col<3; col++) {
+		    if ((linRGB[col]) >= 1.0f) linRGB[col]=1-0.5f/gammaSRGB.length;
+		    if ((linRGB[col]) <  0.0f) linRGB[col]=0.0f;
+		}
+		
+		// 5- set to output bytes (through sRGBs gamma table)
+		for (int i=0; i<3; i++) {
+		    imgDataBufferSRGB[3 * (y*width + x ) + i  ] = 
+			gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
+		}
 	    }
-	    
+	   
+
+	    // this handles 'zoom'
 	    if (zoomLevel==1) {
-		System.arraycopy( imgDataBuffer, 0 , imgData, 0, 3*width*height);
+		System.arraycopy( imgDataBufferSRGB, 0 , imgDataOnScreen, 0, 3*width*height);
 	    } else {
 		for (int y=0; y<height; y++)	
 		for (int x=0; x<width;  x++)	
 		for (int i=0; i<3;  i++)	
-		    imgData[3*(x + y*width)+i] = imgDataBuffer[ 
+		    imgDataOnScreen[3*(x + y*width)+i] = imgDataBufferSRGB[ 
 		     3*( (x/zoomLevel+zoomX) + width*(y/zoomLevel+zoomY))+i];
 	    }
 	    
@@ -694,7 +737,7 @@ public class PlainImageDisplay {
 
 
     /** Main method for easy testing */
-    public static void main( String [] arg ) throws java.io.IOException {
+    public static void main( String [] arg ) throws java.io.IOException, InterruptedException {
 	
 	if (arg.length<2) {
 	    System.out.println("Usage for test: image-size channels");
@@ -740,6 +783,7 @@ public class PlainImageDisplay {
 		}
 		
 		pd.refresh();
+		Thread.sleep(25);
 	    }
 	    t1.stop();
 	    System.out.println( "fps: "+((1000*100)/t1.msElapsed()) );
