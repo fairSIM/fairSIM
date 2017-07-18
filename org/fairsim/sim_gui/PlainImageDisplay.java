@@ -67,8 +67,12 @@ public class PlainImageDisplay {
     }
 
     public void refresh() {
+	
+	// TODO: add rate limit		
+	
 	// paint the new image
 	ic.paintImage();
+	// update histogram
 	for ( int i=0; i<histList.size(); i++) {
 	    histList.get(i).setData(
 		ic.imgBufferLinearChannels[i], 0, (1<<bitDepth[i]));
@@ -204,7 +208,8 @@ public class PlainImageDisplay {
 		    hist.setMinMarker( val );
 		    
 		    ic.scalMin[channel] = val;
-		    ic.paintImage();
+		    refresh();
+		    //ic.paintImage();
 		}
 	    });
 
@@ -222,7 +227,8 @@ public class PlainImageDisplay {
 		    hist.setMaxMarker( val );
 		    
 		    ic.scalMax[channel] = val;
-		    ic.paintImage();
+		    //ic.paintImage();
+		    refresh();
 		}
 	    });
 
@@ -249,7 +255,8 @@ public class PlainImageDisplay {
 		    
 		    hist.setGamma( gamma );
 		    
-		    ic.paintImage();
+		    //ic.paintImage();
+		    refresh();
 		}
 	    });
 	   
@@ -270,8 +277,6 @@ public class PlainImageDisplay {
 		    bitDepth[channel] = l;
 		    sMin.setMaximum( 1<<l);
 		    sMax.setMaximum( 1<<l);
-		    //sMax.setValue( Math.min( 1<<l, ic.scalMax[channel] ));
-		    //sMin.setValue( Math.min( (1<<l)-10, ic.scalMin[channel] ));
 		    sMin.setValue( 0 );
 		    sMax.setValue( 1<<l );
 
@@ -375,6 +380,7 @@ public class PlainImageDisplay {
 	mainPanel.add( p1 );
 	mainPanel.add(channelsPanel);
 
+	refresh();
     }
   
     /** Set a new image */
@@ -405,6 +411,7 @@ public class PlainImageDisplay {
 	final int width, height;
 
 	final int [] gammaTable;
+
 
 	private int pointCounter =0;
    
