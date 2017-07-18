@@ -42,6 +42,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.awt.Font;
 import javax.swing.JCheckBox;
 import javax.swing.SwingConstants;
 
@@ -159,7 +160,7 @@ public class PlainImageDisplay {
 
 	bitDepth = new int[nrChannels];
 
-	final String minMaxLabelFormat = "m% 6d M% 6d g%3.2f";
+	final String minMaxLabelFormat = " m% 6d M% 6d g %3.2f";
 
 	for (int ch = 0; ch < nrChannels; ch++) {
 	    
@@ -186,6 +187,7 @@ public class PlainImageDisplay {
 	    lValues = new JLabel(String.format(minMaxLabelFormat,
 		sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 
+	    lValues.setFont( new Font( Font.MONOSPACED, Font.PLAIN, 10) );
 	    final HistogramDisplay hist = new HistogramDisplay(300,100);
 	    
 	    sMin.setPreferredSize( new Dimension(305,20));
@@ -494,9 +496,9 @@ public class PlainImageDisplay {
 		for (int x=0; x<width; x++) {
 		    
 		    if (count[x]*height > (height-y-1)*maxCount) {
-			imgData[(y*width+x)*3+0]=(byte)250;
-			imgData[(y*width+x)*3+1]=(byte)250;
-			imgData[(y*width+x)*3+2]=(byte)250;
+			imgData[(y*width+x)*3+0]=(byte)180;
+			imgData[(y*width+x)*3+1]=(byte)180;
+			imgData[(y*width+x)*3+2]=(byte)180;
 		    } else {
 			imgData[(y*width+x)*3+0]=0;
 			imgData[(y*width+x)*3+1]=0;
