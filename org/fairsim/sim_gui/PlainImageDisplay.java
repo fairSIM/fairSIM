@@ -38,6 +38,7 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.BorderFactory;
 import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -50,19 +51,28 @@ import java.util.ArrayList;
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.utils.Tool;
 
+
 public class PlainImageDisplay {
 
     protected final JPanel mainPanel ;
     protected final ImageComponent ic ;
 	
     List<HistogramDisplay> histList = new ArrayList<HistogramDisplay>();
+	    
+    // absolute bit depth of channel
+    final int [] bitDepth ;
 
     public PlainImageDisplay(int w, int h) {
 	this(1,w,h);
     }
 
     public void refresh() {
+	// paint the new image
 	ic.paintImage();
+	for ( int i=0; i<histList.size(); i++) {
+	    histList.get(i).setData(
+		ic.imgBufferLinearChannels[i], 0, (1<<bitDepth[i]));
+	}
     }
 
     // store the sRGB gamma as precomputed array
@@ -142,28 +152,34 @@ public class PlainImageDisplay {
 	// panel containing the channels
 	JPanel channelsPanel = new JPanel();
 	channelsPanel.setLayout( new BoxLayout( channelsPanel, BoxLayout.PAGE_AXIS ));
-	    
-	
 
+	bitDepth = new int[nrChannels];
+
+	final String minMaxLabelFormat = "m% 6d M% 6d g%3.2f";
 
 	for (int ch = 0; ch < nrChannels; ch++) {
 	    
 	    final int channel = ch;
 
 	    final JLabel  lValues ;
-	    final JSlider sMin = new JSlider(JSlider.HORIZONTAL, 0, 16*100, 0);
-	    final JSlider sMax = new JSlider(JSlider.HORIZONTAL, 200, 16*100, 12*100);
+	    final JSlider sMin = new JSlider(JSlider.HORIZONTAL, 0, 1<<16, 0);
+	    final JSlider sMax = new JSlider(JSlider.HORIZONTAL, 0, 1<<16, 1<<16);
 	    final JSlider sGamma = new JSlider(JSlider.HORIZONTAL, 10, 300,100);
 
+
+	    bitDepth[ch] = 16;
+
+	    final Tiles.LComboBox<Integer> bitDepthSelector = 
+		new Tiles.LComboBox<Integer>( "bits", 8,10,12,14,16 );
+
+	    bitDepthSelector.setSelectedIndex(4);
 
 	    // sliders and buttons
 	    final JButton autoMin = new JButton("auto");
 	    final JButton autoMax = new JButton("auto");
 	    
-	    final JButton bGamma1 = new JButton("1.0");
-	    final JButton bGamma2 = new JButton("2.2");
 	    
-	    lValues = new JLabel(String.format("min % 5d max % 5d gamma %3.2f", 
+	    lValues = new JLabel(String.format(minMaxLabelFormat,
 		sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 
 	    final HistogramDisplay hist = new HistogramDisplay(300,100);
@@ -174,7 +190,7 @@ public class PlainImageDisplay {
 
 	    histList.add( hist );
 
-	    sMin.addChangeListener( new ChangeListener() {
+	    	sMin.addChangeListener( new ChangeListener() {
 		public void stateChanged(ChangeEvent e) {
 		    
 		    int val = sMin.getValue();
@@ -182,7 +198,7 @@ public class PlainImageDisplay {
 		        sMax.setValue(val+9);
 
 		    //updateMinMaxGamma();
-		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+		    lValues.setText( String.format(minMaxLabelFormat, 
 			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 		    
 		    hist.setMinMarker( val );
@@ -200,7 +216,7 @@ public class PlainImageDisplay {
 		        sMin.setValue(val-10);
 		    
 		    //updateMinMaxGamma();
-		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+		    lValues.setText( String.format(minMaxLabelFormat, 
 			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 		    
 		    hist.setMaxMarker( val );
@@ -227,7 +243,7 @@ public class PlainImageDisplay {
 		public void stateChanged(ChangeEvent e) {
 		    double gamma = sGamma.getValue()/100.;
 		    //updateMinMaxGamma();
-		    lValues.setText( String.format("min % 5d max % 5d gamma %3.2f", 
+		    lValues.setText( String.format(minMaxLabelFormat, 
 			sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 		    ic.recalcGammaTable( channel, gamma );
 		    
@@ -236,17 +252,32 @@ public class PlainImageDisplay {
 		    ic.paintImage();
 		}
 	    });
-	    
-	    bGamma1.addActionListener( new ActionListener() {
-		public void actionPerformed( ActionEvent e ) {
-		    sGamma.setValue( 100 );
+	   
+
+	    sGamma.addMouseListener(new MouseAdapter() {
+		public void mouseClicked(MouseEvent evt) {
+		    if (evt.getClickCount() == 2) {
+			sGamma.setValue(100);
+		    }
 		}
 	    });
-	    bGamma2.addActionListener( new ActionListener() {
-		public void actionPerformed( ActionEvent e ) {
-		    sGamma.setValue( 220 );
+
+
+
+	    bitDepthSelector.addSelectListener( new Tiles.SelectListener<Integer>() {
+		@Override
+		public void selected(Integer l, int i ) {
+		    bitDepth[channel] = l;
+		    sMin.setMaximum( 1<<l);
+		    sMax.setMaximum( 1<<l);
+		    //sMax.setValue( Math.min( 1<<l, ic.scalMax[channel] ));
+		    //sMin.setValue( Math.min( (1<<l)-10, ic.scalMin[channel] ));
+		    sMin.setValue( 0 );
+		    sMax.setValue( 1<<l );
+
 		}
 	    });
+
 
 	    Tiles.LComboBox<LUT> lutSelector = 
 		new Tiles.LComboBox<LUT>("LUT", LUT.values()); 
@@ -284,11 +315,11 @@ public class PlainImageDisplay {
     
 	    // min slider, histogram, max slider
 	    c.gridx=0; c.gridy=0; c.gridwidth=10; c.gridheight=1;
-	    sliders.add( sMin, c );
+	    sliders.add( sMax, c );
 	    c.gridx=0; c.gridy=1; c.gridwidth=10; c.gridheight=5;
 	    sliders.add( hist,c );
 	    c.gridx=0; c.gridy=6; c.gridwidth=10; c.gridheight=1;
-	    sliders.add( sMax, c );
+	    sliders.add( sMin, c );
 
 	    // Lut selector and "show image"
 	    c.gridx=0; c.gridy=7; c.gridwidth=4;
@@ -302,11 +333,12 @@ public class PlainImageDisplay {
 	    sliders.add( sGamma , c);
 	   
 	    // label
-	    c.gridx=2; c.gridy=9; c.gridwidth=GridBagConstraints.REMAINDER; c.gridheight=1;
+	    c.gridx=0; c.gridy=9; c.gridwidth=7; c.gridheight=1;
 	    c.fill = GridBagConstraints.BOTH;
 	    c.anchor = GridBagConstraints.CENTER;
-	    //lValues.setHorizontalAlignment(SwingConstants.CENTER);
 	    sliders.add( (new JPanel()).add(lValues),c);
+	    c.gridx=7; c.gridy=9; c.gridwidth=3; c.gridheight=1;
+	    sliders.add( bitDepthSelector,c  );
 
 	    /* 
 	    c.gridx=7; c.gridy=0; c.gridwidth=2;
@@ -372,19 +404,66 @@ public class PlainImageDisplay {
         final BufferedImage bufferedImage ;
 	final int width, height;
 
+	final int [] gammaTable;
 
 	private int pointCounter =0;
    
-	int minMarker, maxMarker;
-	double gamma;
+	float minData=0, maxData=1<<16;
+	float minMarker=0, maxMarker=1<<16;
+	double gamma=1;
 
-	void setMinMarker( int val ) { minMarker = val; }
-	void setMaxMarker( int val ) { maxMarker = val; }
-	void setGamma( double val ) { gamma = val; }
+	void setMinMarker( float val ) { 
+	    minMarker = val; 
+	    recalcGammaTable();
+	}
+	
+	void setMaxMarker( float val ) { 
+	    maxMarker = val; 
+	    recalcGammaTable();
+	}
+	
+	void setGamma( double val ) { 
+	    gamma = val; 
+	    recalcGammaTable();
+	}
+
+	void recalcGammaTable() {
+	    
+	    for (int x=0; x<width; x++) {
+		
+		double dataPos = minData + (1.*x/width)*(maxData-minData);
+		
+		if (dataPos<minMarker) {
+		    gammaTable[x]=0;
+		    continue;
+		} 
+		if (dataPos>maxMarker) {
+		    gammaTable[x]=height-1;
+		    continue;
+		} 
+		
+		
+		double gammaQuotient = (dataPos-minMarker)/(maxMarker-minMarker);
+		gammaTable[x] = (int)(Math.pow( gammaQuotient, gamma ) * (height-1));
+		if (gammaTable[x] <0) {
+		    gammaTable[x] = 0;
+		    Tool.trace("gamma too low");
+		}
+		if (gammaTable[x] >height-1) {
+		    gammaTable[x] = height-1;
+		    Tool.trace("gamma too high");
+		}
+		    //gammaTable[x]=height/2;
+
+	    }
+	}
+
 
 
 	void setData( float [] dat, float min, float max) {
 
+	    minData=min;
+	    maxData=max;
 
 	    final int nrBins = width;
 	    final float inc = (max-min)/(nrBins+1);
@@ -403,7 +482,7 @@ public class PlainImageDisplay {
 		if (maxCount < i) maxCount=i;
 	    }
 
-
+	    // draw the histogram
 	    for (int y=0; y<height; y++) {
 		for (int x=0; x<width; x++) {
 		    
@@ -420,6 +499,11 @@ public class PlainImageDisplay {
 		}
 	    }
 
+	    // draw the gamma table
+	    for (int x=0; x<width; x++) {
+		imgData[ (x+(width*(height-gammaTable[x]-1)))*3+2 ] =(byte)255;
+	    }
+
 
 	    this.repaint();
 	}
@@ -433,10 +517,13 @@ public class PlainImageDisplay {
 	    setIgnoreRepaint(true);
 	   
 	    width = w; height= h;
-	    
+
 	    bufferedImage = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
 	    imgData = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
 
+	    gammaTable = new int[w];
+	    recalcGammaTable();
+	    
 	    System.out.println("img len: "+imgData.length);
 	}
 
@@ -514,7 +601,7 @@ public class PlainImageDisplay {
             show = new boolean[ch];
 
 	    for (int c=0; c<nrChannels; c++) {
-		scalMin[c]=0; scalMax[c]=255;
+		scalMin[c]=0; scalMax[c]=1<<16;
 		currentImgMin[c]=0; currentImgMax[c]=1;
 		recalcGammaTable(c,1);
                 show[c] = true;
@@ -522,7 +609,7 @@ public class PlainImageDisplay {
 
 	    // init color lookup
 	    for (int c=0; c<nrChannels; c++) {
-		setColorTable( c, LUT.values()[(c+1)%7] );
+		    setColorTable( c, LUT.values()[(c+1)%7] );
 	    }
 	
 	    /*
@@ -599,7 +686,7 @@ public class PlainImageDisplay {
 
 
 	// TOOD: move this to an "image processing" class, I guess
-	public void paintImage() {
+	void paintImage() {
 
 
 	    float [] linRGB = new float[3];
@@ -756,6 +843,7 @@ public class PlainImageDisplay {
 	mainFrame.add( pd.getPanel() ); 
 	
 	mainFrame.pack();
+	mainFrame.setLocation( 100, 100 );
 	mainFrame.setVisible(true);
 
 	float [][] pxl = new float[100][width*height];
@@ -766,10 +854,14 @@ public class PlainImageDisplay {
 	for (int i=0;i<100;i++) {
 	    for (int y=0;y<height;y++)
 	    for (int x=0;x<width;x++) {
-		if ( (x<200 || x>220) && (y<150 || y>170) )
-		    pxl[i][x+y*width]=(float)(1000+Math.random()*250);
-		else
-		    pxl[i][x+y*width]=(float)(100+Math.random()*50);
+		if ( (x>200 && x<250) || (y>150 && y<190) ) {
+		    pxl[i][x+y*width]=(float)(300+Math.random()*Math.sqrt(300));
+		} else 
+		if ( (x>400 && x<450) || (y>250 && y<290) ) {
+		    pxl[i][x+y*width]=(float)(1400+Math.random()*Math.sqrt(1400*2));
+		} else {
+		    pxl[i][x+y*width]=(float)(2400+Math.random()*Math.sqrt(2400*3));
+		}
 	    }
 	}
 
@@ -779,7 +871,6 @@ public class PlainImageDisplay {
 		for (int ch = 0; ch < nrCh; ch++) {
 		    float [] pxls = pxl[(int)(Math.random()*99)]; 
 		    pd.newImage(ch, pxls);
-		    pd.histList.get(ch).setData(pxls, 0, 2000);
 		}
 		
 		pd.refresh();
@@ -788,50 +879,6 @@ public class PlainImageDisplay {
 	    t1.stop();
 	    System.out.println( "fps: "+((1000*100)/t1.msElapsed()) );
 	}
-
-	/*
-	// create a network receiver
-	ImageReceiver ir = new ImageReceiver(64,512,512);
-	
-	ir.addListener( new ImageReceiver.Notify() {
-	    public void message(String m, boolean err, boolean fatal) {
-		if (err || fatal) {
-		    System.err.println((fatal)?("FATAL"):("Error")+" "+m);
-		} else {
-		    System.out.println("Recvr: "+m);
-		}
-	    }
-	});
-	
-	// start receiving
-	ir.startReceiving( null, null);
-	int count=0; 
-	double max=0;
-	
-	Vec2d.Real imgVec = Vec2d.createReal( 512, 512);
-	
-	while ( true ) {
-	    ImageWrapper iw = ir.takeImage();
-	   
-	    iw.writeToVector( imgVec );
-
-	    ir.recycleWrapper( iw );
-
-	    double avr = imgVec.sumElements();
-	    avr /= (iw.width() * iw.height());
-
-	    max = Math.max(avr,max);
-
-	    count++;
-	    if (count%250==0) {
-		Tool.trace("max avr pxl val: "+max);
-           	max=0;
-	    }
-	
-	    if (iw!=null)
-		pd.newImage( imgVec );
-	}   
-	*/
 
 
 
