@@ -48,6 +48,9 @@ import javax.swing.SwingConstants;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
+
+import java.util.Random;
 
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.utils.Tool;
@@ -480,11 +483,19 @@ public class PlainImageDisplay {
 	    int [] count = new int[ nrBins ];
 	    double [] logCount = new double [ nrBins ];
 
+	    int belowMinCount=0, aboveMaxCount=0;
+
+	    Arrays.fill( imgData, (byte)0);
+
 	    // compute the dataset
 	    for (float v : dat ) {
 		int pos = (int) ((v-min)/inc);
 		if (pos>=0 && pos < nrBins )
 		    count[pos]++;
+		if (pos<0)
+		    belowMinCount++;
+		if (pos>nrBins)
+		    aboveMaxCount++;
 	    }
 
 	    // compute its maximum
@@ -505,7 +516,6 @@ public class PlainImageDisplay {
 	    // draw the histogram
 	    for (int y=0; y<height; y++) {
 		for (int x=0; x<nrBins; x++) {
-		    
 		    if (count[x]*height > (height-y-1)*maxCount) {
 			imgData[(2+y*width+x)*3+0]=(byte)180;
 			imgData[(2+y*width+x)*3+1]=(byte)180;
@@ -516,19 +526,34 @@ public class PlainImageDisplay {
 			imgData[(2+y*width+x)*3+1]=(byte)60;
 			imgData[(2+y*width+x)*3+2]=(byte)60;
 		    } 
-		    else {
-			imgData[(2+y*width+x)*3+0]=0;
-			imgData[(2+y*width+x)*3+1]=0;
-			imgData[(2+y*width+x)*3+2]=0;
-		    } 
-
 		}
 	    }
-
+	    
+	    
 	    // draw the gamma table
 	    for (int x=0; x<width; x++) {
 		imgData[ (x+(width*(height-gammaTable[x]-1)))*3+2 ] =(byte)255;
 	    }
+
+	    // draw markers for above/ below values
+	    for (int y=0; y<height; y++) {
+		if (belowMinCount*height > (height-y-1)*maxCount) {
+		    for (int x=0; x<2; x++) {
+			imgData[(y*width+x)*3+0]=(byte)255;
+			imgData[(y*width+x)*3+1]=(byte)150;
+		    	imgData[(y*width+x)*3+2]=(byte)0;
+		    }
+		}
+		if (aboveMaxCount*height > (height-y-1)*maxCount) {
+		    for (int x=width-2; x<width; x++) {
+			imgData[(y*width+x)*3+0]=(byte)0;
+			imgData[(y*width+x)*3+1]=(byte)150;
+			imgData[(y*width+x)*3+2]=(byte)255;
+		    }
+		}
+	    }
+
+
 
 
 	    this.repaint();
@@ -875,18 +900,19 @@ public class PlainImageDisplay {
 	float [][] pxl = new float[100][width*height];
 
 	Tool.Timer t1 = Tool.getTimer();
+	Random rnd = new Random(42);
 
 	for (int ch = 0; ch < nrCh; ch++) 
 	for (int i=0;i<100;i++) {
 	    for (int y=0;y<height;y++)
 	    for (int x=0;x<width;x++) {
 		if ( (x>200 && x<250) || (y>150 && y<190) ) {
-		    pxl[i][x+y*width]=(float)(300+Math.random()*Math.sqrt(300));
+		    pxl[i][x+y*width]=(float)(500 +rnd.nextGaussian()*Math.sqrt(500));
 		} else 
 		if ( (x>400 && x<450) || (y>250 && y<290) ) {
-		    pxl[i][x+y*width]=(float)(1400+Math.random()*Math.sqrt(1400*2));
+		    pxl[i][x+y*width]=(float)(1400+rnd.nextGaussian()*Math.sqrt(1400));
 		} else {
-		    pxl[i][x+y*width]=(float)(2400+Math.random()*Math.sqrt(2400*3));
+		    pxl[i][x+y*width]=(float)(2400+rnd.nextGaussian()*Math.sqrt(2400));
 		}
 	    }
 	}
