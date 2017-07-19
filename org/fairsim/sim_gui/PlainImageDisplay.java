@@ -188,11 +188,11 @@ public class PlainImageDisplay {
 		sMin.getValue(), sMax.getValue(), sGamma.getValue()/100.));
 
 	    lValues.setFont( new Font( Font.MONOSPACED, Font.PLAIN, 10) );
-	    final HistogramDisplay hist = new HistogramDisplay(300,100);
+	    final HistogramDisplay hist = new HistogramDisplay(100);
 	    
-	    sMin.setPreferredSize( new Dimension(305,20));
-	    sMax.setPreferredSize( new Dimension(305,20));
-	    sGamma.setPreferredSize( new Dimension(305,25));
+	    sMin.setPreferredSize( new Dimension(265,20));
+	    sMax.setPreferredSize( new Dimension(265,20));
+	    sGamma.setPreferredSize( new Dimension(265,25));
 
 	    histList.add( hist );
 
@@ -474,35 +474,52 @@ public class PlainImageDisplay {
 	    minData=min;
 	    maxData=max;
 
-	    final int nrBins = width;
+	    final int nrBins = 256;
 	    final float inc = (max-min)/(nrBins+1);
 
 	    int [] count = new int[ nrBins ];
+	    double [] logCount = new double [ nrBins ];
 
+	    // compute the dataset
 	    for (float v : dat ) {
 		int pos = (int) ((v-min)/inc);
 		if (pos>=0 && pos < nrBins )
 		    count[pos]++;
 	    }
-	    
-	    
+
+	    // compute its maximum
 	    int maxCount = 0;
 	    for (int i : count ){
 		if (maxCount < i) maxCount=i;
 	    }
+	    
+	    
+	    // compute the log
+	    double maxLogCount =0;
+	    for (int i=0; i<nrBins; i++) {
+		logCount[i] = Math.log(1+count[i]);			
+		if (logCount[i]>maxLogCount) maxLogCount=logCount[i];
+	    }
+
 
 	    // draw the histogram
 	    for (int y=0; y<height; y++) {
-		for (int x=0; x<width; x++) {
+		for (int x=0; x<nrBins; x++) {
 		    
 		    if (count[x]*height > (height-y-1)*maxCount) {
-			imgData[(y*width+x)*3+0]=(byte)180;
-			imgData[(y*width+x)*3+1]=(byte)180;
-			imgData[(y*width+x)*3+2]=(byte)180;
-		    } else {
-			imgData[(y*width+x)*3+0]=0;
-			imgData[(y*width+x)*3+1]=0;
-			imgData[(y*width+x)*3+2]=0;
+			imgData[(2+y*width+x)*3+0]=(byte)180;
+			imgData[(2+y*width+x)*3+1]=(byte)180;
+			imgData[(2+y*width+x)*3+2]=(byte)180;
+		    } else  
+		    if (logCount[x]*height > (height-y-1)*maxLogCount) {
+			imgData[(2+y*width+x)*3+0]=(byte)60;
+			imgData[(2+y*width+x)*3+1]=(byte)60;
+			imgData[(2+y*width+x)*3+2]=(byte)60;
+		    } 
+		    else {
+			imgData[(2+y*width+x)*3+0]=0;
+			imgData[(2+y*width+x)*3+1]=0;
+			imgData[(2+y*width+x)*3+2]=0;
 		    } 
 
 		}
@@ -521,16 +538,16 @@ public class PlainImageDisplay {
 
 	final byte  [] imgData   ;
 
-	HistogramDisplay(int w, int h) {
+	HistogramDisplay(int h) {
 	    
 	    setIgnoreRepaint(true);
 	   
-	    width = w; height= h;
+	    width = 260; height= h;
 
 	    bufferedImage = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
 	    imgData = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
 
-	    gammaTable = new int[w];
+	    gammaTable = new int[width];
 	    recalcGammaTable();
 	    
 	    System.out.println("img len: "+imgData.length);
