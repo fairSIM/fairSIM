@@ -135,7 +135,8 @@ public class BandSeparation {
 	if (in.length!=phases.length)
 	    throw new IndexOutOfBoundsException("#input images != phases per band");
 	if (out.length!=(bands*2)-1) 
-	    throw new IndexOutOfBoundsException("#output images != #bands*2-1");
+	    throw new IndexOutOfBoundsException(
+		String.format("#output images %d != #bands*2-1",out.length));
 
 	// compute phases for higher bands
 	double [][] pha = new double[bands-1][phases.length];
