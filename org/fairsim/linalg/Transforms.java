@@ -243,6 +243,7 @@ public abstract class Transforms {
 
     /** Swap quadrands. */
     static public void swapQuadrant(Vec2d.Cplx in) {
+	Vec2d.failEvenSizes( in );
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
 	for (int y=0;y<h/2;y++)
@@ -262,6 +263,7 @@ public abstract class Transforms {
     
     /** Swap quadrands. */
     static public void swapQuadrant(Vec2d.Real in) {
+	Vec2d.failEvenSizes( in );
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
 	for (int y=0;y<h/2;y++)
@@ -279,15 +281,16 @@ public abstract class Transforms {
 	}
     }
     
-    /** Swap quadrands. */
+    /** Swap quadrands in place. (this only works if all dimensions are even) */
     static public void swapQuadrant(Vec3d.Cplx in) {
+	Vec3d.failEvenSizes( in );
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
 	final int d = in.vectorDepth();
-	for (int z0=0;z0<d/2;z0++)
+	for (int z0=0;z0<(d/2);z0++) 
 	for (int y0=0;y0<h/2;y0++)
 	for (int x0=0;x0<w/2;x0++) {
-	    int x1=x0+w/2+w%2, y1=y0+h/2+h%2, z1=z0+d/2+d%2;
+	    int x1=x0+w/2, y1=y0+h/2, z1=z0+d/2;
 	    Cplx.Float tmpA, tmpB;
 	    // 000 <> 111
 	    tmpA = in.get(x0,y0,z0);
@@ -311,16 +314,36 @@ public abstract class Transforms {
 	    in.set(x1,y1,z0,tmpA);
 	}
     }
-    
-    /** Swap quadrands. */
+   
+    /** Swap quadrands. This works for odd-sizes dimensions. */
+    static public void swapQuadrant(Vec3d.Cplx in, Vec3d.Cplx out) {
+	Vec3d.failSize( in,out);
+	
+	final int w = in.vectorWidth();
+	final int h = in.vectorHeight();
+	final int d = in.vectorDepth();
+	for (int z0=0;z0<d;z0++) 
+	for (int y0=0;y0<h;y0++)
+	for (int x0=0;x0<w;x0++) {
+	    int x1=(x0+w/2)%w, y1=(y0+h/2)%h, z1=(z0+d/2)%d;
+	    out.set( x1,y1,z1, in.get(x0,y0,z0));	
+	} 
+    }
+   
+
+
+
+    /** Swap quadrands in place. (this only works if all dimensions are even) */
     static public void swapQuadrant(Vec3d.Real in) {
+	Vec3d.failEvenSizes( in );
+	
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
 	final int d = in.vectorDepth();
 	for (int z0=0;z0<d/2;z0++)
 	for (int y0=0;y0<h/2;y0++)
 	for (int x0=0;x0<w/2;x0++) {
-	    int x1=x0+w/2+w%2, y1=y0+h/2+h%2, z1=z0+d/2+d%2;
+	    int x1=x0+w/2, y1=y0+h/2, z1=z0+d/2;
 	    float tmpA, tmpB;
 	    // 000 <> 111
 	    tmpA = in.get(x0,y0,z0);

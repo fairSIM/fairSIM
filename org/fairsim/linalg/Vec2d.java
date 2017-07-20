@@ -100,6 +100,18 @@ public final class Vec2d {
 	failSize(v);
 	return v[0].vectorWidth();
     }
+    
+    /** Throws a runtime exception if not both dimensions are a multiple of 2 */ 
+    public static void failEvenSizes( Size ... v ) {
+	if (v.length<1) return;
+	for ( Size s : v ) {
+	    if ( s.vectorWidth() %2 != 0 || s.vectorHeight() %2 != 0 ) {
+		throw new RuntimeException("Vector size not a multiple of two: "+
+		    s.vectorWidth()+" "+s.vectorHeight());
+	    }
+	}
+    }
+   
 
     /** Object with width and height */
     public interface Size {

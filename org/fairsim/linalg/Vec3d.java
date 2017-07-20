@@ -83,7 +83,21 @@ public final class Vec3d {
 		    +i+" "+w+" "+h+" "+d+" "+" vs. "+
 		    v[i].vectorWidth()+" "+v[i].vectorHeight()+" "+v[i].vectorDepth());
     }
-    
+   
+    /** Throws a runtime exception if not all three dimensions are a multiple of 2 */ 
+    public static void failEvenSizes( Size ... v ) {
+	if (v.length<1) return;
+	for ( Size s : v ) {
+	    if ( s.vectorWidth() %2 != 0 || s.vectorHeight() %2 != 0 || s.vectorDepth() %2 != 0 ) {
+		throw new RuntimeException("Vector size not a multiple of two: "+
+		    s.vectorWidth()+" "+s.vectorHeight()+" "+s.vectorDepth());
+	    }
+	}
+    }
+   
+
+
+
     /** Object with width, height and depth */
     public interface Size {
 	/** Width */
