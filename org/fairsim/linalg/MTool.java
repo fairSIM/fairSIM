@@ -64,6 +64,12 @@ public final class MTool {
     }
     
 
+    /** Computes sqrt(x^2+y^2+z^2), without the overflow handling of Math.hypot(x,y).
+     *  Math.hypot ensures correct results even if x^2 would overflow a double.
+     *  If neither x^2 nor y^2 overflows, this will be 30x faster */
+    public static double fhypot(double x, double y, double z) {
+	return Math.sqrt(x*x+y*y+z*z);
+    }
 
 
 
