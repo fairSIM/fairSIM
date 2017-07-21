@@ -42,7 +42,7 @@ public class OtfCreator {
 
 	Tool.trace("OTF creating for "+nrAngle+" angles");
 
-	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, 2,nrBands,"smoothed pseudo-widefield");
+	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, 1,nrBands,"band-sep input data");
 	//ImageStackOutput iso2 = new DisplayWrapper5D( width, height, depth, 2,nrBands*2,"full OTFs");
 
 	Tool.trace("--- running fit ---");
@@ -55,13 +55,32 @@ public class OtfCreator {
 		return null;
 	    }
 
+
+	    // mathematically, band sep. in real vs. fourier space is no difference
+	    // numerically, maybe?
+	    final boolean bandSepInFftSpace = false;
+	    if (bandSepInFftSpace) {
+		for (Vec3d.Cplx in : inputImgs[ang] ) {
+		    in.fft3d(false);
+		}	
+	    }
+
 	    // band-separate the input
-	    Vec3d.Cplx [] separate = Vec3d.createArrayCplx( 2*nrBands-1, width, height, depth); 
-	    BandSeparation.separateBands( inputImgs[ang], separate, 0, nrBands, null ); 
 	    Vec3d.Cplx [] bands = new Vec3d.Cplx[nrBands];
-	    bands[0] = separate[0].duplicate();	
-	    bands[1] = separate[2].duplicate();	
-	    bands[2] = separate[4].duplicate();
+	    {
+		Vec3d.Cplx [] separate = Vec3d.createArrayCplx( 2*nrBands-1, width, height, depth); 
+		BandSeparation.separateBands( inputImgs[ang], separate, 0, nrBands, null ); 
+		bands[0] = separate[0].duplicate();	
+		bands[1] = separate[2].duplicate();	
+		bands[2] = separate[4].duplicate();
+	    }
+
+	    if (bandSepInFftSpace) {
+		for (Vec3d.Cplx b: bands ) {
+		    b.fft3d(true);
+		}
+	    }
+
 
 	    // output the band-separated input data
 	    for (int z=0;z<depth;z++) {
@@ -71,6 +90,7 @@ public class OtfCreator {
 		    iso1.setImage( res , z, 0 ,b, "");
 		}
 	    }
+	    iso1.update();
 
 	    // locate the bead in the pseudo-widefield 
 	    Tool.trace("--- Fitting bead position ---");
@@ -78,9 +98,16 @@ public class OtfCreator {
 	    Tool.trace(String.format(" bead found at: %7.3f %7.3f %7.3f ", pos[0],pos[1],pos[2]));
 		    
     
-	    // fft the otfs, apply the correct phase offset 
+	    // fft the otfs 
 	    for (int b=0; b<nrBands; b++) {
 		bands[b].fft3d(false);
+	    } 
+
+	    for (int b=0; b<nrBands; b++) {
+		Cplx.Float x = bands[b].get(1,0,0);
+		Cplx.Float y = bands[b].get(0,1,0);
+		Cplx.Float z = bands[b].get(0,0,1);
+		bands[b].set(0,0,0, x.add(y.add(z)).mult( 1/3.) );
 	    }
     
 	    // for debugging: output the centered bead
@@ -262,12 +289,13 @@ public class OtfCreator {
 
 	    }
 	
+	    ImageStackOutput isoMag = 
+		new DisplayWrapper5D( width, height, depth, 4,3,"full comp. OTFs - mag");
+	    ImageStackOutput isoPha = 
+		new DisplayWrapper5D( width, height, depth, 4,3,"full comp. OTFs - pha");
+	    
 	    // output results		
 	    {
-		ImageStackOutput isoMag = 
-		    new DisplayWrapper5D( width, height, depth, 3,3,"full comp. OTFs - mag");
-		ImageStackOutput isoPha = 
-		    new DisplayWrapper5D( width, height, depth, 3,3,"full comp. OTFs - pha");
 	
 		for (int comp=0; comp<3; comp++) {
 		    for (int b=0;b<nrBands;b++) {
@@ -297,15 +325,69 @@ public class OtfCreator {
 			}
 		    }
 		}
-		isoMag.update();
-		isoPha.update();
 	    }
-		
-			
+	
+	    // shift the original bead data to correct position
+	    {
+		for (int b=0;b<nrBands;b++) {
+		    bands[b].fourierShift( posComp[0],posComp[1], pos[2]); 
+		}
+	    }
+
+
+	    // interpolate out the DC lines (camera chip)
+	    {
+		for (int b=0;b<nrBands;b++) {
+		    for (int z=0; z<depth; z++) {
+			for (int x=1;x<width-1; x++) {
+			    Cplx.Float iy1  = bands[b].get(x-1,1,z).mult(1/6.);
+			    Cplx.Float iy2  = bands[b].get(x  ,1,z).mult(1/6.);
+			    Cplx.Float iy3  = bands[b].get(x+1,1,z).mult(1/6.);
+			    Cplx.Float iy4  = bands[b].get(x-1,height-1,z).mult(1/6.);
+			    Cplx.Float iy5  = bands[b].get(x  ,height-1,z).mult(1/6.);
+			    Cplx.Float iy6  = bands[b].get(x+1,height-1,z).mult(1/6.);
+			    bands[b].set(x,0,z, iy1.add( iy2.add(iy3.add( iy4.add( iy5.add( iy6))))));
+			}
+			for (int y=1;y<height-1; y++) {
+			    Cplx.Float ix1  = bands[b].get(1, y-1,z).mult(1/3.);
+			    Cplx.Float ix2  = bands[b].get(1, y,  z).mult(1/3.);
+			    Cplx.Float ix3  = bands[b].get(1, y+1,z).mult(1/3.);
+			    bands[b].set(0,y,z, ix1.add( ix2.add(ix3)));
+			}
+		    
+		    
+		    }
+		}
+	    }
+
+	    // add final result to output
+	    {
+		for (int b=0;b<nrBands;b++) {
+		    Vec3d.Cplx tmp = bands[b].duplicate();
+		    Transforms.swapQuadrant(bands[b], tmp);
+
+		    for (int z=0;z<depth;z++) {
+			Vec2d.Cplx res  = Vec2d.createCplx( width, height );
+			Vec2d.Real img1 = Vec2d.createReal( width, height );
+			Vec2d.Real img2 = Vec2d.createReal( width, height );
+			res.slice( tmp, z);
+			img1.copyMagnitude( res );
+			img2.copyPhase( res );
+
+			isoMag.setImage( img1 , z, 3, b,"mag");
+			isoPha.setImage( img2 , z, 3, b,"pha");
+		    }
+		}
+	    }
+
+
+	    // display the result
+	    isoMag.update();
+	    isoPha.update();
+
 	
 	}
 
-	iso1.update();
 
 	return null;
 

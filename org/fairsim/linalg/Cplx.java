@@ -212,6 +212,11 @@ public class Cplx {
 	public Cplx.Float mult( float b) {
 	    return Cplx.mult(this,b);
 	}
+	
+	/** Returns this * b */
+	public Cplx.Float mult( double b) {
+	    return Cplx.mult(this,b);
+	}
 
 	/** Returns conj(this) */
 	public Cplx.Float conj() {
@@ -301,6 +306,10 @@ public class Cplx {
     /** Returns a * b */
     public static Cplx.Float mult( Cplx.Float a, float b) {
 	return new Cplx.Float( a.re * b, a.im * b );
+    }
+    /** Returns a * b */
+    public static Cplx.Float mult( Cplx.Float a, double b) {
+	return new Cplx.Float( (float)(a.re * b), (float)(a.im * b) );
     }
     
     /** Returns conj(a) */
