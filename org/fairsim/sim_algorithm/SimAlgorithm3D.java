@@ -30,12 +30,17 @@ public class SimAlgorithm3D {
    /** Step-by-step reconstruction process. */
     public static Vec3d.Cplx runReconstruction( Vec2d.Real [] inSt, 
 	final OtfProvider3D otfPr, final SimParam param,
-	final int visualFeedback , final double wienParam ) {
+	final int visualFeedback , final double wienParam,
+	final int fitLevel ) {
 
 	final boolean disableFiltering = false;
-	final boolean findPeak = false;
+	final boolean   findPeak  = (fitLevel>=3);
+	final boolean refinePeak  = (fitLevel>=2);
+	final boolean refinePhase = (fitLevel>=1);
 	final boolean doTheReconstruction  = true;
 	final boolean otfBeforeShift  = true;
+
+	Tool.trace(" find peak: "+findPeak+", refine peak: "+refinePeak+", refine phase: "+refinePhase);
 
 	// ----- Parameters -----
 	final int w=inSt[0].vectorWidth(), h=inSt[0].vectorHeight();
@@ -76,7 +81,6 @@ public class SimAlgorithm3D {
 	    inFFT[a][p] = Vec3d.createCplx(w,h,d);
 
 	    for (int z=0; z<d; z++) {
-		
 		int pos = p + 5 * z + a * 5 * d; // TODO: Use SimUtils here?
 		Vec2d.Real img = inSt[pos].duplicate();
 		SimUtils.fadeBorderCos( img , 10);
@@ -86,22 +90,6 @@ public class SimAlgorithm3D {
 	    // input FFT
 	    inFFT[a][p].fft3d(false);
 	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
-	    
-	    // DEBUG output
-	    /*
-	    if (visualFeedback>-1) {
-		Vec2d.Cplx tmp = Vec2d.createCplx(w,h);
-		tmp.slice( inFFT[a][p],0 );
-		spSt.addImage( 
-		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p+" freq 0");
-		tmp.slice( inFFT[a][p],1 );
-		spSt.addImage( 
-		    SimUtils.spatial(tmp), "input projected: a"+a+" p"+p+" freq 1");
-		pwSt.addImage( 
-		    SimUtils.pwSpec(inFFT[a][p]) , "input projected: a"+a+" p"+p);
-	    }
-	    */
-	
 	}
 
 
@@ -114,15 +102,7 @@ public class SimAlgorithm3D {
 	// ---------------------------------------------------------------------
 	
 	tEst.start();
-	if (findPeak) {
-
-	    // TODO: This currently just uses the 2D algorithm on the projection
-	    // For good modulation estimate, however the full 3D OTF should be used
-
-	    // The attenuation vector helps well to fade out the DC component,
-	    // which is uninteresting for the correlation anyway
-	    //Vec2d.Real otfAtt = Vec2d.createReal( param );
-	    //otfPr2D.writeAttenuationVector( otfAtt, .99, 0.15*otfPr.getCutoff(), 0, 0  ); 
+	if ( refinePhase ) {
 	    
 	    // loop through pattern directions
 	    for (int angIdx=0; angIdx<param.nrDir(); angIdx++) {
@@ -130,7 +110,7 @@ public class SimAlgorithm3D {
 		final SimParam.Dir dir = param.dir(angIdx);
 
 		// idx of low band (phase detection) and high band (shift vector detection)
-		// will be the same for two-beam
+		// will be the same for two-beam TODO: this only works for 3-beam data!
 		final int lb = 1;
 		final int hb = 3; //(param.dir(angIdx).nrBand()==3)?(3):(1);
 
@@ -181,28 +161,35 @@ public class SimAlgorithm3D {
 	
 		Vec2d.Cplx pl = Vec2d.createCplx(w,h);
 
-		/*
-		for (int z=0; z<d; z++) {
-		    pl.slice( c1 , z );
-		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b1, a:"+angIdx+" z: "+z);
-		}
-		for (int z=0; z<d; z++) {
-		    pl.slice( c2 , z );
-		    pwSt.addImage( SimUtils.pwSpec( pl ), "b0<>b2, a:"+angIdx+" z: "+z);
-		}
-		*/
-
+		// get preset k0 vector value TODO: this only works for 3-band data
+		double [] peak = new double [] { param.dir(angIdx).px(2), param.dir(angIdx).py(2) };
+		double [] origPeak = new double [] { param.dir(angIdx).px(2), param.dir(angIdx).py(2) };
 		
-		double [] peak = Correlation3d.locatePeak(  c2 , minDist );
-		
-		Tool.trace(String.format("a%1d: LocPeak (min %4.0f) --> Peak at x %5.0f y %5.0f",
-		    angIdx, minDist, peak[0], peak[1]));
+		// 1 - only run "find peak" if set so
+		if (findPeak) {	
+		    peak = Correlation3d.locatePeak(  c2 , minDist );
+		    Tool.trace(String.format("a%1d: LocatePeak (min %4.0f) --> Peak at x %7.3f y %7.3f",
+			angIdx, minDist, peak[0], peak[1]));
+		} else {
+		    Tool.trace(String.format("a%1d: Using preset coarse peak pos. at x %7.3f y %7.3f",
+			angIdx, minDist, peak[0], peak[1]));
+		}
 		
 		// fit the peak to sub-pixel precision by cross-correlation of
 		// Fourier-shifted components
-		ImageVector cntrl    = ImageVector.create(30,10);
-		peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
-		    -peak[0], -peak[1], 0.005, 2.5, cntrl );
+		if ( refinePeak ) {
+		    ImageVector cntrl    = ImageVector.create(30,10);
+		    peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
+			-peak[0], -peak[1], 0.005, 2.5, cntrl );
+		    Tool.trace(String.format("a%1d: refined peak position to %7.3f y %7.3f",
+			angIdx, minDist, peak[0], peak[1]));
+		
+		    double peakDist = Math.hypot( peak[0] + origPeak[0], peak[1] + origPeak[1]);
+		    Tool.trace(String.format("a%1d: peak offset from stores preset: %7.3f ",
+			angIdx, peakDist));
+		} else {
+		    Tool.trace(String.format("a%1d: not refining peak position"));
+		}
 
 		// Now, either three beam / 3 bands ...
 		if (lb!=hb) {
@@ -210,14 +197,14 @@ public class SimAlgorithm3D {
 		    // At the peak position found, extract phase and modulation from band0 <-> band 1
 		    // TODO: Using the band2 OTF is wrong....
 		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[lb], 
-			0, 2, otfPr, peak[0]/2, peak[1]/2, 0.01 );
+			0, 2, otfPr, peak[0]/2, peak[1]/2, 0.0075 );
 
 		    // Extract modulation from band0 <-> band 2
 		    Cplx.Double p2 = Correlation3d.getPeak( separate[0], separate[hb], 
 			0, 2, otfPr, peak[0], peak[1], 0.005 );
 
 		    Tool.trace(
-			String.format("a%1d: FitPeak --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
+			String.format("a%1d: peak and phase --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
 			angIdx, peak[0], peak[1], p1.phase(), p1.hypot(), p2.hypot() ));
 	    
 		    // store the result

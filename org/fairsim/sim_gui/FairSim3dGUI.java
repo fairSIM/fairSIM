@@ -77,15 +77,21 @@ public class FairSim3dGUI {
     List<ChannelPanel> channelPanelList = new ArrayList<ChannelPanel>();
 
     enum FITTYPES {
-	FULL("full parameter search"),
-	REFINE("refine k0 and phase"),
-	PHASEONLY("fit only phase"),
-	RECONSTONLY("use preset values");
+	FULL("full parameter search",3),
+	REFINE("refine k0 and phase",2),
+	PHASEONLY("fit only phase",1),
+	RECONSTONLY("use preset values",0);
 
 	final String ourName;
-	
-	FITTYPES(String name) {
+	final int val;
+
+	FITTYPES(String name, int v) {
 	    ourName=name;
+	    val=v;
+	}
+
+	public int getVal() {
+	    return val;
 	}
 
 	@Override 
@@ -372,7 +378,9 @@ public class FairSim3dGUI {
 			inputImgs, 
 			channel.otfSelector.getSelectedItem(),
 			channel.channelSelector.getSelectedItem().sp,
-			-2, channel.wienerParam.getVal());
+			-2, channel.wienerParam.getVal(),
+			channel.fitTypeList.getSelectedItem().getVal()
+			);
 
 		result.fft3d(true);
 
