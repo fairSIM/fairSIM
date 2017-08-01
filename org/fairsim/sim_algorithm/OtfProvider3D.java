@@ -43,7 +43,7 @@ public class OtfProvider3D {
     // physical units
     private double cyclesPerMicronLateral;
     private double cyclesPerMicronAxial;
-    private double na, lambda, cutOff;
+    private double na, immersion_n=1.518, lambda, cutOffLateral, cutOffAxial;
 
     // vector size
     private int samplesLateral, samplesAxial;
@@ -74,8 +74,8 @@ public class OtfProvider3D {
 
     /** Return the OTF cutoff, unit is cycles/micron */
     public double getCutoff() {
-	return cutOff;
-    }
+	return cutOffLateral;
+    } 
 
     /** Get the OTF value at 'cycl'.  
      *  @param band OTF band
@@ -92,7 +92,7 @@ public class OtfProvider3D {
 	    throw new IndexOutOfBoundsException("cylc negative!");
 	
 	// out of support, return 0
-	if (( xycycl >= cutOff )||(zcycl >= cutOff))
+	if (( xycycl >= cutOffLateral )||(zcycl >= cutOffAxial ))
 	    return Cplx.Float.zero();
 	
 	final double xpos = xycycl / cyclesPerMicronLateral;
@@ -169,13 +169,12 @@ public class OtfProvider3D {
 		    double cycllat = rad * vecCyclesPerMicronLateral;
 		    double cyclax  = zh  * vecCyclesPerMicronAxial;
 		    
-		    // over cutoff? just set zero
-		    if ( cycllat > cutOff ) {
+		    // over cutoff? just set zero TODO: Math.hypot( lat, ax ) here?
+		    if ( cycllat > cutOffLateral || cyclax > cutOffAxial ) {
 			vec.set(x,y,z, Cplx.Float.zero());
 		    } 
-		    
 		    // within cutoff?
-		    if ( cycllat <= cutOff ) {
+		    else {
 		    
 			// get the OTF value
 			Cplx.Float val = getOtfVal(band, cycllat, cyclax);
@@ -235,8 +234,10 @@ public class OtfProvider3D {
 	ret.cyclesPerMicronLateral	= this.cyclesPerMicronLateral;
 	ret.cyclesPerMicronAxial	= this.cyclesPerMicronAxial;
 	ret.na				= this.na;
+	ret.immersion_n			= this.immersion_n;
 	ret.lambda			= this.lambda;
-	ret.cutOff			= this.cutOff;
+	ret.cutOffLateral		= this.cutOffLateral;
+	ret.cutOffAxial			= this.cutOffAxial;
 	ret.samplesLateral		= this.samplesLateral;
 	ret.samplesAxial		= this.samplesAxial;
 	ret.isMultiBand			= this.isMultiBand;
@@ -275,9 +276,13 @@ public class OtfProvider3D {
 	OtfProvider3D ret = new OtfProvider3D();
 
 	// main parameters
-	ret.na	    = fld.getDbl("NA").val();
-	ret.lambda  = fld.getInt("emission").val();
-	ret.cutOff  = 1000 / (ret.lambda / ret.na /2);
+	ret.na		= fld.getDbl("NA").val();
+	
+	if (!fld.contains("n-immersion")) { // TODO: remove once this is part of the OTF creator?!
+	    ret.immersion_n = fld.getDbl("n-immersion").val();
+	}
+	
+	ret.lambda	= fld.getInt("emission").val();
 	
 	if (!fld.contains("data"))
 	    throw new RuntimeException("No data section found, needed for 3d");
@@ -299,7 +304,11 @@ public class OtfProvider3D {
 
 	ret.cyclesPerMicronLateral = data.getDbl("cycles-lateral").val();
 	ret.cyclesPerMicronAxial   = data.getDbl("cycles-axial").val();
-	
+
+	// calculate the cutoff
+	ret.calcCutOff();
+
+
 	// init bands
 	ret.vals	= Vec2d.createArrayCplx( ret.maxBand, 
 	    ret.samplesLateral, ret.samplesAxial );
@@ -331,7 +340,8 @@ public class OtfProvider3D {
 
 	fld.newDbl("NA").setVal( na );
 	fld.newInt("emission").setVal( (int)lambda );
-	
+	fld.newDbl("n-immersion").setVal( immersion_n );
+
 	fld.newStr("otf-name").val( otfName.trim() );
 	fld.newStr("otf-meta").val( otfMeta );
 
@@ -378,7 +388,6 @@ public class OtfProvider3D {
 	
 	ret.na = 1.4;
 	ret.lambda = 300;
-	ret.cutOff = 1000 / (ret.lambda / ret.na /2);
 
 	ret.maxBand = nrBands;
 
@@ -387,7 +396,10 @@ public class OtfProvider3D {
 
 	ret.cyclesPerMicronLateral = cyclMicronLateral;
 	ret.cyclesPerMicronAxial   = cyclMicronAxial;
-	
+
+	// calculate the (prob. here wrong) cutoff
+	ret.calcCutOff();
+
 	// init bands
 	ret.vals	= Vec2d.createArrayCplx( ret.maxBand, 
 	    ret.samplesLateral, ret.samplesAxial );
@@ -414,15 +426,21 @@ public class OtfProvider3D {
     public String getOtfInfoString() {
 
 	String ret ="OTF (meta)data\n------";
-	ret += "\nname:  "+otfName;
-	ret += "\nneta:  "+otfMeta;
-	ret += "\nNA:    "+String.format("%4.3f", na);
-	ret += "\nbands: "+maxBand;
-	ret += "\nem. wavelength: "+lambda;
-	ret += "\nsamples lateal:   "+samplesLateral;
-	ret += "\nsamples axial:    "+samplesAxial;
+	ret += "\n            name: "+otfName;
+	ret += "\n            meta: "+otfMeta;
+	ret += "\n              NA: "+String.format("%4.3f", na);
+	ret += "\n     n immersion: "+String.format("%4.3f", immersion_n);
+	ret += "\n           bands: "+maxBand;
+	ret += "\n  em. wavelength: "+lambda;
+	ret += "\n  samples lateal: "+samplesLateral;
+	ret += "\n   samples axial: "+samplesAxial;
 	ret += "\npxl size lateral: "+String.format("%7.5f",cyclesPerMicronLateral);
-	ret += "\npxl size axial:   "+String.format("%7.5f",cyclesPerMicronAxial);
+	ret += "\n  pxl size axial: "+String.format("%7.5f",cyclesPerMicronAxial);
+	ret += "\n     lat. cutoff: "
+	    +String.format("%7.5f (1/um) -> %5.0f nm", cutOffLateral, 1000/cutOffLateral);
+	ret += "\n   axial. cutoff: "
+	    +String.format("%7.5f (1/um) -> %5.0f nm", cutOffAxial, 1000/cutOffAxial);
+
 	return ret;
     }
 
@@ -465,14 +483,20 @@ public class OtfProvider3D {
 
     public void setNA( double in_na ) {
 	na = in_na;
-	cutOff = 1000 / (lambda / na /2);
+	calcCutOff();
     }
     
     public void setLambda( double in_lambda ) {
 	lambda = in_lambda;
-	cutOff = 1000 / (lambda / na /2);
+	calcCutOff();
     }
 
+
+    void calcCutOff() {
+	cutOffLateral = 1000 / (lambda / na /2);
+	double n = immersion_n;
+	cutOffAxial = (n - Math.sqrt( n*n - na*na ))/(lambda/1000);
+    }
 
 
 
