@@ -48,9 +48,9 @@ public abstract class Transforms {
 	final int w = in.vectorWidth();
 	final int h = in.vectorHeight();
 	// see if we have an instance already, otherwise make one
-	Transforms ffti = getOrCreateInstance(new FFTkey(w,h));
+	FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w,h));
 	float [] dat = in.vectorData();
-	ffti.fft_2d_trans_c2c( dat , inverse );
+	ffti.fftTransform( dat , inverse );
 	in.syncBuffer();
     }
 
@@ -60,9 +60,9 @@ public abstract class Transforms {
 	final int h = in.vectorHeight();
 	final int d = in.vectorDepth();
 	// see if we have an instance already, otherwise make one
-	Transforms ffti = getOrCreateInstance(new FFTkey(w,h,d));
+	FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w,h,d));
 	float [] dat = in.vectorData();
-	ffti.fft_3d_trans_c2c( dat , inverse );
+	ffti.fftTransform( dat , inverse );
 	in.syncBuffer();
     }
 
@@ -71,9 +71,9 @@ public abstract class Transforms {
     /** One-dimensional FFT of the complex input vector. */
     static public void fft1d( Vec.Cplx in, boolean inverse ) {
 	final int len = in.vectorSize();
-	Transforms ffti = getOrCreateInstance( new FFTkey(len));
+	FftProvider.Instance ffti = getOrCreateInstance( new FFTkey(len));
 	float [] dat = in.vectorData();
-	ffti.fft_1d_trans_c2c( dat, inverse );
+	ffti.fftTransform( dat, inverse );
 	in.syncBuffer();
     }
 
@@ -82,8 +82,8 @@ public abstract class Transforms {
      *  the input array */
     static public void fft1d( float [] in, boolean inverse ) {
 	final int len = in.length/2;
-	Transforms ffti = getOrCreateInstance( new FFTkey(len));
-	ffti.fft_1d_trans_c2c( in, inverse );
+	FftProvider.Instance ffti = getOrCreateInstance( new FFTkey(len));
+	ffti.fftTransform( in, inverse );
     }
 
     // -----------------------------------------------------------
@@ -113,28 +113,28 @@ public abstract class Transforms {
     }
     
     /** FFT instances */
-    static private Map<FFTkey, Transforms> instances; 
+    static private Map<FFTkey, FftProvider.Instance> instances; 
     
     /** static initialization of the instances list. */
     static {
 	if (instances==null) {
-	    instances = new TreeMap<FFTkey, Transforms>();
+	    instances = new TreeMap<FFTkey, FftProvider.Instance>();
 	}
     }
 
 
 
     /** returns an instance, creates one if none exists */
-    static protected Transforms getOrCreateInstance(final FFTkey k) {
-	Transforms ffti = instances.get(k);
+    static protected FftProvider.Instance getOrCreateInstance(final FFTkey k) {
+	FftProvider.Instance ffti = instances.get(k);
 	if (ffti!=null) return ffti;
 	//Tool.trace("FFT: creating new instance");
 	if (k.d==1)
-	    ffti = new JTransformsConnector(k.x);
+	    ffti = FftProvider.get1Dfft(k.x);
 	if (k.d==2)
-	    ffti = new JTransformsConnector(k.x,k.y);
+	    ffti = FftProvider.get2Dfft(k.x,k.y);
 	if (k.d==3)
-	    ffti = new JTransformsConnector(k.x,k.y,k.z);
+	    ffti = FftProvider.get3Dfft(k.x,k.y,k.z);
 	if (ffti==null) 
 	    throw new RuntimeException("Unsupported dimensions");
 	instances.put( k , ffti );
