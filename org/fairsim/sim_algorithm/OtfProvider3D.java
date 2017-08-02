@@ -133,6 +133,9 @@ public class OtfProvider3D {
     }
 
     // ------ Attenuatson -----
+
+    // TODO: bring back notch filtering for 3D??
+
     // ------ applying OTF to vectors -------
 
     /** Multiplies / outputs OTF to a vector. Quite general function,
@@ -225,6 +228,62 @@ public class OtfProvider3D {
 	final double kx, final double ky) {
 	otfToVector( vec, band, kx, ky, true ) ; 
     }
+    
+    
+    
+    // ------ Apotization ------
+    
+    public void apotize( final Vec3d.Cplx vec, 
+	final double multipleLateral, 
+	final double multipleAxial, 
+	final boolean useCos ) {
+	
+	// parameters
+	if (vecCyclesPerMicronLateral <=0 || vecCyclesPerMicronAxial <=0 )
+	    throw new IllegalStateException("Vector pixel size not initialized");
+	final int w = vec.vectorWidth(), h = vec.vectorHeight(), d = vec.vectorDepth();
+
+	Tool.trace(String.format("cutoff lat %7.5f, axial %7.5f", cutOffLateral, cutOffAxial));
+
+	// loop output vector
+	new SimpleMT.StrPFor(0,d) {
+	    public void at(int z) {
+		for (int y=0; y<h; y++) 
+		for (int x=0; x<w; x++) {
+		    // wrap to coordinates: x in [-w/2,w/2], y in [-h/2, h/2]
+		    double xh = (x<w/2)?( x):(x-w);
+		    double yh = (y<h/2)?(-y):(h-y);
+		    double zh = (z<d/2)?( z):(d-z);
+		    
+		    // from these, calculate distance to kx,ky, convert to cycl/microns
+		    double rad = MTool.fhypot( xh, yh );
+		    double cycllat = rad * vecCyclesPerMicronLateral;
+		    double cyclax  = zh  * vecCyclesPerMicronAxial;
+		    
+
+		    double distL = cycllat / cutOffLateral / multipleLateral;
+		    double distA = cyclax  / cutOffAxial / multipleAxial;
+		    double dist  = MTool.fhypot( distL, distA );
+
+		    if ( dist > 1.0 ) {
+			vec.set(x,y,z, Cplx.Float.zero());
+		    } 
+		    // within cutoff?
+		    else {
+			// multiply by apo factor
+			Cplx.Float val = vec.get(x,y,z);
+			double factor = (useCos)?( MTool.fcos( dist * Math.PI /2)):(1-dist);
+			vec.set(x, y, z, vec.get(x,y,z).mult( factor ) );
+		    }
+		}
+	    }
+	}; 
+
+    }
+
+    
+    
+    // ------ Load / Save operations ------
 
     /** Copy an existing OTF */
     public OtfProvider3D duplicate() {
@@ -252,7 +311,6 @@ public class OtfProvider3D {
 	return ret;
     }
 
-    // ------ Load / Save operations ------
 
     /** Create an OTF stored in a string representation, usually read from
      *  file. 
@@ -278,7 +336,7 @@ public class OtfProvider3D {
 	// main parameters
 	ret.na		= fld.getDbl("NA").val();
 	
-	if (!fld.contains("n-immersion")) { // TODO: remove once this is part of the OTF creator?!
+	if (fld.contains("n-immersion")) { // TODO: remove once this is part of the OTF creator?!
 	    ret.immersion_n = fld.getDbl("n-immersion").val();
 	}
 	

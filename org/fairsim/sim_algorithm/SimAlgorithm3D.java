@@ -560,9 +560,7 @@ public class SimAlgorithm3D {
 
 	    // apply apotization filter
 	    
-	    //Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
-	    //otfPr.writeApoVector( apo, apoB, apoF);
-	    //fullResult.times(apo);
+	    otfPr.apotize( fullResult, 2.0, 1.4, false );
 	    
 	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)
