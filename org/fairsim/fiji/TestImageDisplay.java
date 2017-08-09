@@ -29,7 +29,25 @@ import javax.swing.JFrame;
 /** Small Fiji plugin, running all parameter estimation and reconstruction
  *  steps. Good starting point to look at the code w/o going through all the
  *  GUI components. */
-public class TestImageDisplay { //implements PlugIn {
+public class TestImageDisplay implements PlugIn {
+
+
+    public void run(String arg) {
+
+	ImageVector iv = ImageVector.copy( IJ.getProcessor() );
+
+	JFrame mainFrame = new JFrame("PlainImageDisplay");
+	PlainImageDisplay pd = new PlainImageDisplay( 1, iv.vectorWidth(), iv.vectorHeight() );
+	
+	mainFrame.add( pd.getPanel());
+	mainFrame.pack();
+	mainFrame.setVisible( true );
+	
+	pd.newImage( 0, iv);
+	pd.refresh();
+
+	
+    }
 
 
     /** Start from the command line to run the plugin */
