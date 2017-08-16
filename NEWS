@@ -1,0 +1,41 @@
+ Summary of important user-visible changes for fairSIM 1.2.0 (2017/07/31):
+-------------------------------------------------------------------------
+
+ ** fairSIM can now be built with the maven build system.
+
+ ** fairSIM will now connect to standard JTransforms (3.1),
+    additionally to shipping its own fork.  The maven build will only
+    build against JTransforms, the makefile can use both.
+
+ ** This version adds (preliminary) support for Richardson-Lucy-based
+    filtering.  See https://www.nature.com/articles/srep37149 for more
+    detail.  To enable the feature, use the "settings" menu for the
+    reconstruction.
+
+ ** Time-lapse mode can now be switched to rerun the parameter
+    estimation on every time point.
+
+ ** This version supports reconstruction time-lapse (multiple time
+    points) SIM stacks.
+
+
+Summary of important user-visible changes for fairSIM 1.0.2 (2016/06/16):
+-------------------------------------------------------------------------
+
+ ** Small bugfix in test script
+
+ ** GUI allows to select a single angle for reconstruction (beware:
+    the resolution will not be isotropic, thus the apodization filter
+    will not be ideal)
+
+
+Summary of important user-visible changes for fairSIM 1.0.1 (2016/02/14):
+-------------------------------------------------------------------------
+
+ ** Full version information and URL in about window
+
+
+Summary of important user-visible changes for fairSIM 1.0.0 (2016/02/02):
+-------------------------------------------------------------------------
+
+ ** Initial release of fairSIM.
