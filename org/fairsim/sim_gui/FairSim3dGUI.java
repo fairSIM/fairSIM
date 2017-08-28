@@ -108,13 +108,13 @@ public class FairSim3dGUI {
     final Tiles.LNSpinner tEnd; 
 
 
-    public FairSim3dGUI( Conf.Folder cfg, ImageSelector.ImageInfo imgs, ImageSelector imgSrc ) 
-	throws Conf.EntryNotFoundException, Conf.SomeIOException {
+    public FairSim3dGUI( DefineMachineGui dmgIn, ImageSelector.ImageInfo imgs, ImageSelector imgSrc ) 
+	{ //throws Conf.EntryNotFoundException, Conf.SomeIOException {
 
 	baseframe.setLocation(100,100);
 	this.imgSrc = imgSrc;
 
-	dmg = new DefineMachineGui( cfg, false );
+	this.dmg = dmgIn;
 	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
 
 	imgPerZ = dmg.channels.get(0).sp.getImgPerZ();

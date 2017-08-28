@@ -71,6 +71,8 @@ public class DefineMachineGui {
     final private JPanel mainPanel;
     final JTextField confNameField;
     final private JTabbedPane tabsPane;
+    private String filename = "NONE" ;	// the filename used when read from disk
+
 
     ArrayList<ChannelTab> channels = new ArrayList<ChannelTab>();
 
@@ -160,7 +162,7 @@ public class DefineMachineGui {
     }
 
     /** Display a file chooser to start from a saved config */
-    public static DefineMachineGui fromFileChooser( final Frame baseframe ) 
+    public static DefineMachineGui fromFileChooser( final Frame baseframe, boolean displayGui ) 
 	throws Conf.SomeIOException, Conf.EntryNotFoundException {
 
 	JFileChooser fc = new JFileChooser();
@@ -169,9 +171,11 @@ public class DefineMachineGui {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String fname = fc.getSelectedFile().getAbsolutePath();
 	    Conf cfg = Conf.loadFile( fname );
-
-	    return new DefineMachineGui( cfg.cd("fairsim-3d"), true);
-        }
+	    
+	    DefineMachineGui ret = new DefineMachineGui( cfg.cd("fairsim-3d"), displayGui);
+	    ret.filename = fname;
+	    return ret;
+	}
 	
 	return null;
     }
@@ -319,6 +323,8 @@ public class DefineMachineGui {
 	    ex.toString(), "Problem saving", JOptionPane.ERROR_MESSAGE);
 	}
 
+    
+	filename = saveFileChooser.getSelectedFile().getAbsolutePath();
     }
 
 
@@ -764,6 +770,13 @@ public class DefineMachineGui {
 	    Conf cfg = Conf.loadFile( arg[0]);
 	    new DefineMachineGui( cfg.cd("fairsim-3d"), true );
 	}
+    }
+
+
+
+    /** return the filename the GUI was created from, or was last used to save a file */
+    public String getFilename() {
+	return filename;
     }
 
 }

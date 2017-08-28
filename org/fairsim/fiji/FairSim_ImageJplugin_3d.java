@@ -33,20 +33,88 @@ import ij.plugin.PlugIn;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
-
+import ij.Prefs;
 
 public class FairSim_ImageJplugin_3d implements PlugIn {
     
+    final static String keyLastMachineFile = "org.fairsim.config.lastMachineFile";
+
+
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
 
+	// create a new machine definition file
 	if (inputarg.equals("define-machine-new")) {
 	    DefineMachineGui.setupDefineMachineGui();
+	    return;
 	}
     
+	// load a machine definition file
 	if (inputarg.equals("define-machine-edit")) {
 	    try {
-		DefineMachineGui.fromFileChooser(IJ.getInstance());
+		DefineMachineGui.fromFileChooser(IJ.getInstance(), true);
+	    } catch ( Conf.SomeIOException e) {
+		Tool.error( "Could not load config\n"+e, false);
+	    } catch ( Conf.EntryNotFoundException e ) {
+		Tool.error( "Config seems incomplete / broken:\n"+e, false);
+	    }
+	    return;
+	}
+
+
+	// if we were not started to run a reconstruction, return now
+	if ( !( inputarg.equals("reconstruct-new") || inputarg.equals("reconstruct"))) {
+	    Tool.error("wrong startup command for plugin",false);
+	    return;
+	}
+	
+	// figure out if a machine definition has to be loaded
+	boolean loadNewConfig = false;
+	if (inputarg.equals("reconstruct-new")) {
+	    loadNewConfig = true;
+	    Tool.trace("Loading new machine config file");
+	}
+
+
+	Conf cfg = null;
+	DefineMachineGui dmg = null;
+
+	// -1-  try to load the last config file
+	if (!loadNewConfig) {
+	    String path = Prefs.get( keyLastMachineFile ,"NONE");
+
+	    if (path!="NONE") {
+		try { 
+		    cfg = Conf.loadFile(path);	
+		} catch (Conf.SomeIOException e) {
+		    loadNewConfig = true;
+		} 
+	     } else {
+		loadNewConfig = true;
+	     }
+
+	    if (cfg != null) {
+		try {
+		    dmg = new DefineMachineGui( cfg.r(), false );
+		} catch ( Conf.EntryNotFoundException e ) {
+		    loadNewConfig = true;
+		}
+	    }
+	   
+	    if (loadNewConfig) {
+		Tool.trace("previous config could not be loaded");
+	    } else {
+		Tool.trace("loaded default config: "+path);
+	    }
+	}
+
+	// -2- if needed or set, display a file chooser and load the file
+	if (loadNewConfig) {
+	    
+	    dmg = null;
+	    
+	    try {
+		dmg = DefineMachineGui.fromFileChooser(IJ.getInstance(), false);
 	    } catch ( Conf.SomeIOException e) {
 		Tool.error( "Could not load config\n"+e, false);
 		return;
@@ -54,10 +122,32 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 		Tool.error( "Config seems incomplete / broken:\n"+e, false);
 		return;
 	    }
+
+	    if (dmg != null ) {
+		Prefs.set(keyLastMachineFile, dmg.getFilename());
+		Tool.trace("set new default config: "+dmg.getFilename());
+	    }
 	}
 
 
-
+	// -3- display the image selector window
+	ImagePlus ip = IJ.getImage();
+	if (ip==null) {
+	    Tool.error("No image open/selected!",false);
+	    return;
+	}
+	
+	
+	ImageOpener is = new ImageOpener();
+	ImageSelector.ImageInfo curImg = is.getImageInfoForImagePlus(ip);
+	
+	if (curImg == null) {
+	    Tool.error("Image not found by ImageSelector, this should not happen!",false);
+	    return;
+	}   
+    
+	new FairSim3dGUI(dmg, curImg, is);
+    
     }
 
     public static void main( String [] arg ) 
@@ -84,7 +174,8 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	IJ.open( arg[1] );
 	ImageSelector is = new ImageOpener();
 
-	new FairSim3dGUI(cfg, is.getOpenImages()[0], is);
+	DefineMachineGui dmg = new DefineMachineGui( cfg, false );
+	new FairSim3dGUI(dmg, is.getOpenImages()[0], is);
 
     }
 

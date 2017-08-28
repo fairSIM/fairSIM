@@ -50,6 +50,23 @@ public class ImageOpener
 	return ij.WindowManager.getImageCount(); 
     }
 
+
+    /** Returns the ImageInfo object for a given ImagePlus */
+    public ImageInfo getImageInfoForImagePlus( ImagePlus ip ) {
+
+	int curId = ip.getID();
+
+	ImageInfo [] list = getOpenImages();
+	for ( ImageInfo i : list ) {
+	    if (i.id == curId ) {
+		return i;
+	    }
+	}
+
+	return null;
+    }
+
+
     @Override
     public ImageInfo [] getOpenImages() {
 	if (!isActive)
