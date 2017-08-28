@@ -66,7 +66,7 @@ public class FairSim3dGUI {
     final JFrame baseframe = new JFrame("fairSIM 3D GUI");
     final private JPanel mainPanel = new JPanel();
 
-    final DefineMaschineGui dmg;
+    final DefineMachineGui dmg;
 
     final int imgPerZ;
 
@@ -114,7 +114,7 @@ public class FairSim3dGUI {
 	baseframe.setLocation(100,100);
 	this.imgSrc = imgSrc;
 
-	dmg = new DefineMaschineGui( cfg, false );
+	dmg = new DefineMachineGui( cfg, false );
 	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
 
 	imgPerZ = dmg.channels.get(0).sp.getImgPerZ();
@@ -204,7 +204,7 @@ public class FairSim3dGUI {
 	    
 	final JCheckBox channelEnabled;
 	final Tiles.LComboBox< FITTYPES > fitTypeList;
-	final Tiles.LComboBox< DefineMaschineGui.ChannelTab > channelSelector;
+	final Tiles.LComboBox< DefineMachineGui.ChannelTab > channelSelector;
 	final Tiles.LComboBox< OtfProvider3D > otfSelector;
 	final Tiles.LNSpinner wienerParam;
 
@@ -222,13 +222,13 @@ public class FairSim3dGUI {
 	    ourPanel.add( (new JPanel()).add( channelEnabled ) );
 
 	    // Box to select the channel
-	    DefineMaschineGui.ChannelTab [] channelsAvailable = 
-		new DefineMaschineGui.ChannelTab[ dmg.channels.size() ];
+	    DefineMachineGui.ChannelTab [] channelsAvailable = 
+		new DefineMachineGui.ChannelTab[ dmg.channels.size() ];
 
 	    for (int i=0; i<channelsAvailable.length; i++)
 		channelsAvailable[i] = dmg.channels.get( i );
 
-	    channelSelector = new Tiles.LComboBox< DefineMaschineGui.ChannelTab >(
+	    channelSelector = new Tiles.LComboBox< DefineMachineGui.ChannelTab >(
 		    "Channel set", channelsAvailable );
 
 	    if ( dmg.channels.size() > chNr )
@@ -240,9 +240,9 @@ public class FairSim3dGUI {
 
 	    // reset the OTF list if the channel is changed
 	    channelSelector.addSelectListener( 
-		new Tiles.SelectListener< DefineMaschineGui.ChannelTab >() {
+		new Tiles.SelectListener< DefineMachineGui.ChannelTab >() {
 		@Override
-		public void selected( DefineMaschineGui.ChannelTab elem, int idx ){
+		public void selected( DefineMachineGui.ChannelTab elem, int idx ){
 		    otfSelector.newElements( elem.otfList.getArray() ); 
 		}
 	    });

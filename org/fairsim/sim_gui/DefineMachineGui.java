@@ -46,6 +46,7 @@ import javax.swing.JEditorPane;
 import javax.swing.JTextField;
 import javax.swing.JOptionPane;
 import javax.swing.JList;
+import java.awt.Font;
 
 import java.net.URL;
 import java.io.File;
@@ -64,7 +65,7 @@ import org.fairsim.fiji.DisplayWrapper;
 
 /** A one-frame GUI for quick, largely
  *  automated reconstruction */
-public class DefineMaschineGui {
+public class DefineMachineGui {
 
     final JFrame baseframe;
     final private JPanel mainPanel;
@@ -76,8 +77,8 @@ public class DefineMaschineGui {
     String confName = null;
 
 
-    /** Display a small frame to setup the DefineMaschineGui */
-    public static void setupDefineMaschineGui() {
+    /** Display a small frame to setup the DefineMachineGui */
+    public static void setupDefineMachineGui() {
 	
 	final JFrame ourFrame = new JFrame("setup Define SIM");
 	JPanel ourPanel = new JPanel();
@@ -132,7 +133,7 @@ public class DefineMaschineGui {
 			nrAngles.getSelectedItem(),
 			nrPhases.getSelectedItem());
 		    try {
-			new DefineMaschineGui( newConfig.r(), true );
+			new DefineMachineGui( newConfig.r(), true );
 		    } catch ( Conf.EntryNotFoundException ex ) {
 			Tool.trace("this should not happen:\n"+ex);
 			
@@ -157,6 +158,24 @@ public class DefineMaschineGui {
 	ourFrame.setVisible(true);
 
     }
+
+    /** Display a file chooser to start from a saved config */
+    public static DefineMachineGui fromFileChooser( final Frame baseframe ) 
+	throws Conf.SomeIOException, Conf.EntryNotFoundException {
+
+	JFileChooser fc = new JFileChooser();
+	int returnVal = fc.showOpenDialog(baseframe);
+
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            String fname = fc.getSelectedFile().getAbsolutePath();
+	    Conf cfg = Conf.loadFile( fname );
+
+	    return new DefineMachineGui( cfg.cd("fairsim-3d"), true);
+        }
+	
+	return null;
+    }
+
 
 
     /** Generate a blank config file */
@@ -186,7 +205,7 @@ public class DefineMaschineGui {
 
 
     // create and pack the control interface
-    public DefineMaschineGui( Conf.Folder fld, boolean becomeVisible ) 
+    public DefineMachineGui( Conf.Folder fld, boolean becomeVisible ) 
 	throws Conf.EntryNotFoundException {
 	baseframe = new JFrame("Define SIM microscope");
 	mainPanel = new JPanel();
@@ -660,7 +679,8 @@ public class DefineMaschineGui {
 	
 	// all metadata (display only)
 	JTextComponent otfParamAsText = new JEditorPane();
-	otfParamAsText.setText( otf.getOtfInfoString());
+	otfParamAsText.setFont( new Font( Font.MONOSPACED, Font.PLAIN, 11 ));
+	otfParamAsText.setText(otf.getOtfInfoString());
 
 
 	// create panel and show dialog
@@ -739,10 +759,10 @@ public class DefineMaschineGui {
 	throws Conf.SomeIOException, Conf.EntryNotFoundException {
 	
 	if (arg.length==0) {
-	    setupDefineMaschineGui();
+	    setupDefineMachineGui();
 	} else {
 	    Conf cfg = Conf.loadFile( arg[0]);
-	    new DefineMaschineGui( cfg.cd("fairsim-3d"), true );
+	    new DefineMachineGui( cfg.cd("fairsim-3d"), true );
 	}
     }
 

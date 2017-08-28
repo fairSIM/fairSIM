@@ -26,21 +26,8 @@ import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
 
 import org.fairsim.sim_gui.FairSim3dGUI;
+import org.fairsim.sim_gui.DefineMachineGui;
 
-/*
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JEditorPane;
-import javax.swing.event.HyperlinkListener;
-import javax.swing.event.HyperlinkEvent;
-import java.awt.Desktop;
-
-
-import java.util.Scanner;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
-*/
 
 import ij.plugin.PlugIn;
 import ij.IJ;
@@ -53,6 +40,24 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
 
+	if (inputarg.equals("define-machine-new")) {
+	    DefineMachineGui.setupDefineMachineGui();
+	}
+    
+	if (inputarg.equals("define-machine-edit")) {
+	    try {
+		DefineMachineGui.fromFileChooser(IJ.getInstance());
+	    } catch ( Conf.SomeIOException e) {
+		Tool.error( "Could not load config\n"+e, false);
+		return;
+	    } catch ( Conf.EntryNotFoundException e ) {
+		Tool.error( "Config seems incomplete / broken:\n"+e, false);
+		return;
+	    }
+	}
+
+
+
     }
 
     public static void main( String [] arg ) 
@@ -62,7 +67,13 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	Tool.trace("-----");
 	Tool.trace("Initializing 3D fairSIM");
 	Tool.trace("-----");
-	
+
+	if (arg.length == 1 ) {
+	   ( new FairSim_ImageJplugin_3d() ).run( arg[0] );
+	   return;
+	}
+
+
 	if ( arg.length < 2 ) {
 	    Tool.error("Usage: config-file.xml image-file.tif", true);
 	    return;
