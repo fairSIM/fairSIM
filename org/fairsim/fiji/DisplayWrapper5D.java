@@ -27,9 +27,13 @@ import org.fairsim.linalg.Vec3d;
 
 import ij.ImageStack;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 import ij.ImageListener;
 import ij.IJ;
 import ij.ImageJ;
+import ij.measure.Calibration;
+import ij.process.LUT;
+import ij.CompositeImage;
 
 
 import javax.swing.SwingUtilities;
@@ -43,11 +47,16 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 
     // ImageJ components
     private ImageStack  is=null;
-    private ImagePlus   ip=null;
+    private CompositeImage   ip=null;
     private int currentPosition=0;
     private String ourTitle="[no title]";
 
-   
+    // spatial calibration data
+    private double muLat=-1, muAx=-1;
+  
+    // spectral calibration data
+    private double [] wavelengths = null;
+
 
     // internal storage
     final private ImageVector [] imageVectors ;
@@ -80,6 +89,24 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 	labels = new String[d*c*t];
     }
 
+    @Override
+    public void setPixelSize( double muLateral, double muAxial ) {
+	muLat = muLateral;
+	muAx  = muAxial;
+    }
+
+    @Override
+    public void setWavelengths( double [] wl ) {
+	if (wl == null) {
+	    wavelengths=null;
+	    return;
+	}
+	if (wl.length != channels ) {
+	    throw new RuntimeException("wavelength array length != number of channels");
+	}
+	wavelengths = wl;
+
+    }
 
 
     @Override
@@ -105,15 +132,46 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 	    // create stack
 	    is   = new ImageStack(width,height);
 	    for (int i=0; i<imageVectors.length ; i++) {
-	      is.addSlice( imageVectors[i].img() );
-	      is.setSliceLabel( labels[i],i+1);
+		is.addSlice( imageVectors[i].img() );
+		is.setSliceLabel( labels[i],i+1);
 	    }
 	    
 	    // create ImagePlus
-	    ip = new ImagePlus(ourTitle, is );
+	    ip = new CompositeImage( new ImagePlus(ourTitle, is ), CompositeImage.COMPOSITE);
 	    ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
 	    ip.setDimensions( channels, depth, timepoints );
 	    ip.setOpenAsHyperStack( true );
+	    
+	    // set the scale (if set)
+	    if (muLat >0 && muAx >0) {
+
+		Tool.trace(String.format("Setting pixel size, lateral %7.3f nm, axial %7.3f nm",
+		    muLat*1000, muAx*1000));
+		Calibration cal = new Calibration();
+		cal.pixelWidth  = muLat;
+		cal.pixelHeight = muLat;
+		cal.pixelDepth  = muAx;
+		cal.setUnit("micron");
+		ip.setCalibration( cal );
+	    }
+	    
+	    // set the LUT (if wavelength data is available)
+	    if ( wavelengths != null ) {
+		LUT [] luts = new LUT[ channels ];
+		for (int c=0; c<channels; c++) {
+		    luts[c] = getLUT4IJbyWavelength( wavelengths[c] );
+		}
+		ip.setLuts( luts );
+
+	    }
+
+	    // set min/max // TODO: selectable zero-clipping?
+	    for (int c=0 ; c<channels; c++) {
+		ip.setC( c+1 );
+		ip.setDisplayRange( 0, imageVectors[c].maxEntry());
+	    }
+	    ip.setC(1);
+
 
 	    // display the ImagePlus, do this in the Swing Thread
 	    if (SwingUtilities.isEventDispatchThread()) {
@@ -157,8 +215,49 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
     }
 
 
-    // testing stuff
+    // re-implementation of standard LUTs, as ImageJ keeps us from
+    // accessing them directly
+    static LUT getLUT4IJ(int color) {
+
+	    byte [][] values = new byte[3][256];
+
+	    // gray
+	    if (color==0) {
+		for (short i=0; i<256; i++) {
+                    values[0][i] = (byte)i; // blue
+                    values[1][i] = (byte)i; // green
+                    values[2][i] = (byte)i; // red
+		}
+	    } else {
+	    // 1-6: blue, green, cyan, red, magenta, yellow
+            for (short i=0; i<256; i++) {
+		if ((color&4)!=0)
+                    values[2][i] = (byte)i; // red
+            	if ((color&2)!=0)
+                    values[1][i] = (byte)i; // green
+            	if ((color&1)!=0)
+                    values[0][i] = (byte)i; // blue
+        	}
+	    }
     
+	return new LUT( values[2], values[1], values[0]);
+    }
+
+    /** Returns a LUT depending on (not representing!) wavelength.
+     *    0 - 480: blue
+     *  480 - 560: green
+     *  560 - 640: red
+     *  640 - inf: grey */
+    static LUT getLUT4IJbyWavelength( double wl ) {
+	if (wl < 480) return getLUT4IJ( 1 );
+	if (wl < 560) return getLUT4IJ( 2 );
+	if (wl < 640) return getLUT4IJ( 4 );
+	return getLUT4IJ(7);
+    }
+
+
+
+    // testing stuff
     public static void main(String [] args ) {
 	
 	ImageJ ij = new ImageJ( ImageJ.EMBEDDED );
@@ -207,6 +306,7 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 	displ2.update();
 
     }
+
 
 
 }

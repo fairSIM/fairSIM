@@ -75,6 +75,7 @@ public class SimAlgorithm3D {
 	Tool.trace(String.format("Running with dimensions %d x %d x %d, a:%d p:%d",
 	    w,h,d,nrDirs,nrPhases));
 
+	Tool.trace("FFT'in input data");	
 	for (int a=0; a<nrDirs; a++) 
 	for (int p=0; p<nrPhases; p++) {
 	    
@@ -89,7 +90,7 @@ public class SimAlgorithm3D {
 
 	    // input FFT
 	    inFFT[a][p].fft3d(false);
-	    Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
+	    //Tool.trace(String.format("Input FFT a: %d p: %d",a,p));	
 	}
 
 
@@ -188,7 +189,7 @@ public class SimAlgorithm3D {
 		    Tool.trace(String.format("a%1d: peak offset from stores preset: %7.3f ",
 			angIdx, peakDist));
 		} else {
-		    Tool.trace(String.format("a%1d: not refining peak position"));
+		    Tool.trace(String.format("a%1d: not refining peak position",angIdx));
 		}
 
 		// Now, either three beam / 3 bands ...

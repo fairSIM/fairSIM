@@ -150,7 +150,12 @@ public class FairSim3dGUI {
 	// position in stack
 	zBottom = new Tiles.LNSpinner("z bottom", 1, 1, imgs.nrSlices/imgPerZ, 1);
 	zTop = new Tiles.LNSpinner("z top", imgs.nrSlices/imgPerZ, 0, imgs.nrSlices/imgPerZ, 1);
-	
+
+	// TODO: once they are actually used in the reconstruction, re-enable them in the GUI
+	zBottom.setEnabled(false);
+	zTop.setEnabled(false);
+
+
 	tStart = new Tiles.LNSpinner("t start", 1, 1, imgs.nrTimepoints, 1);
 	tEnd = new Tiles.LNSpinner("t end", imgs.nrTimepoints, 1, imgs.nrTimepoints, 1);
 
@@ -353,25 +358,33 @@ public class FairSim3dGUI {
 	    ourRawImages.width*2, ourRawImages.height*2,
 	    numZSlices, numChannels , numTimesteps, "3D SIM result");
 
+	double [] emWavelengths = new double[ numChannels ];
+
 	// loop the channels
 	for (int ch = 0; ch<numChannels; ch++) {
 	    ChannelPanel channel = channelMap.get( ch );
+		
+	    SimParam sp = channel.channelSelector.getSelectedItem().sp;
+
+	    sp.setPxlSize3d( ourRawImages.width, numZSlices,
+		ourRawImages.micronsPerPxl, ourRawImages.micronsPerSlice ); 
+
+	    sp.otf3d( channel.otfSelector.getSelectedItem() );
+	    sp.otf3d().setPixelSize(  1/ourRawImages.micronsPerPxl/ourRawImages.width, 
+		1/ourRawImages.micronsPerSlice/numZSlices );
+	
+	    Tool.trace(String.format(
+		    "Img dimension: lateral %7.3f nm/pxl axlia %7.3f nm/pxl, emission %4.0f nm",
+		    ourRawImages.micronsPerPxl*1000, ourRawImages.micronsPerSlice*1000, 
+		    sp.otf3d().getLambda() ));
+
+	    emWavelengths[ch] = sp.otf3d().getLambda();
 
 	    // loop the timepoints TODO: this is not thread-save (user might change value)
 	    for (int t=(int)tStart.getVal()-1; t<(int)tEnd.getVal(); t++) {
 
 		// generate the input vector
 		Vec2d.Real [] inputImgs = imgSrc.getImages( ourRawImages, channel.chNr, t ); 	
-
-		SimParam sp = channel.channelSelector.getSelectedItem().sp;
-		
-		sp.setPxlSize3d( ourRawImages.width, numZSlices,
-		    ourRawImages.micronsPerPxl, 0.125 ); 
-
-		sp.otf3d( channel.otfSelector.getSelectedItem() );
-		sp.otf3d().setPixelSize(  1/ourRawImages.micronsPerPxl/ourRawImages.width, 
-		    1/0.125/numZSlices );
-
 
 		// run the reconstruction
 		Vec3d.Cplx result = SimAlgorithm3D.runReconstruction(
@@ -391,12 +404,14 @@ public class FairSim3dGUI {
 			iso.setImage( res, z, ch, t, "" );
 		}
 
-
 	    }
 	}
+	
+	// set the pixel size and wavelength
+	iso.setPixelSize( ourRawImages.micronsPerPxl/2, ourRawImages.micronsPerSlice);
+	iso.setWavelengths( emWavelengths );
 
 	iso.update();
-
 
 
     }

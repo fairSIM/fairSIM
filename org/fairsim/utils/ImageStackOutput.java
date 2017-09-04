@@ -42,6 +42,13 @@ public interface ImageStackOutput {
      *	*/
     public abstract void setImage( Vec3d.Real v, int ch, int t, String label );
 
+
+    /** Set the lateral and axial pixel size (in mu) */
+    public abstract void setPixelSize( double micronsLateral, double micronsAxial );
+
+    /** Set an array of wavelengths assigned to each channel */
+    public abstract void setWavelengths( double [] wl );
+
     /** Called when images have been updated.
      *  Here e.g. disk-writes or refreshing windows should happen. */
     public void update();

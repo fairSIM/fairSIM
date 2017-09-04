@@ -91,19 +91,22 @@ public class ImageOpener
 	    if (curImg.getProperty("org.fairsim.fiji.DisplayWrapper")!=null)
 		continue;
 
-	    // get pxl size
-	    double microns = -1;
+	    // get pxl size // TODO: this should check for pixelX != pixelY and simmilar things
+	    double micronsLateral = -1, micronsAxial = -1;
 	    Calibration cb = curImg.getCalibration();
 	    if (cb!=null && cb.getUnit()!=null) {
 		String unit = cb.getUnit().trim();
 		if (unit.startsWith("micro") ||
 		    unit.equals("\u00B5m")||
-		    unit.equals("um"))
-			microns = cb.pixelWidth;
+		    unit.equals("um")) {
+			micronsLateral = cb.pixelWidth;
+			micronsAxial   = cb.pixelDepth;
+		}
 		if (unit.startsWith("nano") ||
-		    unit.equals("nm"))
-			microns = cb.pixelWidth/1000.;
-
+		    unit.equals("nm")) {
+			micronsLateral = cb.pixelWidth/1000.;
+			micronsAxial   = cb.pixelDepth/1000.;
+		}
 	    }
 
 	    // create an info object
@@ -114,7 +117,8 @@ public class ImageOpener
 		curImg.getNSlices(),
 		curImg.getNChannels(),
 		curImg.getNFrames(),
-		microns,		// microns
+		micronsLateral,		// microns
+		micronsAxial,		// microns
 		curImg.getTitle(),
 		curImg.getID()
 		));

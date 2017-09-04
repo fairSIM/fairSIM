@@ -170,5 +170,21 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	    project( inV, n, n );
 	}
 
+	public float minEntry() {
+	    float ret = Float.MAX_VALUE;
+	    for (float f: data ) {
+		if (f < ret) ret = f;
+	    }
+	    return ret;
+	}
+
+	public float maxEntry() {
+	    float ret = Float.MIN_VALUE;
+	    for (float f: data ) {
+		if (f > ret) ret = f;
+	    }
+	    return ret;
+	}
+
 
 }

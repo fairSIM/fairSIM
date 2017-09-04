@@ -33,6 +33,10 @@ public interface ImageSelector {
 	
 	/** Size of pxl in microns (or -1 if not available) */
 	public final double micronsPerPxl;
+	
+	/** Distance between slices in microns (or -1 if not available) */
+	public final double micronsPerSlice;
+	
 	/** "Name" of the image (or null if not available) */
 	public final String name;
 	/** ID, free to be set by implementors of ImageInfo */
@@ -52,11 +56,12 @@ public interface ImageSelector {
 	 *  nrSlices * nrTimepoints * nrChannels has to match 'depth'. */
 	public ImageInfo( int width, int height, 
 	    int nrSlices, int nrChannels, int nrTimepoints, 
-	    double micronsPerPxl, String name, int id ) {
+	    double micronsPerPxl, double micronsPerSlice, String name, int id ) {
 	    this.width		= width;
 	    this.height		= height;
 	   
 	    this.micronsPerPxl	= micronsPerPxl;
+	    this.micronsPerSlice= micronsPerSlice;
 	    this.name		= name;
 	    this.id		= id;
 
@@ -147,7 +152,7 @@ public interface ImageSelector {
 	    ImageInfo [] ret = new ImageInfo[ n ];
 	    for (int i=0; i<n; i++)
 		ret[i] = new ImageInfo(512, 512, 1, idxToZ(i), 1,
-		    ((i!=2)?(0.082):(-1)),
+		    ((i!=2)?(0.082):(-1)), ((i!=2)?(0.125):(-1)),
 		    names[i%names.length], i );
 	    return ret;
 	}
