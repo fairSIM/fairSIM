@@ -38,12 +38,13 @@ public class Correlation3d {
      *	@param ky Starting guess ky
      *  @param weightLimit If > 0, consider only freq where both weights are over this limit
      *  @param search kx,ky will be varied +-search
+     *  @param projectForSearch if a 2D projection is used for the sub-pixel search
      *	@param cntrl control vector (size 30x10) to be filled with power spectra, may be null
      * */
     public static double [] fitPeak( Vec3d.Cplx band0, Vec3d.Cplx band1,
 	int bn0, int bn1, OtfProvider3D otf, 
 	double kx, double ky, double weightLimit, 
-	double search, Vec2d.Real cntrl
+	double search, final boolean projectForSearch, Vec2d.Real cntrl
 	) {
 
 	//Vec2d.failSize( band0, band1 ); // TODO: re-enable
@@ -78,26 +79,66 @@ public class Correlation3d {
 	    // loop 10x10 points +-search around starting guess
 	    // ( good outer loop to do in parallel )
 	    final double tkx=kx, tky=ky, ts=search;
-	    new SimpleMT.PFor(0,10*10) { 
-		public void at(int p) {
+	    if ( !projectForSearch ) {
+		
+		// this version runs on full 3D vectors
+		new SimpleMT.PFor(0,10*10) { 
+		    public void at(int p) {
 		   
-		    // compute position to shift to
-		    int xi = p%10;
-		    int yi = p/10;
-		    double xpos = tkx + ((xi-4.5)/4.5)*ts;
-		    double ypos = tky + ((yi-4.5)/4.5)*ts;
-	
-		    // copy and Fourier-shift band1
-		    Vec3d.Cplx b1s = b1.duplicate();
-		    b1s.fourierShift( xpos, -ypos, 0);
-
-		    // get correlation by multiplication, summing elements, scaling by b0
-		    b1s.timesConj( b0 );
-		    corr[xi][yi] = Cplx.mult( b1s.sumElements(), scal);
-		    //Tool.trace("Correlation x "+xi+" y "+yi+" : "+corr[xi][yi].abs());
-		}
-	    };
+			// compute position to shift to
+			int xi = p%10;
+			int yi = p/10;
+			double xpos = tkx + ((xi-4.5)/4.5)*ts;
+			double ypos = tky + ((yi-4.5)/4.5)*ts;
 	    
+			// copy and Fourier-shift band1
+			Vec3d.Cplx b1s = b1.duplicate();
+			b1s.fourierShift( xpos, -ypos, 0);
+
+			// get correlation by multiplication, summing elements, scaling by b0
+			b1s.timesConj( b0 );
+			corr[xi][yi] = Cplx.mult( b1s.sumElements(), scal);
+			//Tool.trace("3D full: Correlation x "+xi+" y "+yi+" : "+corr[xi][yi].abs());
+		    }
+		};
+	    } else {
+
+		// this version projects down the vectors first
+		final Vec2d.Cplx b0proj = Vec2d.createCplx( b0.vectorWidth(), b0.vectorHeight() );
+		final Vec2d.Cplx b1proj = Vec2d.createCplx( b1.vectorWidth(), b1.vectorHeight() );
+		b0proj.project( b0 );
+		b1proj.project( b1 );
+	    
+		final Cplx.Double scal2d = 
+		    new Cplx.Double(1. /  b0proj.norm2()  ); // for corr. normalization
+	  
+		Tool.trace(" 2d norm: "+ scal2d.abs() );
+		
+		// this version runs on full 3D vectors
+		new SimpleMT.PFor(0,10*10) { 
+		    public void at(int p) {
+		   
+			// compute position to shift to
+			int xi = p%10;
+			int yi = p/10;
+			double xpos = tkx + ((xi-4.5)/4.5)*ts;
+			double ypos = tky + ((yi-4.5)/4.5)*ts;
+	    
+			// copy and Fourier-shift band1
+			Vec2d.Cplx b1copy = b1proj.duplicate();
+			b1copy.fourierShift( xpos, -ypos );
+
+			// get correlation by multiplication, summing elements, scaling by b0
+			b1copy.timesConj( b0proj );
+			corr[xi][yi] = Cplx.mult( b1copy.sumElements(), scal2d);
+			//Tool.trace("2D proj: Correlation x "+xi+" y "+yi+" : "+corr[xi][yi].abs());
+		    }
+		};
+
+
+	    }
+
+
 	    // find the maximum, set as new starting point
 	    for ( int yi=0;yi<10;yi++ )	
 	    for ( int xi=0;xi<10;xi++ ) {

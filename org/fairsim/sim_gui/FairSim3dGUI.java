@@ -209,9 +209,11 @@ public class FairSim3dGUI {
 	    
 	final JCheckBox channelEnabled;
 	final Tiles.LComboBox< FITTYPES > fitTypeList;
+	final JCheckBox			  fastFitCheckbox;
 	final Tiles.LComboBox< DefineMachineGui.ChannelTab > channelSelector;
 	final Tiles.LComboBox< OtfProvider3D > otfSelector;
 	final Tiles.LNSpinner wienerParam;
+
 
 	final int chNr ;
 
@@ -264,7 +266,13 @@ public class FairSim3dGUI {
 	    fitTypeList.setSelectedIndex(1);
 
 	    fitPanel.add( fitTypeList );
+	    
+	    // select if the fast peak fit (2D proj.) is used
+	    fastFitCheckbox = new JCheckBox("use fast peak fit");
+	    fastFitCheckbox.setSelected(true);
+	    fitPanel.add( fastFitCheckbox );
 
+	    // wiener parameter
 	    wienerParam = new Tiles.LNSpinner("Wiener filter",
 		0.005, 0.001, 0.2, 0.002 );
 
@@ -287,6 +295,7 @@ public class FairSim3dGUI {
 			    if ( c != channelPanelList.get(0) ) {
 				c.fitTypeList.setEnabled( !state );
 				c.wienerParam.setEnabled( !state );
+				c.fastFitCheckbox.setEnabled( !state );
 			    }
 			}
 		    }
@@ -306,7 +315,25 @@ public class FairSim3dGUI {
 			}
 		    }
 		});
-	   
+	  
+
+		// progate change in fastFitEnabled
+		fastFitCheckbox.addActionListener( new ActionListener() {
+		    @Override
+		    public void actionPerformed( ActionEvent e ) {
+			
+			boolean state = fastFitCheckbox.isSelected();
+			
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.fastFitCheckbox.setSelected( state );
+				}
+			    }
+			}
+		    }
+		});
+
 		// propagate change in Wiener filter parameter
 		wienerParam.addNumberListener( new Tiles.NumberListener() {
 		    @Override
@@ -392,7 +419,8 @@ public class FairSim3dGUI {
 			channel.otfSelector.getSelectedItem(),
 			channel.channelSelector.getSelectedItem().sp,
 			-2, channel.wienerParam.getVal(),
-			channel.fitTypeList.getSelectedItem().getVal()
+			channel.fitTypeList.getSelectedItem().getVal(),
+			channel.fastFitCheckbox.isSelected()
 			);
 
 		result.fft3d(true);

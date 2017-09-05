@@ -27,11 +27,20 @@ import org.fairsim.utils.ImageDisplay;
 
 public class SimAlgorithm3D {
 
-   /** Step-by-step reconstruction process. */
+   /** Step-by-step reconstruction process. 
+    *  @param inSt The input stack
+    *  @param otfPr A 3D OTF (see the OTF provider class)
+    *  @param param The reconstruction parameters
+    *  @param visualFeedback The amount of visual feedback, currently not overly used
+    *  @param wienParam The Wiener parameter
+    *  @param fitLevel Which parts of the fit to run
+    *  @param runFastFit If to run the sub-pixel fit on projected data (much faster)
+    *
+    * */
     public static Vec3d.Cplx runReconstruction( Vec2d.Real [] inSt, 
 	final OtfProvider3D otfPr, final SimParam param,
 	final int visualFeedback , final double wienParam,
-	final int fitLevel ) {
+	final int fitLevel, final boolean runFastFit ) {
 
 	final boolean disableFiltering = false;
 	final boolean   findPeak  = (fitLevel>=3);
@@ -180,8 +189,10 @@ public class SimAlgorithm3D {
 		// Fourier-shifted components
 		if ( refinePeak ) {
 		    ImageVector cntrl    = ImageVector.create(30,10);
+		    
 		    peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
-			-peak[0], -peak[1], 0.005, 2.5, cntrl );
+			-peak[0], -peak[1], 0.005, 2.5, runFastFit, cntrl );
+
 		    Tool.trace(String.format("a%1d: refined peak position to %7.3f y %7.3f",
 			angIdx, minDist, peak[0], peak[1]));
 		
