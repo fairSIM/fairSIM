@@ -72,7 +72,7 @@ public class DefineMachineGui {
     final JTextField confNameField;
     final private JTabbedPane tabsPane;
     private String filename = "NONE" ;	// the filename used when read from disk
-
+    private File baseFolder = null;
 
     ArrayList<ChannelTab> channels = new ArrayList<ChannelTab>();
 
@@ -162,10 +162,15 @@ public class DefineMachineGui {
     }
 
     /** Display a file chooser to start from a saved config */
-    public static DefineMachineGui fromFileChooser( final Frame baseframe, boolean displayGui ) 
+    public static DefineMachineGui fromFileChooser( final Frame baseframe, 
+	boolean displayGui, File initialFolder ) 
 	throws Conf.SomeIOException, Conf.EntryNotFoundException {
 
+
 	JFileChooser fc = new JFileChooser();
+	if ( initialFolder != null ) {
+	    fc.setCurrentDirectory( initialFolder );
+	}
 	int returnVal = fc.showOpenDialog(baseframe);
 
         if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -174,6 +179,7 @@ public class DefineMachineGui {
 	    
 	    DefineMachineGui ret = new DefineMachineGui( cfg.cd("fairsim-3d"), displayGui);
 	    ret.filename = fname;
+	    ret.baseFolder = fc.getSelectedFile().getParentFile();
 	    return ret;
 	}
 	
@@ -295,6 +301,9 @@ public class DefineMachineGui {
 
 	JFileChooser saveFileChooser = new JFileChooser();
 	saveFileChooser.setDialogType( JFileChooser.SAVE_DIALOG );
+	if ( baseFolder != null ) {
+	    saveFileChooser.setCurrentDirectory( baseFolder );
+	}
 	int ret = saveFileChooser.showSaveDialog( baseframe );
 
 	if ( ret != JFileChooser.APPROVE_OPTION ) {
@@ -537,7 +546,12 @@ public class DefineMachineGui {
 	
 	// load a SIM parameter set from file
 	void loadSimParamFromFile() {
+	    
 	    JFileChooser fileChooser = new JFileChooser();
+	    if ( baseFolder != null ) {
+		fileChooser.setCurrentDirectory( baseFolder );
+	    }
+
 
 	    // load the file
 	    int returnVal  = fileChooser.showOpenDialog( baseframe );
@@ -718,17 +732,6 @@ public class DefineMachineGui {
     /** Connects to the OTF importer. TODO: This could be more modular. */
     public static OtfProvider3D convertOtfFromFile( File fObj, Component base ) {
     
-	// figure out if the converter is present
-	try {
-	    Class.forName("de.bio_photonics.omxtools.OTFConverter");
-	} catch ( ClassNotFoundException ex) {
-	    JOptionPane.showMessageDialog(base,
-	    "Please ensure SRSIM-Tools are installed / in the classpath",
-	    "SRSIM-Tools not found", JOptionPane.ERROR_MESSAGE);
-	    
-	    return null;
-	}
-
 	// run the OTF converter
 	OtfFileConverter otfConv = null;
 
@@ -768,7 +771,8 @@ public class DefineMachineGui {
 	    setupDefineMachineGui();
 	} else {
 	    Conf cfg = Conf.loadFile( arg[0]);
-	    new DefineMachineGui( cfg.cd("fairsim-3d"), true );
+	    DefineMachineGui ret = new DefineMachineGui( cfg.cd("fairsim-3d"), true );
+	    ret.baseFolder = (new File(arg[0])).getParentFile();
 	}
     }
 

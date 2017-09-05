@@ -55,7 +55,9 @@ public class Conf {
 
     final String namespace;
     final Folder root;
-    
+
+    private File basedOnFile = null;
+
     static {
         Locale.setDefault(Locale.ENGLISH);
     }
@@ -633,7 +635,13 @@ public class Conf {
         
 	return true;
     }
-    
+   
+    /** Returns the file the configuration was read from, or 'null' */
+    public File originalFile() {
+	return basedOnFile;
+    }
+
+
     /** Create a Configuration from an XML file */
     public static Conf loadFile(String xmlfile) 
 	throws SomeIOException {
@@ -670,6 +678,8 @@ public class Conf {
 	Conf cfg = new Conf(rootNode.getTagName());
 
 	importXmlElement( rootNode, cfg.r() );
+
+	cfg.basedOnFile = xmlfile;
 
 	return cfg;
     }

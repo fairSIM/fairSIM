@@ -21,13 +21,11 @@ package org.fairsim.fiji;
 import org.fairsim.utils.Tool;
 import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageSelector;
-
-
 import org.fairsim.utils.ImageDisplay;
-
 import org.fairsim.sim_gui.FairSim3dGUI;
 import org.fairsim.sim_gui.DefineMachineGui;
 
+import java.io.File;
 
 import ij.plugin.PlugIn;
 import ij.IJ;
@@ -38,7 +36,6 @@ import ij.Prefs;
 public class FairSim_ImageJplugin_3d implements PlugIn {
     
     final static String keyLastMachineFile = "org.fairsim.config.lastMachineFile";
-
 
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
@@ -51,8 +48,16 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
     
 	// load a machine definition file
 	if (inputarg.equals("define-machine-edit")) {
+	    
+	    // get the base folder
+	    String path = Prefs.get( keyLastMachineFile ,"NONE");
+	    File initialFolder = null;
+	    if ( !path.equals("NONE")) {
+		initialFolder = (new File(path)).getParentFile();
+	    }
+	    
 	    try {
-		DefineMachineGui.fromFileChooser(IJ.getInstance(), true);
+		DefineMachineGui.fromFileChooser(IJ.getInstance(), true, initialFolder);
 	    } catch ( Conf.SomeIOException e) {
 		Tool.error( "Could not load config\n"+e, false);
 	    } catch ( Conf.EntryNotFoundException e ) {
@@ -111,10 +116,18 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	// -2- if needed or set, display a file chooser and load the file
 	if (loadNewConfig) {
 	    
+	    // get the base folder
+	    String path = Prefs.get( keyLastMachineFile ,"NONE");
+	    File initialFolder = null;
+	    if ( !path.equals("NONE")) {
+		initialFolder = (new File(path)).getParentFile();
+	    }
+	    
+	    // load the machine definition
 	    dmg = null;
 	    
 	    try {
-		dmg = DefineMachineGui.fromFileChooser(IJ.getInstance(), false);
+		dmg = DefineMachineGui.fromFileChooser(IJ.getInstance(), false, initialFolder);
 	    } catch ( Conf.SomeIOException e) {
 		Tool.error( "Could not load config\n"+e, false);
 		return;
