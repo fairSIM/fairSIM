@@ -375,7 +375,7 @@ public class FairSim3dGUI {
 	int numChannels = channelMap.size();
 	//int numZSlices  = (int)(zTop.getVal() - zBottom.getVal());
 	int numZSlices  = ourRawImages.nrSlices / imgPerZ;
-	int numTimesteps  = (int)(tStart.getVal() - tEnd.getVal()+1);
+	int numTimesteps  = (int)(-tStart.getVal() + tEnd.getVal()+1);
 	
 	// TODO: implement the z-top, z-bottom values here
 
