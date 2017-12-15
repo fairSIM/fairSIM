@@ -277,6 +277,10 @@ public class SimParam implements Vec2d.Size {
 	private int thisBand;	    // which band is this
 	private boolean hasIndividualPhases;	// if non-equidist. phases are set
 
+	private double angleIntensityFactor=1;   // the intensity factor to apply to this angle
+	private double [] phaseIntensityFactors; // the intensity factors to apply phase-by-phase
+
+
 	Dir(int nBands, int nPha, int thisBand) {
 	    
 	    if (nBands<2) 
@@ -294,6 +298,10 @@ public class SimParam implements Vec2d.Size {
 	    for (int i=0;i<nrBands;i++)
 		modul[i] = 1.0;
 	
+		phaseIntensityFactors = new double[nrPhases];
+	    for (int i=0;i<nrPhases;i++)
+		phaseIntensityFactors[i] = 1.0;
+
 	}
 
 	void failBand(int i) {
@@ -428,7 +436,36 @@ public class SimParam implements Vec2d.Size {
 	    }
 	    return ret;
 	}
-    
+   
+	// -- correction factors ---
+	
+	/** Set an intensity correction factor for this angle */
+	public void setAngleIntensityFactor( double f ) {
+	    angleIntensityFactor = f;
+	}
+
+	/** Set a phase intensity correction factor for this angle and phase i */
+	public void setPhaseIntensityFactor( int p, double f ) {
+	    phaseIntensityFactors[p] = f;
+	}
+
+	/** Get the angle intensity factor */
+	public double getAngleIntensityFactor() {
+	    return angleIntensityFactor;
+	}
+
+	/** Get a phase intensity factor */
+	public double getPhaseIntensityFactor(int p) {
+	    return phaseIntensityFactors[p];
+	}
+
+	/** Returns a combined correction quotient: 1/(angleIntesity*phaseIntensity) */
+	public double getIntensityQuotient(int p) {
+	    return 1/(angleIntensityFactor*phaseIntensityFactors[p]);
+	}
+
+
+
     }
 
     /** check if index belongs to a band */

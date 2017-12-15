@@ -234,7 +234,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 	ip.show();
 
 	FairSimGUI a =  new FairSimGUI( 
-	    SimParam.create(3,3,5,512, 0.082, null),
+	    SimParam.create(2,3,3,512, 0.078, null),
 	    new ImageOpener(),
 	    DisplayWrapper.getFactory(),
 	    false

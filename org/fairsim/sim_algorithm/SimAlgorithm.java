@@ -78,7 +78,15 @@ public class SimAlgorithm {
 
 	    // compute band separation
 	    Vec2d.Cplx [] separate = Vec2d.createArrayCplx( dir.nrComp(), w, h);
-	    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+	    Vec2d.Cplx [] inputCpy = Vec2d.createArrayCplx( dir.nrPha(), w, h );
+	    
+	    for (int pha = 0 ; pha<dir.nrPha(); pha++) {
+		inputCpy[pha] = inFFT[angIdx][pha].duplicate();
+		inputCpy[pha].scal( new Cplx.Float( (float)dir.getIntensityQuotient(pha)) );
+	    }
+	    
+	    
+	    BandSeparation.separateBands( inputCpy , separate , 
 		0, dir.nrBand(), null);
 
 	    // duplicate vectors, as they are modified for coarse correlation
@@ -328,16 +336,23 @@ public class SimAlgorithm {
 	    Tool.tell("Reconstr. for angle "+(angIdx+1)+"/"+param.nrDir());
 	    
 	    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
-	   
+	  
+	    // copy into temp. array (to not override input data) 
+	    // and apply correction factor
+	    Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
+	    for (int i=0; i<(par.nrBand()*2-1) ;i++) {
+		tmpArray[i].copy( inFFT[angIdx][i] );
+		tmpArray[i].scal( new Cplx.Float( (float)par.getIntensityQuotient(i) ) );
+		Tool.trace(String.format(" Input data intensity corrected: a%1d p%1d --> %7.5f",
+		    angIdx, i, par.getIntensityQuotient(i)));
+	    }
+
+	    
+
 	    // ---- Richardson-Lucy: Deconvolve input data here ----
 	    if ( param.useRLonInput() ) {
 		
-		// copy into temp. array to not override input data
-		Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)
-		    tmpArray[i].copy( inFFT[angIdx][i] );
-
-		// deconvolve the input data
+			// deconvolve the input data
 		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
 
 		    if (visualFeedback>1) {
@@ -354,16 +369,12 @@ public class SimAlgorithm {
 		    }
 		
 		}
-
-		// use the temp array as input for the band separation
-		BandSeparation.separateBands( tmpArray , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
-	    
-	    } else {
-	    // ---- Wiener filtering: just band-separate the data
-		BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		    par.getPhases(), par.nrBand(), par.getModulations());
 	    }
+
+	    // use the temp array as input for the band separation
+	    BandSeparation.separateBands( tmpArray , separate , 
+		par.getPhases(), par.nrBand(), par.getModulations());
+	    
 
 	    // Wiener filter: Apply OTF here
 	    if (otfBeforeShift && param.useWienerFilter() )
