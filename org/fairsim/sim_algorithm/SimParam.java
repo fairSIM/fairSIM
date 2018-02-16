@@ -70,7 +70,7 @@ public class SimParam implements Vec2d.Size {
     private int rlIterations = 5;		    // number of Richardson-Lucy iterations
     
 
-    double modLowLimit = 0.3, modHighLimit = 1.1;
+    double modLowLimit = 0.4, modHighLimit = 1.1, defaultModulation = 0.65;
 
     // Transfer function, OTF attenuation, Apotization
     private OtfProvider   currentOtf2D=null;
@@ -417,6 +417,22 @@ public class SimParam implements Vec2d.Size {
 	    return Math.hypot( pY*band, pX*band );
 	}
 
+	/** Compute the estimated resolution improvement */
+	public double getEstResImprovement() {
+
+	    if (currentOtf2D == null) {
+		throw new RuntimeException("No OTF set for SIM parameter instance");
+	    }
+
+	    double shift	= getPxPyLen( nrBands -1) * cyclesPerMicron;
+	    double otfCutoff    = currentOtf2D.getCutoff();
+
+	    return (shift+otfCutoff) / otfCutoff;
+
+	}
+
+
+
 	// --- modulation ---
 	/** Set the modulation of band n. */
 	public boolean setModulation(int b, double m) {
@@ -426,17 +442,26 @@ public class SimParam implements Vec2d.Size {
 	}
 
 	/** Get modulations */
+	public double [] getRawModulations() {
+	    double [] ret = new double [nrBands];
+	    System.arraycopy( modul, 0, ret, 0, nrBands );
+	    return ret;
+	}
+     
+	/** Get modulations (limited to 'reasonable' range) */
 	public double [] getModulations() {
 	    double [] ret = new double [nrBands];
 	    System.arraycopy( modul, 0, ret, 0, nrBands );
 	    // if any modulation is outside of limits, return limit
 	    for (int b=0; b< nrBands; b++) {
-		if (ret[b]<modLowLimit) ret[b]  = modLowLimit;
-		if (ret[b]>modHighLimit) ret[b] = modHighLimit;
+		if (ret[b]<modLowLimit)  ret[b] = defaultModulation;
+		if (ret[b]>modHighLimit) ret[b] = defaultModulation;
 	    }
 	    return ret;
 	}
-   
+     
+
+
 	// -- correction factors ---
 	
 	/** Set an intensity correction factor for this angle */

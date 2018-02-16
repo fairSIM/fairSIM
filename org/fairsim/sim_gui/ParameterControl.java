@@ -27,6 +27,7 @@ import javax.swing.JFrame;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JEditorPane;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -194,17 +195,99 @@ public class ParameterControl {
 	    @Override
 	    protected void done() {
 		running = false;
+		showParameterResults();
 		simp.refreshTable();
 		ourState.setText("Complete");
-		recc.ourState.setText( ((recc.paramAvailable)?("New p"):("P"))+"arameters set, ready");
-		recc.ourState.setForeground(Color.BLUE);
-		recc.paramAvailable = true ;
+		if ( !recc.paramFitFailed ) {
+		    recc.ourState.setText( ((recc.paramAvailable)?("New p"):("P"))+"arameters set, ready");
+		    recc.ourState.setForeground(Color.BLUE);
+		    recc.paramAvailable = true ;
+		} else {
+		    recc.ourState.setText( "Parameter fit (most likely) failed");
+		    recc.ourState.setForeground(Color.ORANGE);
+		    recc.paramAvailable = true ;
+		}
 		ourState.setToolTipText("Estimation took "+t1);
 		ourState.setForeground(Color.GREEN.darker());
 	    }
 	}).execute();
 
     }
+
+    /** Called at the end of the parameter estimation, shows a result overview */
+    void showParameterResults() {
+
+
+	String [][] assesment = new String [][] {
+	    { "color=\"green\"" , "good"  }, 
+	    { "color=\"blue\""  , "usable" }, 
+	    { "color=\"orange\"", "weak" }, 
+	    { "color=\"red\""   , "NO FIT!"}}; 
+
+
+	String htmlContent = "<html><body><h2>Parameter fit summery</h2>"+
+	    "<table>";
+	htmlContent += "<tr><th>res. impr.</th><<th>mod. est.</th><th>assesment</th></tr>";
+
+	for (int ang=0; ang< simParam.nrDir(); ang++) {
+
+	    double mod = simParam.dir(ang).getRawModulations()[ simParam.nrBand()-1];
+	    int nr = ((mod >= .7)?(0):( (mod>=.4 )?(1):( (mod>=.1)?(2):(3) )));
+
+	    String tab = 
+		String.format( "<tr><td> %4.2f </td><td> %5.3f </td><td>"+
+		    "<font %s >%s</td></tr>",
+		    simParam.dir(ang).getEstResImprovement(), mod, assesment[nr][0], assesment[nr][1] );
+
+	    htmlContent += tab;
+	
+	    if (nr==3) {
+		recc.paramFitFailed = true;
+	    }
+	}
+
+	String htmlContent2 = htmlContent + "</table></body></html>";
+
+	JEditorPane jep2 = new JEditorPane("text/html", htmlContent2);
+	jep2.setEditable(false);
+
+	String [] opts = {"Interpretation help", "Ok/Close"};
+
+	int optNr = JOptionPane.showOptionDialog( baseframe ,
+	    jep2,
+	    "Parameter estimation result",
+	    JOptionPane.DEFAULT_OPTION,
+	    JOptionPane.INFORMATION_MESSAGE, null, opts, null );
+   
+	if (optNr!=0) return;
+
+	// display the help
+	htmlContent += "</table>";
+	htmlContent += "<h3>Interpretation of modulation:</h3>";
+	htmlContent += "The modulation estimation is easily thrown off by low SNR,<br />";
+	htmlContent += "caused by low photon count, high background, or both.<br /> It can of course also be caused by";
+	htmlContent += "misalignment. <br />When in doubt, check with a known-good sample (e.g. bead layer)<ul>";
+	htmlContent += "<li><font "+assesment[0][0]+">High values (0.7 to 1.0)</font> point to a well-aligned system with good SNR</li>";
+	htmlContent += "<li><font "+assesment[1][0]+">Mid values (0.4 to 0.7)</font> point to either misalignment or low SNR</li>";
+	htmlContent += "<li><font "+assesment[2][0]+">Low values (0.1 to 0.4)</font> point to severe SNR/alignment problems<br />";
+	htmlContent += "Most likely a pattern was still found.<br />"; 
+	htmlContent += "Modulation estimate is overridden with a 0.65 default.</li>";
+	htmlContent += "<li><font "+assesment[3][0]+">No fit (lower than 0.1)</font> no SIM pattern was found.";
+	htmlContent += "<br />Check if the fit condition were set correctly (see manual)";
+	htmlContent += "<br />Check with a known-good sample. Check system alignment.";
+	htmlContent += "</ul>";
+	htmlContent += "<h3>Resolution improvement</h3>The expected resolution improvement.<br />";
+	htmlContent += "Calculated from SIM pattern spacing in relation to OTF cutoff.</p></body></html>";
+	
+	JEditorPane jep = new JEditorPane("text/html", htmlContent );
+
+	JOptionPane.showMessageDialog( baseframe ,
+	    jep,
+	    "Parameter estimation result",
+	    JOptionPane.INFORMATION_MESSAGE );
+    }
+
+
 
     /** Called by the setup button, displays a setup dialog */
     void configureEstimation() {
