@@ -33,6 +33,7 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.JProgressBar;
+import javax.swing.JTabbedPane;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -142,7 +143,9 @@ public class ImageControl {
 	this.idpFactory   = imgFactory;
 	this.fsGUI        = fsg;
 
-	// create our pnael
+	JTabbedPane imgTabs = new JTabbedPane();
+
+	// create our panel
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
 	ourContent.setBorder(BorderFactory.createTitledBorder("1 - Image Selector") );
 
@@ -204,8 +207,8 @@ public class ImageControl {
 
 	// preprocessing control
 	JPanel preprocessPanel = new JPanel(new GridBagLayout());
-	preprocessPanel.setBorder(
-	    BorderFactory.createTitledBorder("Intensity correction pre-processing") );
+	//preprocessPanel.setBorder(
+	//    BorderFactory.createTitledBorder("Intensity correction pre-processing") );
 
 	c.gridwidth=1; c.gridheight=1;
 
@@ -330,32 +333,39 @@ public class ImageControl {
 
 	
 	// add all content to the panel
-	ourContent.add(ourState);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(row1);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(row2);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(sliders);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+	JPanel tab1 = new JPanel();
+	JPanel tab2 = new JPanel();
+	JPanel tab3 = new JPanel();
 
-	ourContent.add( preprocessPanel );
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+	tab1.setLayout(new BoxLayout(tab1, BoxLayout.PAGE_AXIS));
+	tab2.setLayout(new BoxLayout(tab2, BoxLayout.PAGE_AXIS));
+	tab3.setLayout(new BoxLayout(tab3, BoxLayout.PAGE_AXIS));
+
+	tab1.add( Box.createVerticalGlue());
+	tab1.add(ourState);
+	tab1.add(Box.createRigidArea(new Dimension(1,5)));
+	tab1.add(row1);
+	tab1.add( Box.createVerticalGlue());
+	
+	tab2.add( Box.createVerticalGlue());
+	tab2.add(row2);
+	tab2.add(Box.createRigidArea(new Dimension(1,5)));
+	tab2.add(sliders);
+	tab2.add( Box.createVerticalGlue());
+	//ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+
+
+	tab3.add( preprocessPanel );
+	tab3.add(Box.createRigidArea(new Dimension(1,5)));
+
+	imgTabs.addTab("Load", tab1);
+	imgTabs.addTab("Timelapse", tab2);
+	imgTabs.addTab("Corrections", tab3);
+    
+	ourContent.add( imgTabs);
 
 	// ------ CALLBACKS and LOGIC ------
-
-	// update which images are open
-	/* // this causes deadlocks, using a manual click on the list now 
-	 * 
-	imgSelectCB = new ImageSelector.Callback() {
-	    public void call() {
-		//Tool.trace("Image opened / closed");
-		imgBox.newElements( imgSelect.getOpenImages());
-	    }
-	};
-	imgSelect.addCallback( imgSelectCB ); */
-
-	// instead, refresh when opened
+	// refresh when opened
 	imgBox.box.addPopupMenuListener( new PopupMenuListener() {
 	    public void popupMenuCanceled( PopupMenuEvent e ) {};
 	    public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {};
