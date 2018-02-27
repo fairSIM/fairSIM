@@ -18,6 +18,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.linalg;
 
+import java.util.Arrays;    // for the median sort function
 
 /** Default implementation of {@link Vec.Real}, 
  *  backed by a float [].
@@ -274,6 +275,33 @@ public abstract class AbstractVectorReal implements  Vec.Real {
 	    y[i] += x[i]*x[i] ; 
 	
 	this.syncBuffer();
+    }
+
+    /** Compute the average */
+    public double avr() {
+	double sum =0;
+	this.readyBuffer();
+	for (int i=0; i<elemCount; i++)
+	    sum += data[i]/elemCount;
+
+	return sum;
+    }
+
+
+    /** Compute the median.
+     *  TODO: this is not actually a very effective implementation, see QuickSelect */
+    public double median() {
+
+	float [] dataCopy = new float[elemCount];
+
+	System.arraycopy(data,0,dataCopy,0,data.length);
+	Arrays.sort( dataCopy );
+
+	if ( elemCount % 2 == 0 ) {
+	    return (dataCopy[elemCount/2-1] + dataCopy[elemCount/2]);
+	} else {
+	    return dataCopy[elemCount/2];
+	}
     }
 
 

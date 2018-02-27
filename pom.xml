@@ -55,13 +55,11 @@
       <version>RELEASE</version>
     </dependency>
 
-<!-- not yet 
     <dependency>
 	<groupId>com.github.wendykierp</groupId>
 	<artifactId>JTransforms</artifactId>
 	<version>3.1</version>
     </dependency>
--->
 
     <!-- Test dependencies -->
 <!-- not yet 
@@ -120,7 +118,12 @@
         <configuration>
           <source>1.6</source>
           <target>1.6</target>
-        </configuration>
+	  <!-- this keeps the forked/internal version of JTransform from being build
+	       with maven dependencies, we can just rely on the original being there instead -->
+	  <excludes>
+	    <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
+	  </excludes>
+	</configuration>
       </plugin>
 
 
@@ -156,6 +159,7 @@
 	    </includes>
 	    <excludes>
 		<exclude>target</exclude>
+		<exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
 	    </excludes>
 	</configuration>
         <executions>
@@ -179,8 +183,10 @@
               <goal>jar</goal>
             </goals>
             <configuration>
-              <!-- <additionalparam>-Xdoclint:none</additionalparam> -->
 		<quiet>true</quiet>
+		<excludes>
+		    <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
+		</excludes>
 	    
             </configuration>
           </execution>

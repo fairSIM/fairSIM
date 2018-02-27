@@ -72,7 +72,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private int rlIterations = 5;		    // number of Richardson-Lucy iterations
     
 
-    double modLowLimit = 0.3, modHighLimit = 1.1;
+    double modLowLimit = 0.4, modHighLimit = 1.1, defaultModulation = 0.65;
 
     // Transfer function, OTF attenuation, Apotization
     private OtfProvider   currentOtf2D=null;
@@ -399,6 +399,11 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	private double [] modul;    // modulation 
 	private int thisBand;	    // which band is this
 	private boolean hasIndividualPhases;	// if non-equidist. phases are set
+	
+	private double angleIntensityFactor=1;   // the intensity factor to apply to this angle
+	private double [] phaseIntensityFactors; // the intensity factors to apply phase-by-phase
+
+
 
 	Dir(int nBands, int nPha, int thisBand) {
 	    
@@ -416,6 +421,10 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 
 	    for (int i=0;i<nrBands;i++)
 		modul[i] = 1.0;
+	    
+	    phaseIntensityFactors = new double[nrPhases];
+	    for (int i=0;i<nrPhases;i++)
+		phaseIntensityFactors[i] = 1.0;
 	
 	}
 
@@ -548,6 +557,22 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	    return Math.hypot( pY*band, pX*band );
 	}
 
+	/** Compute the estimated resolution improvement */
+	public double getEstResImprovement() {
+
+	    if (currentOtf2D == null) {
+		throw new RuntimeException("No OTF set for SIM parameter instance");
+	    }
+
+	    double shift	= getPxPyLen( nrBands -1) * cyclesPerMicron;
+	    double otfCutoff    = currentOtf2D.getCutoff();
+
+	    return (shift+otfCutoff) / otfCutoff;
+
+	}
+
+
+
 	// --- modulation ---
 	/** Set the modulation of band n. */
 	public boolean setModulation(int b, double m) {
@@ -557,17 +582,55 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	}
 
 	/** Get modulations */
+	public double [] getRawModulations() {
+	    double [] ret = new double [nrBands];
+	    System.arraycopy( modul, 0, ret, 0, nrBands );
+	    return ret;
+	}
+	
+	/** Get modulations (limited to 'reasonable' range) */
 	public double [] getModulations() {
 	    double [] ret = new double [nrBands];
 	    System.arraycopy( modul, 0, ret, 0, nrBands );
 	    // if any modulation is outside of limits, return limit
 	    for (int b=0; b< nrBands; b++) {
-		if (ret[b]<modLowLimit) ret[b]  = modLowLimit;
-		if (ret[b]>modHighLimit) ret[b] = modHighLimit;
+		if (ret[b]<modLowLimit)  ret[b] = defaultModulation;
+		if (ret[b]>modHighLimit) ret[b] = defaultModulation;
 	    }
 	    return ret;
 	}
     
+
+
+	// -- correction factors ---
+	
+	/** Set an intensity correction factor for this angle */
+	public void setAngleIntensityFactor( double f ) {
+	    angleIntensityFactor = f;
+	}
+
+	/** Set a phase intensity correction factor for this angle and phase i */
+	public void setPhaseIntensityFactor( int p, double f ) {
+	    phaseIntensityFactors[p] = f;
+	}
+
+	/** Get the angle intensity factor */
+	public double getAngleIntensityFactor() {
+	    return angleIntensityFactor;
+	}
+
+	/** Get a phase intensity factor */
+	public double getPhaseIntensityFactor(int p) {
+	    return phaseIntensityFactors[p];
+	}
+
+	/** Returns a combined correction quotient: 1/(angleIntesity*phaseIntensity) */
+	public double getIntensityQuotient(int p) {
+	    return 1/(angleIntensityFactor*phaseIntensityFactors[p]);
+	}
+
+
+
     }
 
     /** check if index belongs to a band */
@@ -631,9 +694,6 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     public static SimParam loadConfig( Conf.Folder cfg ) 
 	throws Conf.EntryNotFoundException {
 	
-	// TODO: This wont handle 3D currently!!
-	// TODO: check why not!
-
 	Conf.Folder fd = cfg.cd("sim-param");
 	
 	// basics
@@ -742,6 +802,31 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	    }
 	}
 	
+	/** Calculate position in (raw) z stack.
+	 *  @param ang Index of angle
+	 *  @param pha Index of phase
+	 *  @param z   Index of z
+	 *  @param t   Index of time
+	 *  @param angMax   Number of angles
+	 *  @param phaMax   Number of phases
+	 *  @param zMax	    Number of z slices */
+	public int calcPosWithTime( int ang, int pha, int z, int t, int angMax, int phaMax, int zMax ) {
+	    if (( ang>=angMax ) || ( pha >= phaMax ) || ( z >= zMax ) || 
+		( ang <0 ) || ( pha < 0) || ( z < 0 ))
+		throw new RuntimeException("Parameter wrong!");
+	    
+	    switch(this) {
+		case PZA: return ( pha +   z*phaMax  + ang*phaMax*zMax + 
+		    phaMax*zMax*angMax * t );
+		case ZAP: return (  z  + ang*zMax    + pha*zMax*angMax +
+		    phaMax*zMax*angMax * t );
+		case PAZ: 
+		default:
+			  return ( pha + ang*phaMax  + z*phaMax*angMax +
+		    phaMax*zMax*angMax * t );
+	    }
+	}
+
 	/** Return a default SIM parameter set */
 	public SimParam getParam() {
 	    switch(this) {
@@ -807,6 +892,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	
 	for ( Dir d : directions ) {
 	    int b = d.nrBand()-1; 
+	    ret += String.format("Nr bands: %d, shift of outer-most band:\n", b);
 	    ret += String.format("px: %6.3f py: %6.3f (len %6.3f) \n",
 		d.px(b), d.py(b), Math.sqrt(d.px(b)*d.px(b)+d.py(b)*d.py(b)));
 	    ret += String.format("phases (%s) [ ",((phaInDeg)?("deg"):("rad")) );

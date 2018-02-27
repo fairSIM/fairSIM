@@ -8,6 +8,30 @@ if [ ! -e ij147v.jar ] ; then
     wget https://imagej.nih.gov/ij/download/jars/ij147v.jar
 fi
 
+# Get our forked version of JTransforms 
+if [ ! -e jtransforms_fairSIM_fork.jar ] ; then
+    fileMissing=1
+    wget https://github.com/fairSIM/JTransforms/releases/download/v1.0.0/jtransforms_fairSIM_fork.jar
+fi
+
+# Get the original version of JTransforms
+if [ ! -e JTransforms-3.1.jar ] ; then 
+    fileMissing=1
+    wget http://central.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1.jar
+fi
+
+# Get JTransforms JLargeArray dependency
+if [ ! -e JLargeArrays-1.6.jar ] ; then
+    fileMissing=1
+    wget http://central.maven.org/maven2/pl/edu/icm/JLargeArrays/1.6/JLargeArrays-1.6.jar
+fi
+
+# Get the Apache fast math dependencies
+if [ ! -e commons-math3-3.6.1.jar ] ; then
+    fileMissing=1
+    wget http://central.maven.org/maven2/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar
+fi
+
 
 # This fetches the java 1.6 runtime, needed for backwards-compatible
 # compilation to Java 6 with newer compilers

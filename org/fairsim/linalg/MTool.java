@@ -71,6 +71,20 @@ public final class MTool {
 	return Math.sqrt(x*x+y*y+z*z);
     }
 
+    /** Returns the average of an array of doubles */
+    public static double average( double [] in ) {
+	double ret = 0;
+	for ( double i : in ) ret += i/in.length;
+	return ret;
+    }
+
+    /** Returns the average of an array of float.
+     *	This uses an double internally as accumulator for higher precision. */
+    public static float average( float [] in ) {
+	double ret = 0;
+	for ( float i : in ) ret += i/in.length;
+	return (float)ret;
+    }
 
 
     /** Tests against java.lang.Math, Timings */

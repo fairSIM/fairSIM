@@ -19,35 +19,20 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.linalg;
 import org.fairsim.utils.Tool;
 
-import org.jtransforms.fft.*; 
+import org.fairsim.extern.jtransforms.*; 
 
-class JTransformsConnector extends FftProvider {
+class JTransformsForkConnector extends FftProvider {
 
 	/** Add us a as an FFT implementation */
-	JTransformsConnector() throws ClassNotFoundException {
+	JTransformsForkConnector() throws ClassNotFoundException {
 	    
 	    // check if our required dependencies exist
 	    try {
-		Class.forName("org.jtransforms.fft.FloatFFT_2D");
+		Class.forName("org.fairsim.extern.jtransforms.FloatFFT_2D");
 	    } catch ( ClassNotFoundException e ) {
-		Tool.trace("Implementing classes for 'Original JTransforms' not found");
+		Tool.trace("Implementing classes for 'forked/internal JTransforms' not found");
 		throw e;
 	    }
-	    
-	    try {
-		Class.forName("pl.edu.icm.jlargearrays.LargeArray");
-	    } catch ( ClassNotFoundException e ) {
-		Tool.trace("Implementing classes for 'JLargeArray' not found");
-		throw e;
-	    }
-	    
-	    try {
-		Class.forName("org.apache.commons.math3.util.FastMath");
-	    } catch ( ClassNotFoundException e ) {
-		Tool.trace("Implementing classes for 'Apache fast math 3' not found");
-		throw e;
-	    }
-		    
 		    
 	    FftProvider.setFftFactory( this );
 	}
@@ -111,7 +96,7 @@ class JTransformsConnector extends FftProvider {
 	}
 
 	public String getImplementationName() {
-	    return "Original JTransforms connector";
+	    return "fairSIM forked JTransforms connector";
 	}
 
 

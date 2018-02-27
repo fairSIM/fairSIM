@@ -33,6 +33,7 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.JProgressBar;
+import javax.swing.JTabbedPane;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -64,6 +65,7 @@ import org.fairsim.sim_algorithm.SimUtils;
 import org.fairsim.sim_algorithm.SimAlgorithm;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.MTool;
 import org.fairsim.linalg.Transforms;
 
 /**
@@ -105,6 +107,10 @@ public class ImageControl {
     final Tiles.LComboBox<String> videoAutoUpdateMode =
      new Tiles.LComboBox<String>("auto-update", updateModes); 
 
+    // prefactor correction spinners
+    Tiles.LNSpinner  []   prefactorAngSpinner; 
+    Tiles.LNSpinner [][] prefactorPhaSpinner; 
+    
     // the images
     Vec2d.Real [][] theImages    =null;
     Vec2d.Cplx [][] theFFTImages =null;
@@ -132,7 +138,7 @@ public class ImageControl {
 
     /** Contructor, initializes image list. */
     public ImageControl( final JFrame baseframe, ImageSelector is, 
-	final ImageOutputFactory imgFactory, 	FairSimGUI fsg, SimParam sp ) {
+	final ImageOutputFactory imgFactory, 	FairSimGUI fsg, final SimParam sp ) {
 
 	// initialize variables
 	this.baseframe    = baseframe;
@@ -141,7 +147,9 @@ public class ImageControl {
 	this.idpFactory   = imgFactory;
 	this.fsGUI        = fsg;
 
-	// create our pnael
+	JTabbedPane imgTabs = new JTabbedPane();
+
+	// create our panel
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
 	ourContent.setBorder(BorderFactory.createTitledBorder("1 - Image Selector") );
 
@@ -200,39 +208,168 @@ public class ImageControl {
 	c.gridx=13; c.gridwidth=1;
 	sliders.add( batchButton );
 
-	/*
-	endPosSlider   = new JSlider(JSlider.HORIZONTAL, 0,100,5);
-	c.gridx=0; c.gridy=1; c.gridwidth=1; c.gridheight=1;
-	sliders.add( endPosLabel,c );
-	c.gridx=1; c.gridwidth=6;
-	sliders.add( endPosSlider,c); */
 
+	// preprocessing control
+	JPanel preprocessPanel = new JPanel(new GridBagLayout());
+	//preprocessPanel.setBorder(
+	//    BorderFactory.createTitledBorder("Intensity correction pre-processing") );
+
+	c.gridwidth=1; c.gridheight=1;
+
+	prefactorAngSpinner = new Tiles.LNSpinner[ sp.nrDir() ];
+	prefactorPhaSpinner = new Tiles.LNSpinner[ sp.nrDir() ][]; 
+
+	for (int ang = 0 ; ang < sp.nrDir(); ang++) {
+	    
+	    prefactorAngSpinner[ang]  = new Tiles.LNSpinner(String.format("a%1d",ang),
+		1, .01, 100, 0.01);
+	  
+	    final int angCopy = ang;
+	    
+	    prefactorAngSpinner[ang].addNumberListener( new Tiles.NumberListener() {
+		@Override
+		public void number( double n, Tiles.LNSpinner e) {
+		    sp.dir(angCopy).setAngleIntensityFactor( n );	
+		};
+	    });
+
+	    c.gridx=0; c.gridy=ang+1;
+
+	    preprocessPanel.add( prefactorAngSpinner[ang], c); 
+
+	    prefactorPhaSpinner[ang] = new Tiles.LNSpinner[ sp.dir(ang).nrPha()];
+	    for (int pha = 0 ; pha < sp.dir(ang).nrPha(); pha++) {
+		prefactorPhaSpinner[ang][pha] = new Tiles.LNSpinner(String.format("p%1d",pha),
+		1, .01, 100, 0.01);
+	    
+		final int phaCopy = pha;
+		
+		prefactorPhaSpinner[ang][pha].addNumberListener( new Tiles.NumberListener() {
+		    @Override
+		    public void number( double n, Tiles.LNSpinner e) {
+			sp.dir(angCopy).setPhaseIntensityFactor( phaCopy, n );	
+		    };
+	        });
+
+	    
+		c.gridx=pha+1;
+		preprocessPanel.add( prefactorPhaSpinner[ang][pha], c); 
+	    
+	    }
+	}
+
+	c.gridx=0; c.gridy=0; c.gridwidth=3; 
+	final Tiles.LComboBox<String> methodBox
+	    = new Tiles.LComboBox<String>("estimate, by", "average", "median"); 
+	preprocessPanel.add( methodBox, c );
+
+	c.gridx=3; c.gridwidth=1;
+	
+	JButton estAngleButton = new JButton("angles");
+	preprocessPanel.add( estAngleButton, c );
+	
+	estAngleButton.addActionListener( new ActionListener() {
+	    public void actionPerformed(ActionEvent e) {
+		runEstimateAngleVariation(methodBox.getSelectedIndex());
+	    }
+	});
+
+	c.gridx=4;
+	JButton estPhaseButton = new JButton("phases");
+	preprocessPanel.add( estPhaseButton, c );
+	estPhaseButton.addActionListener( new ActionListener() {
+	    public void actionPerformed(ActionEvent e) {
+		runEstimatePhaseVariation(methodBox.getSelectedIndex());
+	    }
+	});
+
+	c.gridx=0; c.gridy=sp.nrDir()+1;
+
+	JButton showCorrectedImagesButton = new JButton("show corrected stack");
+	preprocessPanel.add( showCorrectedImagesButton, c);
+	
+	showCorrectedImagesButton.addActionListener( new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		if (!sucessfulImport || theImages==null) {
+		    JOptionPane.showMessageDialog( baseframe,
+		    "Please import an image first", "fairSIM error",
+		     JOptionPane.ERROR_MESSAGE);
+		    return;
+		}
+		
+		ImageDisplay correctedDataDisplay = 
+		    idpFactory.create(theImages[0][0].vectorWidth(), theImages[0][0].vectorHeight(), 
+			"Intensity corrected input images");
+
+		for (int ang=0; ang<sp.nrDir(); ang++) {
+		    for (int pha=0; pha<sp.dir(ang).nrPha(); pha++) {
+
+			Vec2d.Real corImg = theImages[ang][pha].duplicate();
+			corImg.scal( (float)sp.dir(ang).getIntensityQuotient(pha));
+			correctedDataDisplay.addImage( corImg, String.format("a%d p%d",ang,pha));
+		    }
+		
+		}
+
+		correctedDataDisplay.display();
+
+
+	    }
+	});
+
+
+	JButton resetValuesButton = new JButton("reset");
+	c.gridx=1;
+	preprocessPanel.add( resetValuesButton,c );
+
+	resetValuesButton.addActionListener( new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		for (int ang=0; ang<sp.nrDir(); ang++) {
+		   prefactorAngSpinner[ang].spr.setValue(1);
+		   for (int pha=0; pha<sp.dir(ang).nrPha(); pha++) {
+			prefactorPhaSpinner[ang][pha].spr.setValue(1);
+		   }
+		}
+	    }
+	});
 
 	
 	// add all content to the panel
-	ourContent.add(ourState);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(row1);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(row2);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
-	ourContent.add(sliders);
-	ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+	JPanel tab1 = new JPanel();
+	JPanel tab2 = new JPanel();
+	JPanel tab3 = new JPanel();
+
+	tab1.setLayout(new BoxLayout(tab1, BoxLayout.PAGE_AXIS));
+	tab2.setLayout(new BoxLayout(tab2, BoxLayout.PAGE_AXIS));
+	tab3.setLayout(new BoxLayout(tab3, BoxLayout.PAGE_AXIS));
+
+	tab1.add( Box.createVerticalGlue());
+	tab1.add(ourState);
+	tab1.add(Box.createRigidArea(new Dimension(1,5)));
+	tab1.add(row1);
+	tab1.add( Box.createVerticalGlue());
+	
+	tab2.add( Box.createVerticalGlue());
+	tab2.add(row2);
+	tab2.add(Box.createRigidArea(new Dimension(1,5)));
+	tab2.add(sliders);
+	tab2.add( Box.createVerticalGlue());
+	//ourContent.add(Box.createRigidArea(new Dimension(1,5)));
+
+
+	tab3.add( preprocessPanel );
+	tab3.add(Box.createRigidArea(new Dimension(1,5)));
+
+	imgTabs.addTab("Load", tab1);
+	imgTabs.addTab("Timelapse", tab2);
+	imgTabs.addTab("Corrections", tab3);
+    
+	ourContent.add( imgTabs);
 
 	// ------ CALLBACKS and LOGIC ------
-
-	// update which images are open
-	/* // this causes deadlocks, using a manual click on the list now 
-	 * 
-	imgSelectCB = new ImageSelector.Callback() {
-	    public void call() {
-		//Tool.trace("Image opened / closed");
-		imgBox.newElements( imgSelect.getOpenImages());
-	    }
-	};
-	imgSelect.addCallback( imgSelectCB ); */
-
-	// instead, refresh when opened
+	// refresh when opened
 	imgBox.box.addPopupMenuListener( new PopupMenuListener() {
 	    public void popupMenuCanceled( PopupMenuEvent e ) {};
 	    public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {};
@@ -402,7 +539,8 @@ public class ImageControl {
 	    videoPosSlider.setEnabled(true);
 	    videoAutoUpdateMode.setEnabled(true);
 
-	    totalTimePoints = inf.nrSlices / zplSel / simParam.getImgPerZ(); 
+	    //totalTimePoints = inf.nrSlices / zplSel / simParam.getImgPerZ(); 
+	    totalTimePoints = inf.nrTimepoints; 
 	    if ( videoPosSlider.getValue() >= totalTimePoints ) {
 		videoPosSlider.setValue(0);
 	    } else {
@@ -871,6 +1009,103 @@ public class ImageControl {
 
 	simParam.setPxlSize( theImages[0][0].vectorWidth(), pxlSize/1000. );
     }
+
+    /** calcuate angle-by-angle variation */
+    void runEstimateAngleVariation(int method) {
+    
+	if (!sucessfulImport || theImages==null) {
+	    JOptionPane.showMessageDialog( baseframe,
+	     "Please import an image first", "fairSIM error",
+	     JOptionPane.ERROR_MESSAGE);
+	    return;
+	}
+		
+	Tool.trace("Running angle-by-angle variation estimation:");
+
+	double [] vals = new double[ simParam.nrDir() ];
+	for (int ang=0; ang < simParam.nrDir(); ang++) {
+
+	    // sum up all the phases
+	    Vec2d.Real sum = Vec2d.createReal( theImages[ang][0] );
+	    sum.add( theImages[ang] );
+	    
+	    if (method==0) {
+		vals[ang] = sum.avr()/simParam.dir(ang).nrPha();
+		Tool.trace("angle "+ang+": average "+String.format("%7.4f",vals[ang]));
+	    }
+	    if (method==1) {
+		vals[ang] = sum.median()/simParam.dir(ang).nrPha();
+		Tool.trace("angle "+ang+": median "+String.format("%7.4f",vals[ang]));
+	    }
+	}
+
+
+	// calculate and set the correction factors
+	double avr = MTool.average( vals ) ;
+	String res = "resulting factors: ";
+
+	for (int ang=0; ang<simParam.nrDir(); ang++) {
+
+	    double fac = vals[ang] / avr;
+	    res += String.format(" a%1d: %7.5f", ang, fac);
+	    prefactorAngSpinner[ang].spr.setValue( fac );
+
+	}
+	
+	Tool.trace(res);
+
+    }
+
+
+    void runEstimatePhaseVariation(int method) {
+
+    
+	if (!sucessfulImport || theImages==null) {
+	    JOptionPane.showMessageDialog( baseframe,
+	     "Please import an image first", "fairSIM error",
+	     JOptionPane.ERROR_MESSAGE);
+	    return;
+	}
+		
+	Tool.trace("Running phase-by-phase variation estimation:");
+
+	for (int ang=0; ang < simParam.nrDir(); ang++) {
+	
+	    double [] vals = new double[ simParam.dir(ang).nrPha() ];
+	    
+	    for (int pha=0; pha<simParam.dir(ang).nrPha(); pha++) {
+
+		if (method==0) {
+		    vals[pha] = theImages[ang][pha].avr();
+		    Tool.trace("angle "+ang+" phase "+pha+
+			": average "+String.format("%7.4f",vals[pha]));
+		}
+		if (method==1) {
+		    vals[pha] = theImages[ang][pha].median();
+		    Tool.trace("angle "+ang+" phase "+pha+
+			": median "+String.format("%7.4f",vals[pha]));
+		}
+	    
+	    
+	    }
+
+
+	    // calculate and set the correction factors
+	    double avr = MTool.average( vals ) ;
+	    String res = "resulting factors: ";
+
+	    for (int pha=0; pha<simParam.dir(ang).nrPha(); pha++) {
+
+		double fac = vals[pha] / avr;
+		res += String.format(" a%1d: pha%1d:  %7.5f", ang, pha, fac);
+		prefactorPhaSpinner[ang][pha].spr.setValue( fac );
+
+	    }
+	    
+	    Tool.trace(res);
+	}
+    }
+
 
 
     /** shows the slice selector */

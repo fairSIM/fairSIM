@@ -60,6 +60,7 @@ public class ReconstructionControl {
     private final JPanel ourContent = new JPanel();  
     final JLabel ourState  = new JLabel("Parameters not known");
     boolean paramAvailable = false;
+    boolean paramFitFailed = false;
 
     private final JFrame baseframe;
     private final SimParam simParam;
@@ -263,6 +264,19 @@ public class ReconstructionControl {
 	     JOptionPane.ERROR_MESSAGE);
 	    return;
 	}
+
+	if ( paramFitFailed ) {
+	    int ret = JOptionPane.showConfirmDialog( baseframe,
+	    "<html>Reconstruction parameter fit likely failed<br />"+
+	    "Run reconstruction none the less?",
+	    "fairSIM warning",
+	    JOptionPane.YES_NO_OPTION);
+
+	    if ( ret == JOptionPane.NO_OPTION ) {
+		return;
+	    }
+	}
+
 
 	// run
 	ourState.setText("Running reconstruction");

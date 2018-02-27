@@ -244,6 +244,13 @@ public final class Vec {
 	/** Output the first 10 vector elements for debugging */	
 	public String first10Elem() ;
 
+	/** Computes the average of all elements */
+	public double avr();
+
+	/** Computes the median of all elements */
+	public double median();
+
+
     }
 
 
