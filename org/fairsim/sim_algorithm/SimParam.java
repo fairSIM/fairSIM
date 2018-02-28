@@ -58,7 +58,7 @@ public class SimParam implements Vec2d.Size {
 
     private IMGSEQ imgSeq = IMGSEQ.PAZ;		    // order of images in input
     private CLIPSCALE clipScaleMode 
-	= CLIPSCALE.BOTH;			    // clip&scale of output
+	= CLIPSCALE.NONE;			    // clip&scale of output
 
 
     private FilterStyle filterStyle = 

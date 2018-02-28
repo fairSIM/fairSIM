@@ -250,6 +250,12 @@ public final class Vec {
 	/** Computes the median of all elements */
 	public double median();
 
+	/** Returns the minimum value */
+	public float min();
+
+	/** Return the maximum value */
+	public float max();
+
 
     }
 

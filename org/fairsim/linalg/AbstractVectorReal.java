@@ -305,6 +305,32 @@ public abstract class AbstractVectorReal implements  Vec.Real {
     }
 
 
+    /** Get the minimum value in the vector */
+    public float min() {
+	float ret = Float.MAX_VALUE;
+	this.readyBuffer();
+	for ( float i: data) {
+	    if ( i < ret ) {
+		ret = i;
+	    }
+	}
+	return ret;
+    }
+    
+    
+    /** Get the maximum value in the vector */
+    public float max() {
+	float ret = Float.MIN_VALUE;
+	this.readyBuffer();
+	for ( float i : data) {
+	    if ( i > ret ) {
+		ret = i;
+	    }
+	}
+	return ret;
+    }
+    
+
     /** Access to the internal vector array (mind the
      *  'syncBuffer' calls). Issues a {@link #readyBuffer} call
      *  and then returns the vectors CPU-side data buffer. If the

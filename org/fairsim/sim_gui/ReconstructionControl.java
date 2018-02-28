@@ -155,7 +155,7 @@ public class ReconstructionControl {
 	    "clip zeros: remove negative values<br />"+
 	    "clip&scale: scale output to 0..255<br />"+
 	    "(only effects 3 main results, not intermediate output)");
-	imgScaleBox.box.setSelectedIndex( 0 );
+	imgScaleBox.box.setSelectedItem( simParam.getClipScale() );
 	
 	p1.add( imgScaleBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
@@ -164,6 +164,8 @@ public class ReconstructionControl {
 	final Tiles.LComboBox<SimParam.FilterStyle> filterTypeBox = 
 	    new Tiles.LComboBox<SimParam.FilterStyle>("Filter type",
 		SimParam.FilterStyle.values());
+
+	filterTypeBox.setSelectedItem( simParam.getFilterStyle());
 
 	p1.add( filterTypeBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
