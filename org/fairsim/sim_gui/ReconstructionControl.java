@@ -179,11 +179,19 @@ public class ReconstructionControl {
 	// APO cutoff
 	final Tiles.LNSpinner apoCutOff = new Tiles.LNSpinner("APO cutoff",
 	    simParam.getApoCutoff(), 1.0, 2.5, 0.1 );
-	apoCutOff.spr.setToolTipText("<html>Cutoff freq. of the apotization<br />"
+	apoCutOff.spr.setToolTipText("<html>Cutoff freq. of the apodization<br />"
 	    +"as factor of OTF cutoff.<br /> Set below 2 if the"
 	    +"dataset does not reach full resolution enhancement");
-	
+
+
+	final Tiles.LNSpinner apoBend = new Tiles.LNSpinner("APO bend",
+	    simParam.getApoBend(), 0.1, 2.0, 0.1 );
+	apoBend.spr.setToolTipText("<html>Curvature of the apoditazion<br />"
+	    +"Changes the medium frequency response of the reconstruction.");
+
+
 	p1.add( apoCutOff );
+	p1.add( apoBend );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 	    
 	// RL max iteration counter
@@ -203,6 +211,7 @@ public class ReconstructionControl {
 		simParam.setFilterStyle( filterTypeBox.getSelectedItem() );
 		simParam.setWienerFilter( wienerParam.getVal());
 		simParam.setApoCutoff( apoCutOff.getVal());
+		simParam.setApoBend( apoBend.getVal());
 		simParam.setRLiterations( (int)rlInterationCount.getVal());	
 		simParam.setClipScale( imgScaleBox.getSelectedItem());
 		dialog.dispose();

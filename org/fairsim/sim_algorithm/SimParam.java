@@ -66,6 +66,7 @@ public class SimParam implements Vec2d.Size {
 
     private double wienerFilterParameter = 0.05;    // Wiener filter parameter
     private double apoCutOff = 2;		    // Apo cutoff parameter
+    private double apoBend   = 0.9;		    // Apo bend parameter
 
     private int rlIterations = 5;		    // number of Richardson-Lucy iterations
     
@@ -240,11 +241,26 @@ public class SimParam implements Vec2d.Size {
 	apoCutOff = af;
 	return this;
     }
-    
+   
+
+    /** Set the APO bend parameter (curvature of the APO) */
+    public SimParam setApoBend( double ab ) {
+	apoBend = ab;
+	return this;
+    }
+   
+
+
     /** Get the APO cutoff factor */
     public double getApoCutoff() {
 	return apoCutOff;
     }
+    
+    /** Get the APO cutoff factor */
+    public double getApoBend() {
+	return apoBend;
+    }
+
 
 
     /** Get the current otf */
@@ -515,6 +531,7 @@ public class SimParam implements Vec2d.Size {
 	fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
 	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );
 	fd.newDbl("apodization-cutoff").setVal( apoCutOff );
+	fd.newDbl("apodization-bend").setVal( apoBend );
     
 	for ( int d=0; d < nrDirs; d++ ) {
 	    Conf.Folder df = fd.mk(String.format("dir-%d",d));
@@ -556,6 +573,12 @@ public class SimParam implements Vec2d.Size {
 	ret.setWienerFilter( fd.getDbl("wiener-parameter").val() );
 	ret.setApoCutoff( fd.getDbl("apodization-cutoff").val() );
 	
+	// optional parameters that might have been stored
+	if ( fd.contains("apodization-bend")) {
+	    ret.setApoBend( fd.getDbl("apodization-cutoff").val());
+	};
+
+
 	// for each pattern direction ...
 	for ( int d=0; d < ret.nrDirs; d++ ) {
 	    Conf.Folder df = fd.cd(String.format("dir-%d",d));
@@ -570,6 +593,7 @@ public class SimParam implements Vec2d.Size {
 		dir.setPhases( 	df.getDbl("phases").vals(), false );
 
 	}
+
 
 
 	// return the result
