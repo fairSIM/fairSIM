@@ -67,8 +67,10 @@ public class TestPlugin implements PlugIn {
 	
     final int visualFeedback = 2;   // amount of intermediate results to create (-1,0,1,2,3)
     boolean doFastShift = true;     // use the fast fourier shift impl. or standard
-
     final double apoB=.9, apoF=2; // Bend and mag. factor of APO
+
+    final float background = 200;   // subtract constant background
+
 
     /** Called by Fiji to start the plugin. 
      *	Uses the currently selected image, does some basic checks
@@ -158,6 +160,7 @@ public class TestPlugin implements PlugIn {
 	Vec2d.Real [] imgs = new Vec2d.Real[ inSt.getSize() ]; 
 	for (int i=0; i<inSt.getSize();i++) { 
 	    imgs[i]  = ImageVector.copy( inSt.getProcessor(i+1) );
+	    imgs[i].addConst( -background ); 
 	    SimUtils.fadeBorderCos( imgs[i] , 10);
 	}
 	

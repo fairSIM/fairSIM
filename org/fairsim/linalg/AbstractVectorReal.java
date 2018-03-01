@@ -169,6 +169,15 @@ public abstract class AbstractVectorReal implements  Vec.Real {
 	this.syncBuffer();
     }
 
+    /** Add a constant to each element, ie this[i] += a */
+    @Override
+    public void addConst( float a ) {
+	this.readyBuffer();
+	for (int j=0;j<elemCount;j++)
+	    data[j] += a;
+	this.syncBuffer();
+    }
+    
     /** Multiply by scalar, ie this *= a */
     @Override
     public void scal( float a ) {
