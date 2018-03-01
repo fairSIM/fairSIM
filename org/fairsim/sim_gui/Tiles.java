@@ -234,6 +234,25 @@ public class Tiles {
 	    box.setSelectedIndex(i);
 	}
 
+	/** Set the currently selected item.
+	 *  If the item is not in the list, the selection is not changed and -1 is returned
+	 *  @param item The item to select
+	 *  @return The index of the item, or -1 if the item is not found 
+	 *  */
+	public int setSelectedItem( T item ) {
+	    
+	    for (int i=0; i<box.getItemCount(); i++) {
+		if ( item.equals( box.getItemAt(i))) {
+		    box.setSelectedIndex(i);
+		    return i;
+		}
+	    }
+
+	    return -1;
+	}
+
+
+
 	@Override
 	public void setEnabled(boolean onoff) {
 	    box.setEnabled(onoff);

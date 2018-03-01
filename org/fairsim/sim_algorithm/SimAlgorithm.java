@@ -283,7 +283,7 @@ public class SimAlgorithm {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
     
-	final double apoB=.9, apoF=param.getApoCutoff(); // Bend and mag. factor of APO
+	final double apoB=param.getApoBend(), apoF=param.getApoCutoff(); // Bend and mag. factor of APO
 	
 	final OtfProvider otfPr = param.otf();
 
@@ -529,6 +529,14 @@ public class SimAlgorithm {
 	    // apply apotization filter
 	    Vec2d.Cplx apo = Vec2d.createCplx(2*w,2*h);
 	    otfPr.writeApoVector( apo, apoB, apoF);
+	    
+	    if (visualFeedback>1) {
+		Vec2d.Real tmp = Vec2d.createReal(2*w,2*h);
+		tmp.copy( apo );
+		Transforms.swapQuadrant( tmp );
+		pwSt2.addImage( tmp, "Apo filter");
+	    }
+	    
 	    fullResult.times(apo);
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);

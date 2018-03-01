@@ -243,6 +243,10 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
 	img.copy(v);
 	String l = (label==null)?("no label"):label;
 
+	// set min/max to our typical needs (0...maxValue)
+	img.img().setMinAndMax( 0, img.max());
+    
+
 	// add content, label and markers to our storage
 	refs.add( img );
 	refLabels.add(  l );
@@ -308,6 +312,10 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
 	ImageVector img = refs.get(n);
 	Vec2d.failSize( img, v );
 	img.copy(v);
+	
+	// set min/max to our typical needs (0...maxValue)
+	img.img().setMinAndMax( 0, img.max());
+    
 
 	// copy over label 
 	if ( label != null ) 
