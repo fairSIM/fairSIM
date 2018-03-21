@@ -39,6 +39,11 @@ public class BandSeparation {
      */
     public static MatrixComplex createSeparationMatrix(
 	double [][] phases, final int bands, double [] fac ) {
+	    return createSeparationMatrix( phases, bands, fac, false);
+    }
+    
+    static MatrixComplex createSeparationMatrix(
+	double [][] phases, final int bands, double [] fac, boolean output ) {
 
 	// phase matrix and its inverse
 	MatrixComplex M;
@@ -59,7 +64,7 @@ public class BandSeparation {
 		throw new RuntimeException("phase array length mismatch");
 	
 	// debug ...
-	if (false) {	
+	if (output) {	
 	    Tool.trace("Sep. Matrix: "+phases.length+" phases, "+bands+" bands, "+
 		nrPhases+" phases per band");
 	    String tmp="";
@@ -108,6 +113,24 @@ public class BandSeparation {
 	    invM = M.inverse();
 	else
 	    invM = M.pseudoInverse();
+
+	if (output) {
+	    for (int b=0; b<bands-1; b++) {
+		for (int p=0; p<nrPhases; p++) {
+		    Tool.trace(String.format("IN  b%1d: %5.3f --> %5.2f ", b+1, invM.get(b,p).abs(),
+			M.get(p,(b+1)*2).phase()*180/Math.PI));
+		}
+	    }
+	    Tool.trace( "---\n"+M.toString());
+	    Tool.trace( "---\n"+invM.toString());
+	    Tool.trace( "---");
+	    for (int b=0; b<bands-1; b++) {
+		for (int p=0; p<nrPhases; p++) {
+		    Tool.trace(String.format("OUT b%1d: %5.3f --> %5.2f ", b+1, invM.get(b,p).abs(),
+			invM.get((b+1)*2,p).phase()*180/Math.PI));
+		}
+	    }
+	}
 
 	return invM;
 
@@ -193,4 +216,20 @@ public class BandSeparation {
 	separateBands( in, out, phases, bands, fac );
 
     }
+
+
+    public static void main( String [] arg ) {
+
+	double [][] phases = new double[2][ 5 ];
+	double [] fac ={1/5.,2/5.,2/5.};
+
+	for (int i=0; i<5; i++) {
+	    phases[0][i] = 2*Math.PI*(i-2)/5.;
+	    phases[1][i] = 4*Math.PI*(i-2)/5.;
+	}
+
+	createSeparationMatrix( phases, 3, fac, true );
+
+    }
+
 }
