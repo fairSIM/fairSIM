@@ -381,9 +381,19 @@ public class FairSim3dGUI {
 
 	Tool.trace("Reconstructing: c "+numChannels+" t "+numTimesteps );
 
+	//extract image name with file extention removed
+	int lastIndxDot = ourRawImages.name.lastIndexOf('.');
+	String title;
+	if (lastIndxDot != -1) {
+	    title = ourRawImages.name.substring(0, lastIndxDot)+"_fsim";
+	} else {
+	    title = ourRawImages.name+"_fsim";
+	}
+	Tool.trace("Image title: " + title );
+	
 	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
 	    ourRawImages.width*2, ourRawImages.height*2,
-	    numZSlices, numChannels , numTimesteps, ourRawImages.name+"_fsim");
+	    numZSlices, numChannels , numTimesteps, title);
 
 	double [] emWavelengths = new double[ numChannels ];
 
