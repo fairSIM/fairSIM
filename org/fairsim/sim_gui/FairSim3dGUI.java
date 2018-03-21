@@ -383,7 +383,7 @@ public class FairSim3dGUI {
 
 	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
 	    ourRawImages.width*2, ourRawImages.height*2,
-	    numZSlices, numChannels , numTimesteps, "3D SIM result");
+	    numZSlices, numChannels , numTimesteps, ourRawImages.name+"_fsim");
 
 	double [] emWavelengths = new double[ numChannels ];
 
