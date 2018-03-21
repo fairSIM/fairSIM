@@ -115,7 +115,7 @@ public class FairSim3dGUI {
 	this.imgSrc = imgSrc;
 
 	this.dmg = dmgIn;
-	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
+	Tool.trace("loaded machine definition: \""+ dmg.confName +"\"");
 
 	imgPerZ = dmg.channels.get(0).sp.getImgPerZ();
 	ourRawImages = imgs;
