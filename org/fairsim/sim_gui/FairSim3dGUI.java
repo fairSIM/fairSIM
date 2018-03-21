@@ -385,12 +385,11 @@ public class FairSim3dGUI {
 	int lastIndxDot = ourRawImages.name.lastIndexOf('.');
 	String title;
 	if (lastIndxDot != -1) {
-	    title = ourRawImages.name.substring(0, lastIndxDot)+"_fsim";
+	    title = ourRawImages.name.substring(0, lastIndxDot)+"_SIF";
 	} else {
-	    title = ourRawImages.name+"_fsim";
+	    title = ourRawImages.name+"_SIF";
 	}
-	Tool.trace("Image title: " + title );
-	
+
 	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
 	    ourRawImages.width*2, ourRawImages.height*2,
 	    numZSlices, numChannels , numTimesteps, title);
