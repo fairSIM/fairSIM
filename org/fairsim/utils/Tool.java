@@ -115,7 +115,7 @@ public final class Tool {
 
 
     /** Decode a BCD timestamp (as used by PCO) 
-     *	@param BCD input, typically image acquired by camera (first 16 entries used)
+     *	@param stamp input, typically image acquired by camera (first 16 entries used)
      *	@return The timestamp, in microseconds since epoch
      * */
     static public long decodeBcdTimestamp( short [] stamp ) {
