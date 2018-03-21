@@ -115,7 +115,7 @@ public class FairSim3dGUI {
 	this.imgSrc = imgSrc;
 
 	this.dmg = dmgIn;
-	Tool.trace("loaded maschine definition: \""+ dmg.confName +"\"");
+	Tool.trace("loaded machine definition: \""+ dmg.confName +"\"");
 
 	imgPerZ = dmg.channels.get(0).sp.getImgPerZ();
 	ourRawImages = imgs;
@@ -381,9 +381,18 @@ public class FairSim3dGUI {
 
 	Tool.trace("Reconstructing: c "+numChannels+" t "+numTimesteps );
 
+	//extract image name with file extention removed
+	int lastIndxDot = ourRawImages.name.lastIndexOf('.');
+	String title;
+	if (lastIndxDot != -1) {
+	    title = ourRawImages.name.substring(0, lastIndxDot)+"_SIF";
+	} else {
+	    title = ourRawImages.name+"_SIF";
+	}
+
 	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
 	    ourRawImages.width*2, ourRawImages.height*2,
-	    numZSlices, numChannels , numTimesteps, "3D SIM result");
+	    numZSlices, numChannels , numTimesteps, title);
 
 	double [] emWavelengths = new double[ numChannels ];
 
