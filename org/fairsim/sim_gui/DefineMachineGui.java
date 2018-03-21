@@ -170,7 +170,8 @@ public class DefineMachineGui {
 	JFileChooser fc = new JFileChooser();
 	if ( initialFolder != null ) {
 	    fc.setCurrentDirectory( initialFolder );
-	}
+	}	
+	Tool.trace("set path:\n");
 	int returnVal = fc.showOpenDialog(baseframe);
 
         if (returnVal == JFileChooser.APPROVE_OPTION) {
