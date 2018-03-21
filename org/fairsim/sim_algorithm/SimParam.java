@@ -169,6 +169,12 @@ public class SimParam implements Vec2d.Size {
 	    ret+= d.nrPha();
 	return ret;
     }
+	
+    /** Get number of phases */
+    public int nrPha() {
+        return nrPhases;
+    }
+
 
     /** Set the image size
      *  @param pxl Number of pixels

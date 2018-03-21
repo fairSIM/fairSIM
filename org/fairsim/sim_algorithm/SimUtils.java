@@ -184,6 +184,54 @@ public class SimUtils {
 	img.syncBuffer();
     }
 
+    /** Fades borders (sizes px) of the input to zero.
+     *  Done by multiplying sin^2(x) mapped [0..px] to [pi/2..0].
+     *  Good step before zero-padding data for high-res FFT. 
+     *	@param img Vector to fade borders
+     *	@param px  Size of faded region
+     *  */
+    public static void fadeBorderCos( Vec2d.Cplx img, int px ) {
+	int w=img.vectorWidth(), h=img.vectorHeight();
+	float [] dat = img.vectorData();
+	final double fac = 1./px * Math.PI/2.;
+
+	// top
+	for (int y=0; y<px; y++) {
+	    for (int x=0; x<w ; x++) {
+		double f = Math.pow( Math.sin( y * fac ) , 2 );
+		dat[2*(x + y * w)+0] *= f;
+		dat[2*(x + y * w)+1] *= f;
+	    }
+	}
+	// bottom
+	for (int y=h-px; y<h; y++) {
+	    for (int x=0; x<w ; x++) {
+		double f = Math.pow( Math.sin( (h-y-1) * fac ) , 2 );
+		dat[2*(x + y * w)+0] *= f;
+		dat[2*(x + y * w)+1] *= f;
+	    }
+	}
+	// left
+	for (int y=0; y<h; y++) {
+	    for (int x=0; x<px ; x++) {
+		double f = Math.pow( Math.sin( x * fac ) , 2 );
+		dat[2*(x + y * w)+0] *= f;
+		dat[2*(x + y * w)+1] *= f;
+	    }
+	}
+	// right
+	for (int y=0; y<h; y++) {
+	    for (int x=w-px; x<w ; x++) {
+		double f = Math.pow( Math.sin( (w-x-1) * fac ) , 2 );
+		dat[2*(x + y * w)+0] *= f;
+		dat[2*(x + y * w)+1] *= f;
+	    }
+	}
+	
+	img.syncBuffer();
+    }
+
+
 
     /** Multiplies / overlays a region in the input image 'cntrl' with
      *  a sin pattern defined by kx, ky, pha. This function
@@ -226,6 +274,32 @@ public class SimUtils {
 	    dat[i]-=(float)bgr;
 	    if (dat[i] <0) {
 		dat[i]=0;
+		zCount++;
+	    }
+	}
+	
+	vec.syncBuffer();
+
+	return ((double)zCount) / dat.length;
+
+    }
+
+    /** Subtracts a constant value (background) from each
+     *  pixel. Will set any imaginary component to zero!
+     *  @param vec Image to work on
+     *  @param bgr Value to subtract
+     *  @return Percentage of clipped (lower-than-zero) values */
+    public static double subtractBackground( Vec.Cplx vec,
+	final double bgr ) {
+	    
+	int zCount=0;
+	float [] dat = vec.vectorData();
+
+	for (int i=0; i<vec.vectorSize(); i++) {
+	    dat[2*i]-=(float)bgr;
+	    dat[2*i+1]=0;
+	    if (dat[2*i] <0) {
+		dat[2*i]=0;
 		zCount++;
 	    }
 	}

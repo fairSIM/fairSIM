@@ -89,7 +89,10 @@ public class SimAlgorithm {
 	    BandSeparation.separateBands( inputCpy , separate , 
 		0, dir.nrBand(), null);
 
-	    // duplicate vectors, as they are modified for coarse correlation
+
+	    // duplicate input, as we will modify it for coarse peak finding
+	    // TODO: this could be avoided it neither coarse peak finding
+	    // NOR visual feedback is requested
 	    Vec2d.Cplx c0 = separate[0].duplicate();
 	    Vec2d.Cplx c1 = separate[lb].duplicate();
 	    Vec2d.Cplx c2 = separate[hb].duplicate();
@@ -107,15 +110,25 @@ public class SimAlgorithm {
 	    c2.timesConj( c0 );
 	    Transforms.fft2d( c1, false);
 	    Transforms.fft2d( c2, false);
-       
-	    // find the highest peak in corr of band0 to highest band 
-	    // with min dist 0.5*otfCutoff from origin, store in 'param'
-	    double minDist = fitExclude * otfPr.getCutoff() / param.pxlSizeCyclesMicron();
-	    double [] peak = Correlation.locatePeak(  (fitBand==1)?(c1):(c2) , minDist );
 	    
-	    Tool.trace(String.format("Peak: (dir %1d) located (min %4.0f) at x %5.0f y %5.0f",
-		angIdx, minDist, peak[0], peak[1]));
-	    
+	    double [] peak ;
+	    double minDist =2;
+	   
+	    if (fitExclude>0) {
+		// find the highest peak in corr of band0 to highest band 
+		// with minDist of otfCutoff from origin, store in 'param'
+		minDist = fitExclude * otfPr.getCutoff() / param.pxlSizeCyclesMicron();
+		peak = Correlation.locatePeak(  (fitBand==1)?(c1):(c2) , minDist );
+		
+		Tool.trace(String.format("Peak: (dir %1d) located (min %4.0f) at x %5.0f y %5.0f",
+		    angIdx, minDist, peak[0], peak[1]));
+	    } else {
+		// just go with the values stored in param for the coarse peak estimate
+		peak = new double[] { param.dir(angIdx).px(fitBand), param.dir(angIdx).py(fitBand) };
+		Tool.trace(String.format("Peak: (dir %1d) from sim param preset at x %5.0f y %5.0f",
+		    angIdx, peak[0], peak[1]));
+	    }
+
 	    // fit the peak to sub-pixel precision by cross-correlation of
 	    // Fourier-shifted components
 	    Vec2d.Real cntrl    = Vec2d.createReal(30,10);
