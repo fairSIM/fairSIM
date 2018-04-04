@@ -84,6 +84,9 @@ public class DefineMachineGui {
 	
 	final JFrame ourFrame = new JFrame("setup Define SIM");
 	JPanel ourPanel = new JPanel();
+	
+	final Integer [] pha2Band = new Integer [] {3,4,5,6,7,8,9};
+	final Integer [] pha3Band = new Integer [] {5,6,7,8,9};
 
 	ourPanel.setLayout( new BoxLayout( ourPanel, BoxLayout.PAGE_AXIS));
 
@@ -103,8 +106,18 @@ public class DefineMachineGui {
 
 	final Tiles.LComboBox<Integer> nrPhases = 
 	    new Tiles.LComboBox<Integer>( "phases", null, false, 
-		5,6, 7, 8, 9 );
+		pha3Band );
 
+	// only allow NrOfPhases that makes sense
+	nrBands.addSelectListener( new Tiles.SelectListener<Integer> () {
+	    public void selected( Integer bands, int idxIgnore ) {
+		if (bands==2)
+		    nrPhases.newElements( pha2Band );
+		if (bands==3)
+		    nrPhases.newElements( pha3Band );
+	    }
+	});
+	
 	JPanel buttonPanel = new JPanel();
 	JButton okButton = new JButton("setup");
 	JButton cancelButton  = new JButton("cancel");
