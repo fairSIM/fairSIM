@@ -151,7 +151,7 @@ public interface ImageSelector {
 	public ImageInfo [] getOpenImages() {
 	    ImageInfo [] ret = new ImageInfo[ n ];
 	    for (int i=0; i<n; i++)
-		ret[i] = new ImageInfo(512, 512, 1, idxToZ(i), 1,
+		ret[i] = new ImageInfo(512, 512, idxToZ(i), 1, (i%2)+1, 
 		    ((i!=2)?(0.082):(-1)), ((i!=2)?(0.125):(-1)),
 		    names[i%names.length], i );
 	    return ret;

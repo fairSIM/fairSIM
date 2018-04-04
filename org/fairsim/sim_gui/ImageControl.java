@@ -88,6 +88,7 @@ public class ImageControl {
     // global references to be accessed both by importImage and showSlices
     private JButton importImageButton	= null;
     private JCheckBox importTimelapseBox= null;
+    private JCheckBox autoTimelapseBox= null;
     private JButton batchButton		= null;
     private JButton showSlicesButton	= null;
     private ImageDisplay sliceSelector	= null;
@@ -163,7 +164,11 @@ public class ImageControl {
 	    "Img", null, true, openImages);
 	importImageButton  = new JButton("import");
 	importTimelapseBox  = new JCheckBox("timelapse mode");
+	autoTimelapseBox  = new JCheckBox("auto timelapse mode");
 	
+	autoTimelapseBox.setSelected(true);
+
+
 	zSliceVideoSpinner = 	
 	    new Tiles.LNSpinner( "zSlices" , 1, 1, 200, 1 ); 
 
@@ -181,11 +186,14 @@ public class ImageControl {
 	row1.add( importImageButton );
 	
 	JPanel row2 = new JPanel();
-	row2.add(Box.createHorizontalGlue());
-	row2.add( importTimelapseBox );
-	row2.add( zSliceVideoSpinner);
+	JPanel row21 = new JPanel();
+	row21.setLayout(new BoxLayout(row21, BoxLayout.PAGE_AXIS));
+	row2.setLayout(new BoxLayout(row2, BoxLayout.LINE_AXIS));
+	row2.add( autoTimelapseBox );
+	row21.add( importTimelapseBox );
+	row21.add( zSliceVideoSpinner);
+	row2.add(row21);
 	row2.add(Box.createRigidArea(new Dimension(5,1)));
-	row2.add( maxTimePointsLabel );
 	row2.add(Box.createRigidArea(new Dimension(5,1)));
 	row2.add( videoAutoUpdateMode );
 	row2.add(Box.createHorizontalGlue());
@@ -207,6 +215,8 @@ public class ImageControl {
 	sliders.add( Box.createRigidArea( new Dimension(5,1) ));
 	c.gridx=13; c.gridwidth=1;
 	sliders.add( batchButton );
+	c.gridx=15; c.gridwidth=1;
+	sliders.add( maxTimePointsLabel );
 
 
 	// preprocessing control
@@ -408,7 +418,13 @@ public class ImageControl {
 	// change import mode
 	importTimelapseBox.addActionListener( new ActionListener() {
 	    public void actionPerformed( ActionEvent e ) {
-		changeTimelapseMode( importTimelapseBox.isSelected());
+		updateIfVideoCanBeUsed();	
+	    }
+	});
+	// change import mode
+	autoTimelapseBox.addActionListener( new ActionListener() {
+	    public void actionPerformed( ActionEvent e ) {
+		updateIfVideoCanBeUsed();	
 	    }
 	});
 
@@ -433,7 +449,7 @@ public class ImageControl {
 	// selected number of z-planes changed
 	zSliceVideoSpinner.addNumberListener( new Tiles.NumberListener() {
 	    public void number(double d, Tiles.LNSpinner e) {
-		updateIfVideoCanBeUsed();
+		updateIfVideoCanBeUsed( );
 	    }
 	});
 
@@ -441,7 +457,7 @@ public class ImageControl {
 	videoAutoUpdateMode.addSelectListener( new Tiles.SelectListener<String>() {
 	    public void selected( String e, int i) {
 		
-		if (!sucessfulImport) {
+		if (i!=0  && !sucessfulImport) {
 		    JOptionPane.showMessageDialog( baseframe,
 		     "Please run a successful image import first", "fairSIM error",
 		     JOptionPane.ERROR_MESSAGE);
@@ -479,7 +495,7 @@ public class ImageControl {
 
 
 	// update the video function
-	changeTimelapseMode(false);
+	updateIfVideoCanBeUsed();
     }
 
     /** check if the image is o.k. */
@@ -508,7 +524,7 @@ public class ImageControl {
 
 
     /** Update to the user if the stack could be a video */
-    void updateIfVideoCanBeUsed() {
+    void updateIfVideoCanBeUsed( ) {
 
 
 	ImageSelector.ImageInfo inf = imgBox.getSelectedItem(); 
@@ -518,15 +534,36 @@ public class ImageControl {
 	    maxTimePointsLabel.setText("no image");	    
 	    return;
 	}
+
+	// If we extract the info from ImageJ
+	boolean autoVid = autoTimelapseBox.isSelected();
+
+	int zplSel = 1;
 	
-	int zplSel = (int)zSliceVideoSpinner.getVal();  
+	if (autoVid) {
+	    zplSel = inf.nrSlices/ simParam.getImgPerZ();
+	    if (zplSel < 1) {
+		zplSel = 1;
+	    }
+	    zSliceVideoSpinner.setVal( zplSel );
+	    zSliceVideoSpinner.setEnabled(false);
+	    importTimelapseBox.setEnabled(false);
+	} else {
+	    zplSel = (int)zSliceVideoSpinner.getVal();  
+	    zSliceVideoSpinner.setEnabled(true);
+	    importTimelapseBox.setEnabled(true);
+	}
+
+	Tool.trace("t "+inf.nrTimepoints+" z "+inf.nrSlices+" ang*pha "+
+	    simParam.getImgPerZ()+" zSel "+zplSel+" auto"+autoVid);
 
 	// check if with the currently selected number of images,
-	// the image could be imported as video
-	
-	if ( inf.nrSlices % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
+	// the image could be imported
+	if ( (inf.nrSlices*inf.nrTimepoints) % ( zplSel * simParam.getImgPerZ() ) != 0 ) {
 	    videoPosSlider.setEnabled(false);
 	    importImageButton.setEnabled(false);
+	    importTimelapseBox.setEnabled(false);
+	    importTimelapseBox.setSelected(false);
 	    videoAutoUpdateMode.setEnabled(false);
 	    
 	    videoPosLabel.setText("t: n/a");
@@ -535,25 +572,55 @@ public class ImageControl {
 		"number of z-slices is no integer, "+
 		"please select matching number of z-slices");
 	} else {
+	   
 	    importImageButton.setEnabled(true);
-	    videoPosSlider.setEnabled(true);
-	    videoAutoUpdateMode.setEnabled(true);
-
-	    //totalTimePoints = inf.nrSlices / zplSel / simParam.getImgPerZ(); 
-	    totalTimePoints = inf.nrTimepoints; 
-	    if ( videoPosSlider.getValue() >= totalTimePoints ) {
-		videoPosSlider.setValue(0);
+		
+	    
+	    // set if we run in timelapse mode
+	    if ( autoVid ) {
+		isVideoStack = ( inf.nrTimepoints > 1 );
+		importTimelapseBox.setSelected(isVideoStack);
 	    } else {
-		videoPosLabel.setText( 
-		    String.format(" t:  % 5d", videoStackPositionTime+1));
+		importTimelapseBox.setEnabled(true);
+		isVideoStack = importTimelapseBox.isSelected();
+		// cross-check stack length
+		if ( ((inf.nrSlices*inf.nrTimepoints) / simParam.getImgPerZ() / zplSel) == 1 ) {
+		    importTimelapseBox.setSelected(false);
+		    importTimelapseBox.setEnabled(false);
+		    isVideoStack = false;
+		}
 	    }
-	    videoPosSlider.setMaximum( totalTimePoints );
-	    maxTimePointsLabel.setText("t-max: "+ totalTimePoints);
-	    maxTimePointsLabel.setToolTipText("Number of available time points "+
-		"at selected z");
+
+	    
+	    // set button stats
+	    if ( isVideoStack ) {  
+		videoPosSlider.setEnabled(true);
+		videoAutoUpdateMode.setEnabled(true);
+
+		totalTimePoints = (autoVid)?(inf.nrTimepoints):((inf.nrTimepoints*inf.nrSlices) / simParam.getImgPerZ()/zplSel); 
+	   
+
+		if ( videoPosSlider.getValue() >= totalTimePoints ) {
+		    videoPosSlider.setValue(0);
+		} else {
+		    videoPosLabel.setText( 
+			String.format(" t:  % 5d", videoStackPositionTime+1));
+		}
+		
+		videoPosSlider.setMaximum( totalTimePoints );
+		    maxTimePointsLabel.setText(" t-max: "+ totalTimePoints+" ");
+		    maxTimePointsLabel.setToolTipText("Number of available time points "+
+		    "at selected z");
+
+	    } else {
+		videoPosSlider.setEnabled(false);
+		videoAutoUpdateMode.setEnabled(false);
+		videoAutoUpdateMode.setSelectedIndex(0);
+		maxTimePointsLabel.setText("(t-max: "+((inf.nrTimepoints*inf.nrSlices) / simParam.getImgPerZ()/zplSel)+")" );
+		totalTimePoints = 1;
+	    }
 
 	}
-
     }
 
     /** switch timelapse mode on and off */
