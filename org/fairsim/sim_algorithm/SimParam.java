@@ -244,6 +244,12 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	    ret+= d.nrPha();
 	return ret;
     }
+	
+    /** Get number of phases */
+    public int nrPha() {
+        return nrPhases;
+    }
+
 
     /** Set the image size
      *  @param pxl Number of pixels
@@ -531,11 +537,9 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	 *  Lower bands are set equidistant in between. 
 	 *  @param cor Either an array (x[0],y[1]) or 2 numbers: x,y
 	 *  */
-	public void setPxPy(double ... cor) { 
-	    if (cor.length<2)
-		throw new RuntimeException("Array too short");
-	    pX = cor[0]/(nrBands-1); 
-	    pY = cor[1]/(nrBands-1); 
+	public void setPxPy(double inPx, double inPy) { 
+	    pX = inPx/(nrBands-1); 
+	    pY = inPy/(nrBands-1); 
 	}
 
 	/** Return x for shift of band n. 
@@ -746,7 +750,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	    Conf.Folder df = fd.cd(String.format("dir-%d",d));
 	    SimParam.Dir dir = ret.dir(d);
 	    
-	    dir.setPxPy( df.getDbl("shift").vals() );
+	    dir.setPxPy( df.getDbl("shift").vals()[0], df.getDbl("shift").vals()[1] );
 	    dir.setPhaOff( df.getDbl("phase-offset").val());
 	    double [] mod = df.getDbl("modulations").vals();
 	    for ( int i=0; i< mod.length ; i++)

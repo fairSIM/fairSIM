@@ -187,4 +187,15 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	}
 
 
+	@Override
+	public void setFrom16bitPixels( short [] in ){
+	    if ( width*height != in.length )
+		throw new RuntimeException("Short array to vector size mismatch");
+	    final float [] out = this.vectorData();
+	    for (int y=0; y<height; y++) 
+	    for (int x=0; x<width; x++) 
+		out[x+y*width] = in[x+y*width]&0xFFFF;
+	}
+
+
 }

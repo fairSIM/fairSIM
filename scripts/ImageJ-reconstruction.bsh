@@ -1,0 +1,147 @@
+/*
+This file is part of Free Analysis and Interactive Reconstruction
+for Structured Illumination Microscopy (fairSIM).
+
+fairSIM is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+
+fairSIM is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+// The SIM algorithm
+import org.fairsim.sim_algorithm.SimAlgorithm;
+import org.fairsim.sim_algorithm.SimParam;
+import org.fairsim.sim_algorithm.SimUtils;
+import org.fairsim.sim_algorithm.OtfProvider;
+
+// Vectors
+import org.fairsim.linalg.Vec2d;
+
+// output tools
+import org.fairsim.utils.Tool;
+import org.fairsim.fiji.DisplayWrapper;
+import org.fairsim.utils.ImageDisplay;
+
+// ImageJ components
+import ij.IJ;
+import ij.ImageStack;
+
+// to see output in the Fiji log
+Tool.setLogger( new Tool.Logger() {
+	public void writeTrace(String w) {
+		IJ.log("-fs- "+w);		
+	}
+	public void writeError(String e) {
+		IJ.log("fs ERR: "+e);
+	}
+	public void writeShortMessage(String s) {
+		IJ.showStatus(s);
+	}
+});
+
+// to generate intermediate output
+ImageDisplay.Factory idf = DisplayWrapper.getFactory();
+
+// set some reconstruction parameters 
+int nrBands = 3;		// #SIM bands
+int nrAng   = 3;		// #angles
+int nrPha   = 5;		// #phases
+
+int imgSize = 512;		// width & height of image
+double pxlSize = 0.08;	// pixel size in micron
+
+double emWavelen = 525;	// emission wavelength in nm
+double otfNA     = 1.4;	// NA
+double otfCorr   = 0.3;	// compensation
+
+
+double background = 140; // background subtraction
+
+int fitBand = 2;		 // fit against 1th or 2nd band (1th: more robust, 2nd: more precise)
+
+int visualFeedback = 1;	 // amount of visual feedback, -1 (off) to 2 (all)
+
+boolean coarsePeakFit = true;	// if to run the coarse k0, peak fit
+double fitExclude = 0.6;		// freq. region (DC) to ignore when search for k0, in fraction of OTF cutoff
+
+boolean otfBeforeShift = false;	// if to apply the OTF before or after shifting the band
+
+
+// get the current stack
+ImageStack iSt = ij.WindowManager.getCurrentImage().getStack();
+
+if (iSt.size() != nrAng * nrPha ) {
+	Tool.error("ang*pha = stack length",true);
+	return;
+}
+
+// copy raw data, window, fft
+Vec2d.Cplx [][] rawImages = new Vec2d.Cplx[nrAng][nrPha];
+
+for (int a = 0; a<nrAng; a++) {
+	for (int p=0; p<nrPha; p++) {
+
+		// get the current image as 16bit short
+		short [] curImg = (short[])iSt.getProcessor( a*nrPha + p + 1 ).convertToShortProcessor().getPixels();
+	
+		// copy to a complex-value vector
+		rawImages[a][p] = Vec2d.createCplx( imgSize, imgSize );
+		rawImages[a][p].setFrom16bitPixels( curImg );
+
+		// subtract background, window, fft
+		double pc = SimUtils.subtractBackground( rawImages[a][p], background );
+		
+		SimUtils.fadeBorderCos( rawImages[a][p], 15);
+		rawImages[a][p].fft2d(false);
+		
+		Tool.trace("fft'd input "+a+" "+p+", subtracted background, % pixels clipped: "+pc*100);
+	}
+}
+
+// setup OTF and SIM parameters. Both of these could be loaded from an xml file!
+OtfProvider otf   = OtfProvider.fromEstimate( otfNA, emWavelen, otfCorr );
+SimParam simParam = SimParam.create( nrBands, nrAng, nrPha, imgSize, pxlSize, otf );
+
+// run the parameter fit
+if (coarsePeakFit) {
+
+	SimAlgorithm.estimateParameters( simParam, rawImages, fitBand, fitExclude, idf, visualFeedback, null);
+	
+} else {
+
+	// if we run w/o coarse peak fit, we need to set some starting guess for k0
+	// thse values fit the OXM green datasets
+	simParam.dir(0).setPxPy( 137.44, -140.91);
+    simParam.dir(1).setPxPy( -52.8,  -189.5);
+    simParam.dir(2).setPxPy( 190.08,  49.96);
+	
+	SimAlgorithm.estimateParameters( simParam, rawImages, fitBand, -1, idf, visualFeedback, null);
+	
+}
+
+// run the reconstruction
+simParam.setWienerFilter( 0.05 );   // wiener filter parameter
+simParam.setApoCutoff( 1.9 );       // cutoff of apodization
+simParam.setApoBend( 0.8 );         // exponent of apodization 
+
+otf.setAttenuation( 0.995, 1.2 );   // set strength (0..1) and FWHM (in 1/micron) of OTF attenuation
+otf.switchAttenuation( true );      // important: has to be 'true', otherwise no attenuation gets used
+
+Vec2d.Real result = SimAlgorithm.runReconstruction( simParam, rawImages, idf, visualFeedback, 
+	otfBeforeShift, SimParam.CLIPSCALE.NONE, null);
+
+// 'result' now contains the reconstructed image. The reason you also see an image on screen is
+// that the visualisation feature (passing 'idf' and 'visualFeedback') is turned on
+float [] res = result.vectorData();
+
+
+
+

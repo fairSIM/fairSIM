@@ -212,6 +212,9 @@ public final class Vec {
 
 	/** Computes this += a * x */
 	public void axpy( float a , Vec.Real x );
+	
+	/** Add a constant value to each component */
+	public void addConst( float a);
 
 	/** Multiply by scalar, ie this *= a */
 	public void scal( float a );

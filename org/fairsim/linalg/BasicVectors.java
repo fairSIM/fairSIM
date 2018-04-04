@@ -227,6 +227,18 @@ class BasicVector implements VectorFactory {
 	    project( inV, n, n );
 	}
 
+	@Override
+	public void setFrom16bitPixels( short [] in ){
+	    if ( width*height != in.length )
+		throw new RuntimeException("Short array to vector size mismatch");
+	    final float [] out = this.vectorData();
+	    for (int y=0; y<height; y++) 
+	    for (int x=0; x<width; x++) 
+		out[x+y*width] = in[x+y*width]&0xFFFF;
+	}
+
+
+
     }
 
 
@@ -304,6 +316,21 @@ class BasicVector implements VectorFactory {
 		out[ (xo + (wo*yo))*2+1 ] = in[ (x + wi*y)*2+1];
 	    }
 	
+	}
+
+	@Override
+	public void setFrom16bitPixels( short [] in ){
+	    if ( width*height != in.length ) {
+                RuntimeException ex = new RuntimeException("Short array to vector size mismatch " + width + "/" + height + "/" + in.length);
+                Tool.error(ex.toString(), true);
+		throw ex;
+            }
+	    final float [] out = this.vectorData();
+	    for (int y=0; y<height; y++) 
+	    for (int x=0; x<width; x++) { 
+		out[2*(x+y*width)+0] = (in[x+y*width]&0xFFFF);
+		out[2*(x+y*width)+1] = 0;
+	    }
 	}
 
 
