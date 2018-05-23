@@ -59,6 +59,17 @@ jar-wo-extern: git-version
 	org/fairsim/resources/* \
 	plugins.config 
 
+jar-headless: jar
+	rm -rf tmp_$(shell head -c 10 org/fairsim/git-version.txt) ; \
+	mkdir tmp_$(shell head -c 10 org/fairsim/git-version.txt) ; \
+	cd tmp_$(shell head -c 10 org/fairsim/git-version.txt) ; \
+	jar -xvf ../fairSIM_plugin_$(shell head -c 10 org/fairsim/git-version.txt).jar ; \
+	jar -xvf ../external/ij*jar ; \
+	jar -cfm ../fairSIM_headless_$(shell head -c 10 org/fairsim/git-version.txt).jar \
+	../Manifest.txt \
+	org/fairsim/*/*.class  org/fairsim/extern/*/*.class \
+	ij/*.class ij/*/*.class ij/*/*/*.class IJ_Props.txt *.class 
+
 
 # shorthand for extracting the jtransforms-fork is necessary
 jtransforms-fork: org/fairsim/extern/jtransforms/FloatFFT_3D.class
@@ -83,4 +94,5 @@ clean : clean-jtransforms
 	$(RM) org/fairsim/extern/*/*.class
 	$(RM) -r doc/*
 	$(RM) -r target
+	$(RM) -r tmp_*
 

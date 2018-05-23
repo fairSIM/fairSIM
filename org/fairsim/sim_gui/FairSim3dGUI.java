@@ -63,6 +63,9 @@ import org.fairsim.fiji.DisplayWrapper;
  *  automated reconstruction */
 public class FairSim3dGUI {
 
+    // presets for the Wiener value spinner
+    final double wienerLowest = 0.001, wienerHighest = 0.2, wienerSteps = 0.00025;
+    
     final JFrame baseframe = new JFrame("fairSIM 3D GUI");
     final private JPanel mainPanel = new JPanel();
 
@@ -108,7 +111,8 @@ public class FairSim3dGUI {
     final Tiles.LNSpinner tEnd; 
 
 
-    public FairSim3dGUI( DefineMachineGui dmgIn, ImageSelector.ImageInfo imgs, ImageSelector imgSrc ) 
+    public FairSim3dGUI( DefineMachineGui dmgIn, ImageSelector.ImageInfo imgs, ImageSelector imgSrc, 
+	String [] chPresets, boolean autostart, boolean headless, String resultImageFile ) 
 	{ //throws Conf.EntryNotFoundException, Conf.SomeIOException {
 
 	baseframe.setLocation(100,100);
@@ -129,7 +133,10 @@ public class FairSim3dGUI {
 	
 	// Channel-specific settings
 	for ( int ch =0 ; ch<imgs.nrChannels; ch++) {
-	    ChannelPanel chPnl = new ChannelPanel(ch);
+	    String chPresetString = null;
+	    if ( chPresets != null && chPresets.length > ch)
+		chPresetString = chPresets[ch];
+	    ChannelPanel chPnl = new ChannelPanel(ch, chPresetString);
 	    channelPanelList.add( chPnl );
 	    mainPanel.add( chPnl.ourPanel );
 	}
@@ -197,8 +204,16 @@ public class FairSim3dGUI {
 	baseframe.pack();
 	baseframe.setVisible(true);
 
+	// TODO: unnice hack to get Java to actually display the requested digits
+	for ( ChannelPanel a : channelPanelList ) {
+	   a.wienerParam.setVal( a.wienerParam.getVal()+1e-10);
+	}
 
 
+	// TODO: check if this is o.k.
+	if (autostart) {
+	    runReconstruction();
+	}
 
     }
 
@@ -217,15 +232,101 @@ public class FairSim3dGUI {
 
 	final int chNr ;
 
-	ChannelPanel(int ch) {
+	ChannelPanel(int ch, String presets ) {
+	    
 	    chNr = ch;
+	    
+	    double wienerPreset = 0.005;
+	    int    chIdx  = chNr;
+	    int	   otfIdx = 0;
+	    int	   fitTypePreset = 1;
+	    boolean useThisChannel = true;
+
+	    // parse some presets, allowing for easier headless operation
+	    if ( presets != null ) {
+		String [] tokens = presets.split("[: ]");
+		
+		for (int i=0; i<tokens.length; i++) {
+		   
+		    String tok = tokens[i].trim();
+
+		    // fit type
+		    if ( tok.startsWith("f") ) {
+			fitTypePreset = Integer.parseInt( tok.substring(1));
+			if (fitTypePreset < FITTYPES.values().length ){
+			    Tool.trace( "ch"+(chNr+1)+": preset fit type to "+fitTypePreset+" ("
+				+FITTYPES.values()[fitTypePreset]+")");
+			} else {
+			    Tool.error( "ch"+(chNr+1)+": fit type preset does not exist: "+fitTypePreset,false);
+			    fitTypePreset = 1;
+			}
+		    }
+		  
+
+		    // channel preset
+		    if ( tok.startsWith("p") ) {
+			chIdx = Integer.parseInt( tok.substring(1));
+			if ( chIdx < dmg.channels.size() ){
+			    Tool.trace( "ch"+(chNr+1)+": using presets #"+chIdx+" ("+dmg.channels.get(chIdx).toString()+")");
+			} else {
+			    Tool.error( "ch"+(chNr+1)+": channel preset #"+chIdx+" does not exist!",false);
+			    chIdx = chNr;
+			}
+		    }
+		  
+		    // OTF preset
+		    if ( tok.startsWith("o") ) {
+			otfIdx = Integer.parseInt( tok.substring(1));
+			Tool.trace( "ch"+(chNr+1)+": selected OTF #"+otfIdx);
+		    }
+
+
+		    // wiener filter parameter
+		    if ( tok.startsWith("w")) {
+			
+			double wPreset ;
+			if (tok.charAt(1)=='=') {
+			    wPreset = Double.parseDouble( tok.substring(2));
+			} else {
+			    wPreset = Double.parseDouble( tok.substring(1));
+			}
+	
+			if ( wPreset >= wienerLowest && wPreset <= wienerHighest ) {
+			    Tool.trace("ch"+(chNr+1)+": preset Wiener filter to "+wPreset);
+			    wienerPreset = wPreset;
+			} else {
+			    Tool.error("ch"+(chNr+1)+": Wiener preset out of range "+wienerPreset, false);
+			}
+
+		    }
+
+		    // turn off reconstruction of this channel completely
+		    if (tok.equals("disable")) {
+			useThisChannel = false;
+			Tool.trace("ch"+(chNr+1)+": DISABLED");
+		    }
+
+
+		}
+	    }
+
+	    // we can check the OTF only after everything has parsed, as only now we know which channel preset to use
+	    if (otfIdx != 0) {
+		if (otfIdx <0 || otfIdx >= dmg.channels.get(chIdx).otfList.getListLength()) {
+		    Tool.error("ch"+(chNr+1)+": selected OTF #"+otfIdx+" not available!",false);
+		    otfIdx = 0;
+		} 
+	    }
+	
+
+
 	    ourPanel.setBorder( BorderFactory.createTitledBorder(
 		String.format("Channel %d",chNr+1)));
 	    ourPanel.setLayout( new BoxLayout( ourPanel, BoxLayout.PAGE_AXIS));
 
 	    // Select if channel is reconstructed
 	    channelEnabled = new JCheckBox("reconstruct this channel");
-	    channelEnabled.setSelected(true);
+	    channelEnabled.setSelected(useThisChannel);
 	    ourPanel.add( (new JPanel()).add( channelEnabled ) );
 
 	    // Box to select the channel
@@ -238,12 +339,14 @@ public class FairSim3dGUI {
 	    channelSelector = new Tiles.LComboBox< DefineMachineGui.ChannelTab >(
 		    "Channel set", channelsAvailable );
 
-	    if ( dmg.channels.size() > chNr )
-		channelSelector.setSelectedIndex( chNr );
+	    if ( dmg.channels.size() > chIdx )
+		channelSelector.setSelectedIndex( chIdx );
 
 	    // Box tot select the OTF
 	    otfSelector = new Tiles.LComboBox< OtfProvider3D >( "OTF", 
 		    channelSelector.getSelectedItem().otfList.getArray());
+
+	    otfSelector.setSelectedIndex( otfIdx );
 
 	    // reset the OTF list if the channel is changed
 	    channelSelector.addSelectListener( 
@@ -263,7 +366,7 @@ public class FairSim3dGUI {
 	    fitTypeList = new Tiles.LComboBox<FITTYPES>("SIM param fit", 
 		FITTYPES.values());
 
-	    fitTypeList.setSelectedIndex(1);
+	    fitTypeList.setSelectedIndex( fitTypePreset );
 
 	    fitPanel.add( fitTypeList );
 	    
@@ -274,7 +377,9 @@ public class FairSim3dGUI {
 
 	    // wiener parameter
 	    wienerParam = new Tiles.LNSpinner("Wiener filter",
-		0.005, 0.001, 0.2, 0.002 );
+		wienerPreset, wienerLowest, wienerHighest, wienerSteps );
+
+	    wienerParam.setDigits(5);
 
 	    fitPanel.add( wienerParam );
 		
@@ -360,6 +465,8 @@ public class FairSim3dGUI {
 	
 
     }
+
+
 
 
     void runReconstruction() {

@@ -107,6 +107,12 @@ public class Tiles {
 		spr.setValue(v);
 	}
 
+	/** set how many digits are displayed */
+	public void setDigits(int d) {
+	    ((JSpinner.NumberEditor)spr.getEditor()).getFormat().setMinimumFractionDigits(d);
+	}
+
+
 	/** Add a NumberListener */
 	public void addNumberListener( NumberListener l ) {
 	    listener.add( l );

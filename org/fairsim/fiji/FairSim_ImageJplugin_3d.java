@@ -159,36 +159,103 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	    return;
 	}   
     
-	new FairSim3dGUI(dmg, curImg, is);
+	new FairSim3dGUI(dmg, curImg, is, null, false, false, null);
     
     }
 
-    public static void main( String [] arg ) 
+    public static void main( final String [] args ) 
 	throws Conf.SomeIOException, Conf.EntryNotFoundException {
 	
-	ImageJ ij = new ImageJ(ImageJ.EMBEDDED);
 	Tool.trace("-----");
 	Tool.trace("Initializing 3D fairSIM");
 	Tool.trace("-----");
 
-	if (arg.length == 1 ) {
-	   ( new FairSim_ImageJplugin_3d() ).run( arg[0] );
-	   return;
+	if (args.length < 2) {
+	    Tool.error("Usage: ",false);
+	    Tool.error("-m machinefile.xml",false); 
+	    Tool.error("-i rawdata.tif [-o resultfile.tif]",false); 
+	    Tool.error("[--ch1 f=1:w=0.005:p=1:o=0]",false);
+	    Tool.error("[--headless] [--autostart]", false);
+	    System.exit(-1);
 	}
 
 
-	if ( arg.length < 2 ) {
-	    Tool.error("Usage: config-file.xml image-file.tif", true);
-	    return;
+	String machineFile = null;
+	String rawImageFile   = null;
+	String resultImageFile   = null;
+	String [] chPresets = new String[10];
+
+	boolean autostart = false;
+	boolean headless  = false;
+
+	// parse args (by hand, too lazy to look up libs for this)
+	for ( int i=0; i<args.length-1; i++) {
+
+	    if (args[i].equals("-m")) {
+		machineFile=args[i+1];
+		Tool.trace("Using machine file: "+machineFile);
+	    }
+	    
+	    if (args[i].equals("-i")) {
+		rawImageFile=args[i+1];
+		Tool.trace("Using input image: "+rawImageFile);
+	    }
+	    
+	    if (args[i].equals("-o")) {
+		resultImageFile=args[i+1];
+		Tool.trace("Using output image: "+resultImageFile);
+	    }
+    
+	    if (args[i].startsWith("--ch")) {
+		int chNr = Integer.parseInt(args[i].substring(4,5)) ;
+		if (chNr<1 || chNr>9) {
+		    Tool.error("channels are numbered 1..9: "+args[i], false);
+		    System.exit(-1);
+		}
+
+		chPresets[chNr-1] = args[i+1];
+		Tool.trace("Using channel "+chNr+" preset: "+chPresets[chNr-1]);
+	    }
+
+	    if (args[i].equals("--headless")) {
+		Tool.trace("Running in headless mode");
+		headless  = true;
+		autostart = true;
+	    }
+
+	    if (args[i].equals("--autostart")) {
+		Tool.trace("Staring reconstruction automatically");
+		autostart = true;
+	    }
+
 	}
 
-	Conf.Folder cfg = Conf.loadFile( arg[0]).cd("fairsim-3d");
+	// sanity checks
+	if (machineFile == null) {
+	    Tool.error("No machine file specified", true);
+	    System.exit(-1);
+	}
+	
+	if (rawImageFile == null) {
+	    Tool.error("No raw data tif specified", true);
+	    System.exit(-1);
+	}
 
-	IJ.open( arg[1] );
+	if (headless && (resultImageFile == null)) {
+	    Tool.error("headless mode specified, but no output image given", true);
+	    System.exit(-1);
+	}
+    
+
+	// start ImageJ
+	ImageJ ij = (headless)?(new ImageJ(ImageJ.NO_SHOW)):(new ImageJ(ImageJ.EMBEDDED));
+	Conf.Folder cfg = Conf.loadFile( machineFile ).cd("fairsim-3d");
+	
+	IJ.open( rawImageFile );
 	ImageSelector is = new ImageOpener();
 
 	DefineMachineGui dmg = new DefineMachineGui( cfg, false );
-	new FairSim3dGUI(dmg, is.getOpenImages()[0], is);
+	new FairSim3dGUI(dmg, is.getOpenImages()[0], is, chPresets, autostart, headless, resultImageFile);
 
     }
 
