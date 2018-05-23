@@ -205,8 +205,10 @@ public class FairSim3dGUI {
 
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.PAGE_AXIS));
 	baseframe.add( mainPanel );
-	baseframe.pack();
-	baseframe.setVisible(true);
+	if (!headless) {
+	    baseframe.pack();
+	    baseframe.setVisible( true );
+	} 
 
 	// TODO: unnice hack to get Java to actually display the requested digits
 	for ( ChannelPanel a : channelPanelList ) {
@@ -216,7 +218,14 @@ public class FairSim3dGUI {
 
 	// TODO: check if this is o.k.
 	if (autostart) {
+	    start3dReconButton.setEnabled(false);
 	    runReconstruction(headless, resultImageFile);
+	    start3dReconButton.setEnabled(true);
+	}
+
+	if (headless) {
+	    Tool.shutdown();
+	    System.exit(0);
 	}
 
     }

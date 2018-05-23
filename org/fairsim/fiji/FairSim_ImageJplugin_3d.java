@@ -165,7 +165,9 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 
     public static void main( final String [] args ) 
 	throws Conf.SomeIOException, Conf.EntryNotFoundException {
-	
+
+	Tool.setHeadless(true);
+
 	Tool.trace("-----");
 	Tool.trace("Initializing 3D fairSIM");
 	Tool.trace("-----");
@@ -245,14 +247,21 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	    Tool.error("headless mode specified, but no output image given", true);
 	    System.exit(-1);
 	}
-    
+   
+	Tool.setHeadless( headless );
 
 	// start ImageJ
 	ImageJ ij = (headless)?(new ImageJ(ImageJ.NO_SHOW)):(new ImageJ(ImageJ.EMBEDDED));
 	Conf.Folder cfg = Conf.loadFile( machineFile ).cd("fairsim-3d");
-	
-	IJ.open( rawImageFile );
-	ImageSelector is = new ImageOpener();
+
+	ImageSelector is;
+
+	if (!headless) {
+	    IJ.open( rawImageFile );
+	    is = new ImageOpener();
+	} else {
+	    is = new ImageOpenerHeadless( IJ.openImage(rawImageFile) );
+	}
 
 	DefineMachineGui dmg = new DefineMachineGui( cfg, false );
 	new FairSim3dGUI(dmg, is.getOpenImages()[0], is, chPresets, 
