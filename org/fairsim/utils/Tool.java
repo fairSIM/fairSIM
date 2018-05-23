@@ -30,9 +30,12 @@ public final class Tool {
 
     /** Forbit the construction of this class */
     private Tool() {}
+
     /** The tool implementation in use*/
     static private Tool.Logger currentLogger;
     static private boolean errorShown = false;
+
+    static private boolean runningHeadless = false;
 
     /** Simple logger */
     public interface Logger {
@@ -86,23 +89,39 @@ public final class Tool {
    
     /** Write an error message */
     static public final void error(final String message, boolean fatal ) {
-        new Thread(new Runnable() {
-            public void run() {
-                if (!errorShown) {
-                    errorShown = true;
-                    JOptionPane.showMessageDialog(null, message, "fairSIM Error", JOptionPane.ERROR_MESSAGE);
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException ex) {
-                        Tool.trace("Tool: errorShown sleep interrupted, why?");
-                    }
-                    errorShown = false;
-                }
-            }
-        }).start();
-	if (currentLogger!=null)
+        if (!runningHeadless) {
+	    new Thread(new Runnable() {
+		public void run() {
+		    if (!errorShown) {
+			errorShown = true;
+			JOptionPane.showMessageDialog(null, message, "fairSIM Error", JOptionPane.ERROR_MESSAGE);
+			try {
+			    Thread.sleep(3000);
+			} catch (InterruptedException ex) {
+			    Tool.trace("Tool: errorShown sleep interrupted, why?");
+			}
+			errorShown = false;
+		    }
+		}
+	    }).start();
+	}
+	if (currentLogger!=null) {
 	    currentLogger.writeError( message, fatal );
+	} else {
+	    System.err.println( (fatal)?("ERR"):("wrn")+": "+message);
+	}
     }
+
+    /** Set if Tool and logger should run headless */
+    public static void setHeadless( boolean hl ) {
+	runningHeadless = hl;
+    }
+    
+    /** Query if we are running headless */
+    public static boolean getHeadless() {
+	return runningHeadless;
+    }
+    
 
     /** Creates an absolute file from path provided a string.
      *  This especially takes care of "~" to set the users home */
