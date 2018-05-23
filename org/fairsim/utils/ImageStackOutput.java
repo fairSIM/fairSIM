@@ -53,5 +53,8 @@ public interface ImageStackOutput {
      *  Here e.g. disk-writes or refreshing windows should happen. */
     public void update();
 
+    /** Called when the image should be saved to disk */
+    public void saveToFile( String filename );
+
 }
 

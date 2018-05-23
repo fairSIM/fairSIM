@@ -35,7 +35,7 @@ public interface ImageOutputFactory {
 	 *  @param c Nr of color channels of the display 
 	 *  @param t Number of timePoints
 	 *  @param s Titl of the display */
-	public ImageStackOutput create(int w, int h, int d, int c, int t, String s); 
+	public ImageStackOutput create(int w, int h, int d, int c, int t, String s, boolean headless); 
 
 }
 

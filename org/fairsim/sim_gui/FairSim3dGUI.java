@@ -29,6 +29,7 @@ import org.fairsim.utils.Conf;
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Vec3d;
 import org.fairsim.sim_algorithm.SimAlgorithm3D;
+import org.fairsim.utils.ImageOutputFactory;
 
 import java.awt.Frame;
 import java.awt.event.ActionListener;
@@ -56,8 +57,6 @@ import javax.swing.JCheckBox;
 import java.util.List;
 import java.util.ArrayList;
 
-// only for testing, remove..
-import org.fairsim.fiji.DisplayWrapper;
 
 /** A one-frame GUI for quick, largely
  *  automated reconstruction */
@@ -78,6 +77,8 @@ public class FairSim3dGUI {
     final JCheckBox propToOtherCh = new JCheckBox("propagate changes to other channels");
     
     List<ChannelPanel> channelPanelList = new ArrayList<ChannelPanel>();
+
+    final ImageOutputFactory imgFactory ;
 
     enum FITTYPES {
 	FULL("full parameter search",3),
@@ -112,9 +113,12 @@ public class FairSim3dGUI {
 
 
     public FairSim3dGUI( DefineMachineGui dmgIn, ImageSelector.ImageInfo imgs, ImageSelector imgSrc, 
-	String [] chPresets, boolean autostart, boolean headless, String resultImageFile ) 
-	{ //throws Conf.EntryNotFoundException, Conf.SomeIOException {
+	String [] chPresets, ImageOutputFactory imgFac, 
+	boolean autostart, boolean headless, String resultImageFile ) 
+	{ 
 
+	imgFactory = imgFac;
+	
 	baseframe.setLocation(100,100);
 	this.imgSrc = imgSrc;
 
@@ -178,7 +182,7 @@ public class FairSim3dGUI {
 	start3dReconButton.addActionListener( new ActionListener () {
 	    @Override
 	    public void actionPerformed(ActionEvent e){
-		runReconstruction();
+		runReconstruction( false, null);
 	    }
 	});
 
@@ -212,7 +216,7 @@ public class FairSim3dGUI {
 
 	// TODO: check if this is o.k.
 	if (autostart) {
-	    runReconstruction();
+	    runReconstruction(headless, resultImageFile);
 	}
 
     }
@@ -468,8 +472,7 @@ public class FairSim3dGUI {
 
 
 
-
-    void runReconstruction() {
+    void runReconstruction(boolean headless, String saveFileName) {
 	
 	// figure out how many channels to reconstruct
 	List<ChannelPanel> channelMap = new ArrayList<ChannelPanel>();
@@ -497,9 +500,9 @@ public class FairSim3dGUI {
 	    title = ourRawImages.name+"_SIF";
 	}
 
-	ImageStackOutput iso = new org.fairsim.fiji.DisplayWrapper5D( 
+	ImageStackOutput iso = imgFactory.create( 
 	    ourRawImages.width*2, ourRawImages.height*2,
-	    numZSlices, numChannels , numTimesteps, title);
+	    numZSlices, numChannels , numTimesteps, title, headless);
 
 	double [] emWavelengths = new double[ numChannels ];
 
@@ -507,12 +510,12 @@ public class FairSim3dGUI {
 	for (int ch = 0; ch<numChannels; ch++) {
 	    ChannelPanel channel = channelMap.get( ch );
 		
-	    SimParam sp = channel.channelSelector.getSelectedItem().sp;
+	    SimParam sp = channel.channelSelector.getSelectedItem().sp.duplicate();
 
 	    sp.setPxlSize3d( ourRawImages.width, numZSlices,
 		ourRawImages.micronsPerPxl, ourRawImages.micronsPerSlice ); 
 
-	    sp.otf3d( channel.otfSelector.getSelectedItem() );
+	    sp.otf3d( channel.otfSelector.getSelectedItem().duplicate() );
 	    sp.otf3d().setPixelSize(  1/ourRawImages.micronsPerPxl/ourRawImages.width, 
 		1/ourRawImages.micronsPerSlice/numZSlices );
 	
@@ -520,6 +523,12 @@ public class FairSim3dGUI {
 		    "Img dimension: lateral %7.3f nm/pxl axlia %7.3f nm/pxl, emission %4.0f nm",
 		    ourRawImages.micronsPerPxl*1000, ourRawImages.micronsPerSlice*1000, 
 		    sp.otf3d().getLambda() ));
+
+	    sp.setWienerFilter( channel.wienerParam.getVal() ); 
+	    
+	    int   ourFitLevel = channel.fitTypeList.getSelectedItem().getVal();
+	    boolean doFastFit  = channel.fastFitCheckbox.isSelected();
+
 
 	    emWavelengths[ch] = sp.otf3d().getLambda();
 
@@ -531,12 +540,7 @@ public class FairSim3dGUI {
 
 		// run the reconstruction
 		Vec3d.Cplx result = SimAlgorithm3D.runReconstruction(
-			inputImgs, 
-			channel.otfSelector.getSelectedItem(),
-			channel.channelSelector.getSelectedItem().sp,
-			-2, channel.wienerParam.getVal(),
-			channel.fitTypeList.getSelectedItem().getVal(),
-			channel.fastFitCheckbox.isSelected()
+			inputImgs, sp, -2, ourFitLevel, doFastFit 
 			);
 
 		result.fft3d(true);
@@ -556,6 +560,10 @@ public class FairSim3dGUI {
 	iso.setWavelengths( emWavelengths );
 
 	iso.update();
+
+	if (saveFileName != null) {
+	    iso.saveToFile( saveFileName );
+	}
 
 
     }

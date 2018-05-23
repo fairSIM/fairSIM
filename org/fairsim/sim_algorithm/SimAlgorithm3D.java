@@ -29,7 +29,6 @@ public class SimAlgorithm3D {
 
    /** Step-by-step reconstruction process. 
     *  @param inSt The input stack
-    *  @param otfPr A 3D OTF (see the OTF provider class)
     *  @param param The reconstruction parameters
     *  @param visualFeedback The amount of visual feedback, currently not overly used
     *  @param wienParam The Wiener parameter
@@ -38,8 +37,7 @@ public class SimAlgorithm3D {
     *
     * */
     public static Vec3d.Cplx runReconstruction( Vec2d.Real [] inSt, 
-	final OtfProvider3D otfPr, final SimParam param,
-	final int visualFeedback , final double wienParam,
+	final SimParam param, final int visualFeedback ,
 	final int fitLevel, final boolean runFastFit ) {
 
 	final boolean disableFiltering = false;
@@ -57,6 +55,9 @@ public class SimAlgorithm3D {
 
 	final int nrDirs  =param.nrDir();
 	final int nrPhases  =param.dir(0).nrPha();
+
+	final OtfProvider3D otfPr = param.otf3d();
+	final double wienParam    = param.getWienerFilter();
 
 	// ---------------------------------------------------------------------
 

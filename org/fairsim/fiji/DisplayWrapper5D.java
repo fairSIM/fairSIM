@@ -34,7 +34,7 @@ import ij.ImageJ;
 import ij.measure.Calibration;
 import ij.process.LUT;
 import ij.CompositeImage;
-
+import ij.io.FileSaver;
 
 import javax.swing.SwingUtilities;
 import java.lang.reflect.InvocationTargetException;
@@ -53,10 +53,12 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 
     // spatial calibration data
     private double muLat=-1, muAx=-1;
-  
+
     // spectral calibration data
     private double [] wavelengths = null;
 
+    // if this should open windows, at all
+    final boolean headless;
 
     // internal storage
     final private ImageVector [] imageVectors ;
@@ -67,9 +69,14 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 	return pos;
     }
     
-
     public DisplayWrapper5D( int w, int h, int d, int c, int t, String title ) {
+	this(w,h,d,c,t,title,false);
+    }
+
+    public DisplayWrapper5D( int w, int h, int d, int c, int t, String title, boolean hl ) {
 	
+	headless = hl;
+
 	if ( w<1 || h <1 || d<1 || c<1 || t < 1 ) {
 	    throw new IndexOutOfBoundsException("size should not be < 1");
 	}
@@ -124,55 +131,62 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
     }
 
 
+    void genImagePlus() {
+	
+	// create stack
+	is   = new ImageStack(width,height);
+	for (int i=0; i<imageVectors.length ; i++) {
+	    is.addSlice( imageVectors[i].img() );
+	    is.setSliceLabel( labels[i],i+1);
+	}
+	
+	// create ImagePlus
+	ip = new CompositeImage( new ImagePlus(ourTitle, is ), CompositeImage.COMPOSITE);
+	ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
+	ip.setDimensions( channels, depth, timepoints );
+	ip.setOpenAsHyperStack( true );
+	
+	// set the scale (if set)
+	if (muLat >0 && muAx >0) {
+
+	    Tool.trace(String.format("Setting pixel size, lateral %7.3f nm, axial %7.3f nm",
+		muLat*1000, muAx*1000));
+	    Calibration cal = new Calibration();
+	    cal.pixelWidth  = muLat;
+	    cal.pixelHeight = muLat;
+	    cal.pixelDepth  = muAx;
+	    cal.setUnit("micron");
+	    ip.setCalibration( cal );
+	}
+	
+	// set the LUT (if wavelength data is available)
+	if ( wavelengths != null ) {
+	    LUT [] luts = new LUT[ channels ];
+	    for (int c=0; c<channels; c++) {
+		luts[c] = getLUT4IJbyWavelength( wavelengths[c] );
+	    }
+	    ip.setLuts( luts );
+
+	}
+
+	// set min/max // TODO: selectable zero-clipping?
+	for (int c=0 ; c<channels; c++) {
+	    ip.setC( c+1 );
+	    ip.setDisplayRange( 0, imageVectors[c].maxEntry());
+	}
+	ip.setC(1);
+    }
+
+
     @Override
     public void update() {
 
-	if (ip==null) {
-	    
-	    // create stack
-	    is   = new ImageStack(width,height);
-	    for (int i=0; i<imageVectors.length ; i++) {
-		is.addSlice( imageVectors[i].img() );
-		is.setSliceLabel( labels[i],i+1);
+	if (!headless) {
+	
+	    if (ip==null) {
+		genImagePlus();
 	    }
 	    
-	    // create ImagePlus
-	    ip = new CompositeImage( new ImagePlus(ourTitle, is ), CompositeImage.COMPOSITE);
-	    ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
-	    ip.setDimensions( channels, depth, timepoints );
-	    ip.setOpenAsHyperStack( true );
-	    
-	    // set the scale (if set)
-	    if (muLat >0 && muAx >0) {
-
-		Tool.trace(String.format("Setting pixel size, lateral %7.3f nm, axial %7.3f nm",
-		    muLat*1000, muAx*1000));
-		Calibration cal = new Calibration();
-		cal.pixelWidth  = muLat;
-		cal.pixelHeight = muLat;
-		cal.pixelDepth  = muAx;
-		cal.setUnit("micron");
-		ip.setCalibration( cal );
-	    }
-	    
-	    // set the LUT (if wavelength data is available)
-	    if ( wavelengths != null ) {
-		LUT [] luts = new LUT[ channels ];
-		for (int c=0; c<channels; c++) {
-		    luts[c] = getLUT4IJbyWavelength( wavelengths[c] );
-		}
-		ip.setLuts( luts );
-
-	    }
-
-	    // set min/max // TODO: selectable zero-clipping?
-	    for (int c=0 ; c<channels; c++) {
-		ip.setC( c+1 );
-		ip.setDisplayRange( 0, imageVectors[c].maxEntry());
-	    }
-	    ip.setC(1);
-
-
 	    // display the ImagePlus, do this in the Swing Thread
 	    if (SwingUtilities.isEventDispatchThread()) {
 		ip.show();
@@ -189,11 +203,18 @@ public class DisplayWrapper5D implements ImageStackOutput, ImageListener {
 		Tool.trace("ERR: DisplayWrapper called wrong target");
 	    } }
 	    
-	} else {
-	    ip.show();
-	}
+	} 
 
     }
+
+    public void saveToFile( String fname ) {
+	genImagePlus();
+	FileSaver fs = new FileSaver( ip );
+	fs.saveAsTiffStack( fname );
+	Tool.trace("Saved file as: "+fname);
+    }
+
+
 
     // ------ Fijis ImageListener interface ------
     

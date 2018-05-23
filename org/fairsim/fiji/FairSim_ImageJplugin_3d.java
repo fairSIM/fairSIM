@@ -159,7 +159,7 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	    return;
 	}   
     
-	new FairSim3dGUI(dmg, curImg, is, null, false, false, null);
+	new FairSim3dGUI(dmg, curImg, is, null, DisplayWrapper.getFactory(), false, false, null);
     
     }
 
@@ -255,7 +255,8 @@ public class FairSim_ImageJplugin_3d implements PlugIn {
 	ImageSelector is = new ImageOpener();
 
 	DefineMachineGui dmg = new DefineMachineGui( cfg, false );
-	new FairSim3dGUI(dmg, is.getOpenImages()[0], is, chPresets, autostart, headless, resultImageFile);
+	new FairSim3dGUI(dmg, is.getOpenImages()[0], is, chPresets, 
+	    DisplayWrapper.getFactory(), autostart, headless, resultImageFile);
 
     }
 

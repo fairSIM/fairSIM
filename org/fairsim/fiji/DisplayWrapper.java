@@ -353,8 +353,9 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
 	    public ImageDisplay create(int w, int h, String title) {
 		return new DisplayWrapper(w,h, title);	
 	    }
-	    public ImageStackOutput create(int w, int h, int d, int c, int t, String title) {
-		return new DisplayWrapper5D(w,h,d,c,t, title);	
+	    public ImageStackOutput create(int w, int h, int d, int c, int t, String title, 
+		boolean headless) {
+		return new DisplayWrapper5D(w,h,d,c,t, title, headless);	
 	    }
 	};
     }
