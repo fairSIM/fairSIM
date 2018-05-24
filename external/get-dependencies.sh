@@ -3,9 +3,9 @@
 fileMissing=0
 
 # Get the ImageJ base library (in version 1.47, which is the lowest we currently support)
-if [ ! -e ij147v.jar ] ; then
+if [ ! -e ij149v.jar ] ; then
     fileMissing=1
-    wget https://imagej.nih.gov/ij/download/jars/ij147v.jar
+    wget https://imagej.nih.gov/ij/download/jars/ij149v.jar
 fi
 
 # Get our forked version of JTransforms 
