@@ -1254,6 +1254,15 @@ public class ImageControl {
 	p1.add( startSpinner );
 	p1.add( stopSpinner );
 
+	
+	JPanel p2 = new JPanel();
+	final JCheckBox genWidefieldCB = new JCheckBox("generate widefield?");
+	final JCheckBox genFilteredWidefieldCB = new JCheckBox("generate filtered widefield?");
+	p2.setLayout(new BoxLayout(p2, BoxLayout.PAGE_AXIS));
+
+	p2.add(genWidefieldCB);
+	p2.add(genFilteredWidefieldCB);
+
 	// dialog	
 	final JDialog imageDialog = new JDialog(baseframe,
 	    "Batch reconstruction", false);
@@ -1272,10 +1281,10 @@ public class ImageControl {
 	p0.add( cl );
     
 	JProgressBar progressBar = new JProgressBar(0,1000);
-	JPanel p2 = new JPanel();
-	p2.setLayout(new BoxLayout(p2, BoxLayout.LINE_AXIS));
-	p2.setBorder(BorderFactory.createTitledBorder("Progress") );
-	p2.add(progressBar);
+	JPanel p3 = new JPanel();
+	p3.setLayout(new BoxLayout(p3, BoxLayout.LINE_AXIS));
+	p3.setBorder(BorderFactory.createTitledBorder("Progress") );
+	p3.add(progressBar);
 
 	final BatchReconstructionThread brt = new BatchReconstructionThread(
 	    progressBar, ok, cl, videoAutoUpdateMode.getSelectedIndex() );
@@ -1286,6 +1295,9 @@ public class ImageControl {
 		brt.setStartStop(
 		    (int)startSpinner.getVal()-1,
 		    (int)stopSpinner.getVal());
+
+		brt.setWidefield( genWidefieldCB.isSelected(), genFilteredWidefieldCB.isSelected());
+
 		ok.setEnabled(false);
 		ok.setText("running");
 		brt.start();
@@ -1309,6 +1321,7 @@ public class ImageControl {
 	dialog.setLayout( new BoxLayout( dialog, BoxLayout.PAGE_AXIS));
 	dialog.add( p1 );
 	dialog.add( p2 );
+	dialog.add( p3 );
 	dialog.add( p0 );
 	
 	imageDialog.add( dialog );
@@ -1325,6 +1338,9 @@ public class ImageControl {
 	JProgressBar jpBar;
 	JButton okButton, clButton;
 
+	boolean compWidefield = false;
+	boolean compFilteredWidefield = false;
+
 	final int updateMode ;
 
 	BatchReconstructionThread( JProgressBar jp, JButton ok, JButton cl, int updateMode ) {
@@ -1339,15 +1355,32 @@ public class ImageControl {
 	    this.stop  = stop;
 	}
 
+
+	void setWidefield( boolean wf, boolean fwf) {
+	    this.compWidefield = wf;
+	    this.compFilteredWidefield = fwf ;
+
+	}
+
 	@Override
 	public void run() {
 
 	    int simWidth  = theFFTImages[0][0].vectorWidth()*2;
 	    int simHeight = theFFTImages[0][0].vectorHeight()*2;
+	    
+	    Tool.trace("Outputting widefield in batch: "+compWidefield);
+	    Tool.trace("Outputting filtered widefield in batch: "+compFilteredWidefield);
 
 	    ImageDisplay simOutputDisplay = 
 		idpFactory.create(simWidth, simHeight, "SIM batch results");
+
+	    ImageDisplay widefieldOutputDisplay = (compWidefield)?(
+		idpFactory.create(simWidth, simHeight, "widefield batch results")):(null);
 	    
+	    ImageDisplay filteredWidefieldOutputDisplay = (compFilteredWidefield)?(
+		idpFactory.create(simWidth, simHeight, "filtered widefield batch results")):(null);
+
+
 	    for (int timePos=start; timePos<stop; timePos++) {
 
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
@@ -1361,20 +1394,45 @@ public class ImageControl {
 			null, 0, null);
 		}
 
+		Vec2d.Real widefield = ( compWidefield )?(Vec2d.createReal(simWidth,simHeight)):(null);
+		Vec2d.Real filteredWidefield = ( compFilteredWidefield )?(Vec2d.createReal(simWidth,simHeight)):(null);
 
 		Vec2d.Real simRecon = SimAlgorithm.runReconstruction( 
 		    simParam, theFFTImages, null,  0, false, 
-		    simParam.getClipScale(), null);
+		    simParam.getClipScale(), widefield, filteredWidefield, null);
 		
 		simOutputDisplay.addImage( simRecon,"timeslice t:"+timePos);
+		if (compWidefield) {
+		    widefieldOutputDisplay.addImage( widefield,"timeslice t:"+timePos);
+		}
+		if (compFilteredWidefield) {
+		    filteredWidefieldOutputDisplay.addImage( filteredWidefield,"timeslice t:"+timePos);
+		}
 
 		jpBar.setValue( ((timePos-start+1)*1000) / (stop-start));
 
-		if (timePos>start) simOutputDisplay.display();
+		if (timePos>start) {
+		    simOutputDisplay.display();
+		    
+		    if (compWidefield)
+			widefieldOutputDisplay.display();
+
+		    if (compFilteredWidefield)
+			filteredWidefieldOutputDisplay.display();
+		}
+
 		if (cancel) break;
 	    }
 
 	    simOutputDisplay.display();
+	    
+	    if (compWidefield)
+		widefieldOutputDisplay.display();
+
+	    if (compFilteredWidefield)
+		filteredWidefieldOutputDisplay.display();
+
+
 	    okButton.setText("Done.");
 	    clButton.setText("close");
 	}
