@@ -277,6 +277,10 @@ public class SimAlgorithm {
     }
 
 
+    // TODO: deprecate this function at some point
+    // it is only here to be compatible with existing scripts / examples,
+    // use more complete version below
+
     /** Run the SIM reconstruction 
      * @param param  The SIM parameter instance to work on
      * @param inFFT  The input images (in Fourier space)
@@ -289,6 +293,29 @@ public class SimAlgorithm {
     public static Vec2d.Real runReconstruction( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, ImageDisplay.Factory idf, int visualFeedback, 
 	final boolean otfBeforeShift, final SimParam.CLIPSCALE imgClipScale, 
+	Tool.Timer tRec ) {
+	return runReconstruction( param, inFFT, idf, visualFeedback, otfBeforeShift, imgClipScale, null, null, tRec);
+    }
+
+
+
+
+    /** Run the SIM reconstruction 
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param idf    ImageDisplayFactory for intermediate output (may be null)
+     * @param visualFeedback Feedback Amount of visual feedback, -1 (off) ..4
+     * @param otfBeforeShift Apply the OTF before shifting bands
+     * @param imgClipScale Clip zero values and scale (0..255) output images?
+     * @param tRec   Runtime measurement (may be null) 
+     * @param widefieldResult The widefield image computed during the reconstruction (may be null)
+     * @param filteredWidefieldResult The filtered widefield image (may be null)
+     * @return The reconstructed image */ 
+    public static Vec2d.Real runReconstruction( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, ImageDisplay.Factory idf, int visualFeedback, 
+	final boolean otfBeforeShift, final SimParam.CLIPSCALE imgClipScale, 
+	Vec2d.Real widefieldResult,
+	Vec2d.Real filteredWidefieldResult,
 	Tool.Timer tRec ) {
 
 	if (tRec != null) tRec.start();	
@@ -563,7 +590,7 @@ public class SimAlgorithm {
 
 
 	    // Add wide-field for comparison
-	    if (visualFeedback>=0) {
+	    if (visualFeedback>=0 || widefieldResult != null || filteredWidefieldResult != null ) {
 	    
 		Tool.tell("Computing wide-field");
 		
@@ -587,7 +614,13 @@ public class SimAlgorithm {
 		// now, output the widefield
 		if (visualFeedback>0)
 		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
-		spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
+		if (visualFeedback>=0)
+		    spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
+		
+		if (widefieldResult!=null) { 
+		    widefieldResult.copy( SimUtils.spatial(lowFreqResult, imgClipScale));
+		    Tool.trace("generating widefield output");
+		}
 	    
 		// otf-multiply and wiener-filter the wide-field
 		otfPr.otfToVector( lowFreqResult, 0, 0, 0, false, false ); 
@@ -607,7 +640,13 @@ public class SimAlgorithm {
 		
 		if (visualFeedback>0)
 		    pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
-		spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+		if (visualFeedback>=0)
+		    spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+		
+		if (filteredWidefieldResult!=null) {
+		    filteredWidefieldResult.copy( SimUtils.spatial(lowFreqResult,imgClipScale));
+		    Tool.trace("generating filtered widefield output");
+		}
 
 	    }
 	}	
@@ -678,7 +717,7 @@ public class SimAlgorithm {
 
 
 	    // Add wide-field for comparison
-	    if (visualFeedback>=0) {
+	    if (visualFeedback>=0 || widefieldResult != null || filteredWidefieldResult != null ) {
 	    
 		Tool.tell("Computing wide-field");
 		
@@ -702,8 +741,14 @@ public class SimAlgorithm {
 		// now, output the widefield
 		if (visualFeedback>0)
 		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
-		spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
+		if (visualFeedback>=0)
+		    spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
 	    
+		if (widefieldResult!=null) { 
+		    widefieldResult.copy( SimUtils.spatial(lowFreqResult, imgClipScale));
+		    Tool.trace("generating widefield output");
+		}
+
 		// deconvolve the wide-field 
 		Vec2d.Cplx zeroOrderOtf = Vec2d.createCplx(param,2);
 		otfPr.writeOtfVector( zeroOrderOtf, 0,0,0);
@@ -712,7 +757,14 @@ public class SimAlgorithm {
 		
 		if (visualFeedback>0)
 		    pwSt2.addImage( SimUtils.pwSpec( lowFreqResult), "filtered Widefield" );
-		spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+		if (visualFeedback>=0)
+		    spSt2.addImage( SimUtils.spatial( lowFreqResult, imgClipScale), "filtered Widefield" );
+		
+		if (filteredWidefieldResult!=null) {
+		    filteredWidefieldResult.copy( SimUtils.spatial(lowFreqResult,imgClipScale));
+		    Tool.trace("generating filtered widefield output");
+		}
+
 
 	    }
 	}	
