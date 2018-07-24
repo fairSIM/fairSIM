@@ -455,9 +455,11 @@ public class SimAlgorithm {
 		    }
 		} else {
 		    // or mask for OTF support
-		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-			//wFilter.maskOtf( shifted[i], angIdx, i);
-			otfPr.maskOtf( shifted[i], angIdx, i);
+		    for (int b=1; b<par.nrBand(); b++) {
+			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
+			otfPr.maskOtf( shifted[neg], -par.px(b), -par.py(b) );
+		    }
 		}
 	    }
 	    // ------ Sum up result ------
