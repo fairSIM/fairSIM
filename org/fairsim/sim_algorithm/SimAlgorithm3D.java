@@ -224,7 +224,7 @@ public class SimAlgorithm3D {
 		    // At the peak position found, extract phase and modulation from band0 <-> band 1
 		    // TODO: Using the band2 OTF is wrong....
 		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[lb], 
-			0, 1, otfPr, peak[0]/2, peak[1]/2, 0.0075 );
+			0, 1, otfPr, peak[0]/2, peak[1]/2, 0.002 );
 
 		    // Extract modulation from band0 <-> band 2
 		    Cplx.Double p2 = Correlation3d.getPeak( separate[0], separate[hb], 
