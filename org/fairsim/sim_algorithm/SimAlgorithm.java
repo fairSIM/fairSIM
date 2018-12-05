@@ -379,8 +379,8 @@ public class SimAlgorithm {
 	  
 	    // copy into temp. array (to not override input data) 
 	    // and apply correction factor
-	    Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
-	    for (int i=0; i<(par.nrBand()*2-1) ;i++) {
+	    Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrPha(), w, h);
+	    for (int i=0; i< par.nrPha() ;i++) {
 		tmpArray[i].copy( inFFT[angIdx][i] );
 		tmpArray[i].scal( new Cplx.Float( (float)par.getIntensityQuotient(i) ) );
 		Tool.trace(String.format(" Input data intensity corrected: a%1d p%1d --> %7.5f",
@@ -393,7 +393,7 @@ public class SimAlgorithm {
 	    if ( param.useRLonInput() ) {
 		
 			// deconvolve the input data
-		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
+		for (int i=0; i< par.nrPha() ;i++) { 
 
 		    if (visualFeedback>1) {
 			spSt.addImage( SimUtils.spatial( tmpArray[i]), 
@@ -418,7 +418,7 @@ public class SimAlgorithm {
 
 	    // Wiener filter: Apply OTF here
 	    if (otfBeforeShift && param.useWienerFilter() )
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+		for (int i=0; i<(par.nrComp()) ;i++)  
 		    otfPr.applyOtf( separate[i], (i+1)/2);
 
 	    // ------- Shifts to correct position ----------
