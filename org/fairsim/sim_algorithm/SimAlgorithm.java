@@ -148,9 +148,20 @@ public class SimAlgorithm {
 		Cplx.Double p1 = Correlation.getPeak( separate[0], separate[lb], 
 		    0, 1, otfPr, peak[0]/2, peak[1]/2, 0.05 );
 
-		// Extract modulation from band0 <-> band 2
-		Cplx.Double p2 = Correlation.getPeak( separate[0], separate[hb], 
-		    0, 2, otfPr, peak[0], peak[1], 0.05 );
+		// TODO: this is a quick fix, this should be done properly by looking at the OTF
+		// overlap, to figure out if parameter extraction is possible. This just catches
+		// the 'definitely not possible' case
+		Cplx.Double p2;
+
+		if ( Math.hypot( peak[0], peak[1] ) * param.pxlSizeCyclesMicron() > otfPr.getCutoff() ) {
+		    Tool.trace( "Second peak outside of OTF overlap (non-linear SIM?)" );
+		    Tool.trace( "-> copying modulation depth for now...");
+		    p2 = p1;   
+		} else {
+		    // Extract modulation from band0 <-> band 2
+		    p2 = Correlation.getPeak( separate[0], separate[hb], 
+			0, 2, otfPr, peak[0], peak[1], 0.05 );
+		}
 
 		Tool.trace(
 		    String.format("Peak: (dir %1d): fitted --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
