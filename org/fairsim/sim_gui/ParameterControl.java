@@ -244,6 +244,8 @@ public class ParameterControl {
 	
 	    if (nr>=3) {
 		recc.paramFitFailed = true;
+	    } else {
+		recc.paramFitFailed = false;
 	    }
 	}
 
