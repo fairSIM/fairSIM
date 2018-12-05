@@ -61,6 +61,7 @@ public class Correlation3d {
 	    final Vec3d.Cplx b1 = band1.duplicate();
 
 	    // define common region, with current search guess
+	    //commonRegion( b0, b1, bn0, bn1, otf, kx, ky, 0.15, weightLimit, true);
 	    commonRegion( b0, b1, bn0, bn1, otf, kx, ky, 0.15, weightLimit, true);
 	    
 	    // go to real space
@@ -71,10 +72,42 @@ public class Correlation3d {
 	    final Cplx.Double [][] corr = new Cplx.Double[10][10];
 	    final Cplx.Double scal = new Cplx.Double(1. /  b0.norm2()  ); // for corr. normalization
 	    double max=0,min=Double.MAX_VALUE; 
-	    double newKx=0, newKy=0;
+	    double newKx=0, newKy=0, newKz=0;
 
-	    Tool.trace(String.format("Peak, coarse search %2d: kx [%6.3f -- %6.3f] ky [%6.3f -- %6.3f]",
-		iter, (kx - search), (kx + search), (ky - search), (ky + search)));
+
+	    /*
+	    // set a z-guess:
+	    final double zRange = .5, zkx=kx, zky=ky;
+	    double zMaxVal=Double.MIN_VALUE;
+	    //new SimpleMT.PFor(0,50) { 
+	        //public void at(int p) {
+	    for (int p=0;p<50;p++) {{ 
+			// compute position to shift to
+			double zpos = ((p-25.)/25.)*zRange;
+	    
+			// copy and Fourier-shift band1
+			Vec3d.Cplx b1s = b1.duplicate();
+			b1s.fourierShift( zkx, -zky, zpos);
+
+			// get correlation by multiplication, summing elements, scaling by b0
+			b1s.timesConj( b0 );
+			Cplx.Double zCorr = Cplx.mult( b1s.sumElements(), scal);
+			Tool.trace(String.format("3D full: Correlation z %7.3f %8.5f", zpos,zCorr.hypot()));
+
+			if ( zMaxVal < zCorr.hypot()) {
+			    zMaxVal = zCorr.hypot();
+			    newKz = zpos;
+			}
+
+	        }
+	    };
+	    */
+	
+
+	    final double zPosOffset = newKz;
+
+	    Tool.trace(String.format("Peak, coarse search %2d: kx [%6.3f -- %6.3f] ky [%6.3f -- %6.3f] z: %6.3f",
+		iter, (kx - search), (kx + search), (ky - search), (ky + search), zPosOffset));
 
 	    // loop 10x10 points +-search around starting guess
 	    // ( good outer loop to do in parallel )
@@ -93,7 +126,7 @@ public class Correlation3d {
 	    
 			// copy and Fourier-shift band1
 			Vec3d.Cplx b1s = b1.duplicate();
-			b1s.fourierShift( xpos, -ypos, 0);
+			b1s.fourierShift( xpos, -ypos, zPosOffset);
 
 			// get correlation by multiplication, summing elements, scaling by b0
 			b1s.timesConj( b0 );
@@ -168,6 +201,8 @@ public class Correlation3d {
 	    Tool.trace(String.format("Peak, new kx,ky now: %6.3f %6.3f (%6.3f) pha %6.3f mag %5.4e",
 		kx,ky,Math.hypot(ky,kx), resPhase, resMag));
 	    search/=5;
+	
+
 	}
 
 	t1.stop();
@@ -299,39 +334,43 @@ public class Correlation3d {
 	    double max = Math.sqrt( kx*kx+ ky*ky ); 
 
 	    double ratio = rad / max;
+	    boolean cutted = false;
 
 	    // set zero if minimal weight not reached in one or both OTFs
 	    if (    (weight0.get(x,y,z).abs() < weightLimit) 
 		    || ( wt0.get(x,y,z).abs() < weightLimit) ) {
-		cutCount++;
+		cutCount++; cutted = true;
 		band0.set(x,y,z, Cplx.Float.zero());
 	    } else {
 		if (divideByOtf)
-		band0.set(x,y,z, band0.get(x,y,z).div( weight0.get(x,y,z)));
+		//band1.set(x,y,z, band1.get(x,y,z).mult( weight0.get(x,y,z).abs() ));
+		//band0.set(x,y,z, band0.get(x,y,z).div( weight0.get(x,y,z).abs() ));
+		band0.set(x,y,z, band0.get(x,y,z).div( weight0.get(x,y,z).conj() ));
 	    }
 	    if (    (weight1.get(x,y,z).abs() < weightLimit ) 
 		    || ( wt1.get(x,y,z).abs() < weightLimit)) { 
 		band1.set(x,y,z, Cplx.Float.zero());
 	    } else {
 		if (divideByOtf)
-		band1.set(x,y,z, band1.get(x,y,z).div( weight1.get(x,y,z)));
+		//band0.set(x,y,z, band0.get(x,y,z).mult( weight1.get(x,y,z) ));
+		//band1.set(x,y,z, band1.get(x,y,z).div( weight1.get(x,y,z).abs() ));
+		band1.set(x,y,z, band1.get(x,y,z).div( weight1.get(x,y,z).conj() ));
 	    }
 	   
-	    /*
 	    // set zero around DC component
 	    // TODO: the 'z>2' avoids all axial contribution (fine for band 0<>2, but has to be fixed!)
-	    if ((ratio<dist )||(ratio>(1-dist)|| (z>2))) {
+	    if ((ratio<dist ) || (ratio>(1-dist) || ( z<2 ))) {
 		band0.set(x,y,z, Cplx.Float.zero());
 		band1.set(
 		    (x-(int)kx+w)%w,
 		    (y+(int)ky+h)%h,
 		    z,
 		    Cplx.Float.zero());
-		cutCount++;
-	    } */
+		if (!cutted) cutCount++;
+	    } 
 	}
 	
-	Tool.trace("Cuts: "+cutCount+"/"+(w*h*d)+" --> "+(float)cutCount/(w*h*d));
+	Tool.trace("Cuts (b"+bn1+"): "+cutCount+"/"+(w*h*d)+" --> "+(float)cutCount/(w*h*d));
 
     }
 

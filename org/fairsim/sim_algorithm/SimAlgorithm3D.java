@@ -45,7 +45,7 @@ public class SimAlgorithm3D {
 	final boolean refinePeak  = (fitLevel>=2);
 	final boolean refinePhase = (fitLevel>=1);
 	final boolean doTheReconstruction  = true;
-	final boolean otfBeforeShift  = true;
+	final boolean otfBeforeShift  = false;
 
 	Tool.trace(" find peak: "+findPeak+", refine peak: "+refinePeak+", refine phase: "+refinePhase);
 
@@ -183,24 +183,38 @@ public class SimAlgorithm3D {
 			angIdx, minDist, peak[0], peak[1]));
 		} else {
 		    Tool.trace(String.format("a%1d: Using preset coarse peak pos. at x %7.3f y %7.3f",
-			angIdx, minDist, peak[0], peak[1]));
+			angIdx,  peak[0], peak[1]));
 		}
 		
 		// fit the peak to sub-pixel precision by cross-correlation of
 		// Fourier-shifted components
 		if ( refinePeak ) {
 		    ImageVector cntrl    = ImageVector.create(30,10);
-		    
+		  
 		    peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
 			-peak[0], -peak[1], 0.005, 2.5, runFastFit, cntrl );
+		
+		    /*
+		    peak[0]*=-1;
+		    peak[1]*=-1;
 
-		    Tool.trace(String.format("a%1d: refined peak position to %7.3f y %7.3f",
+		    peak = Correlation3d.fitPeak( separate[0], separate[lb], 0, 1, otfPr,
+			-peak[0]/2, -peak[1]/2, 0.0075, 2.5, runFastFit, cntrl );
+
+		    peak[0]*=2;
+		    peak[1]*=2;
+		    */
+		    
+		    
+		    Tool.trace(String.format("a%1d: refined peak position (min %7.3f) to x %7.3f y %7.3f",
 			angIdx, minDist, peak[0], peak[1]));
 		
 		    double peakDist = Math.hypot( peak[0] + origPeak[0], peak[1] + origPeak[1]);
 		    Tool.trace(String.format("a%1d: peak offset from stores preset: %7.3f ",
 			angIdx, peakDist));
 		} else {
+		    peak[0]*=-1;
+		    peak[1]*=-1;
 		    Tool.trace(String.format("a%1d: not refining peak position",angIdx));
 		}
 
@@ -210,15 +224,15 @@ public class SimAlgorithm3D {
 		    // At the peak position found, extract phase and modulation from band0 <-> band 1
 		    // TODO: Using the band2 OTF is wrong....
 		    Cplx.Double p1 = Correlation3d.getPeak( separate[0], separate[lb], 
-			0, 2, otfPr, peak[0]/2, peak[1]/2, 0.0075 );
+			0, 1, otfPr, peak[0]/2, peak[1]/2, 0.0075 );
 
 		    // Extract modulation from band0 <-> band 2
 		    Cplx.Double p2 = Correlation3d.getPeak( separate[0], separate[hb], 
 			0, 2, otfPr, peak[0], peak[1], 0.005 );
 
 		    Tool.trace(
-			String.format("a%1d: peak and phase --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
-			angIdx, peak[0], peak[1], p1.phase(), p1.hypot(), p2.hypot() ));
+			String.format("a%1d: peak and phase --> x %7.3f y %7.3f p %7.3f %7.3f (m %7.3f, %7.3f)", 
+			angIdx, peak[0], peak[1], p1.phase(), p2.phase(), p1.hypot(), p2.hypot() ));
 	    
 		    // store the result
 		    param.dir(angIdx).setPxPy(   -peak[0], -peak[1] );
@@ -412,11 +426,11 @@ public class SimAlgorithm3D {
 
 		Vec3d.Cplx [] separate  = Vec3d.createArrayCplx( par.nrComp(), w, h, d);
 		
-		//BandSeparation.separateBands( inFFT[angIdx] , separate , 
-		//	par.getPhases(), par.nrBand(), par.getModulations());
-		
 		BandSeparation.separateBands( inFFT[angIdx] , separate , 
-			par.getPhases(), par.nrBand(), new double [] {1, 0.8, 0.8} );
+			par.getPhases(), par.nrBand(), par.getModulations());
+		
+		//BandSeparation.separateBands( inFFT[angIdx] , separate , 
+		//	par.getPhases(), par.nrBand(), new double [] {1, 0.8, 0.8} );
 
 		if ( otfBeforeShift && !disableFiltering )
 		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
@@ -474,6 +488,7 @@ public class SimAlgorithm3D {
 		
 		for (int i=0;i<par.nrBand()*2-1;i++) { 
 		    //if (( i==1 || i==2 ) && ( angIdx==0)) continue;
+		    //if ( i==1 || i==2) continue;
 		    fullResult.add( shifted[i] ); 
 		}
 		
@@ -573,7 +588,7 @@ public class SimAlgorithm3D {
 
 	    // apply apotization filter
 	    
-	    otfPr.apotize( fullResult, 2.0, 1.4, false );
+	    //otfPr.apotize( fullResult, 2.0, 2.0, true );
 	    
 	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)

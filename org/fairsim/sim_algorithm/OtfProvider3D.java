@@ -90,18 +90,22 @@ public class OtfProvider3D {
 	    throw new IndexOutOfBoundsException("band idx too high or <0");
 	if (( xycycl < 0 ) || (zcycl < 0))
 	    throw new IndexOutOfBoundsException("cylc negative!");
+	//if (( xycycl < 0 ) )
+	    //throw new IndexOutOfBoundsException("cylc negative!");
+	
 	
 	// out of support, return 0
 	if (( xycycl >= cutOffLateral )||(zcycl >= cutOffAxial ))
 	    return Cplx.Float.zero();
 	
 	final double xpos = xycycl / cyclesPerMicronLateral;
-	final double zpos = zcycl  / cyclesPerMicronAxial;
+	final double zpos = zcycl  / (cyclesPerMicronAxial) ;
+	//double zpos = Math.abs( zcycl  / cyclesPerMicronAxial );
 	
 	if ( Math.ceil(xpos) >= samplesLateral || Math.ceil(zpos) >= samplesAxial )
 	    return Cplx.Float.zero();
 
-    
+
 	// for now, linear interpolation, could be better with a nice cspline
 	int lxPos = (int)Math.floor( xpos );	
 	int hxPos = (int)Math.ceil(  xpos );
@@ -165,7 +169,8 @@ public class OtfProvider3D {
 		    // wrap to coordinates: x in [-w/2,w/2], y in [-h/2, h/2]
 		    double xh = (x<w/2)?( x):(x-w);
 		    double yh = (y<h/2)?(-y):(h-y);
-		    double zh = (z<d/2)?( z):(d-z);
+		    //double zh = (z<d/2)?( z):(z-d);
+		    double zh = z;
 		    
 		    // from these, calculate distance to kx,ky, convert to cycl/microns
 		    double rad = MTool.fhypot( xh-kx, yh-ky );
@@ -182,13 +187,25 @@ public class OtfProvider3D {
 			// get the OTF value
 			Cplx.Float val = getOtfVal(band, cycllat, cyclax);
 
+			//boolean xyzconj = ((x>=w/2)^(y>=h/2))^(z>=d/2);
+			//boolean xyzconj = ((x>=w/2)^(y>=h/2));
+			boolean xyzconj = false;
+			    
+    
 			// multiply to vector or write to vector
 			if (!write) {
-			    vec.set(x, y, z, vec.get(x,y,z).mult( val.conj() ) );
-			    //vec.set(x, y, z, vec.get(x,y,z).mult( val ) );
+			    if (!xyzconj) {
+				vec.set(x, y, z, vec.get(x,y,z).mult( val.conj() ) );
+			    } else {
+				vec.set(x, y, z, vec.get(x,y,z).mult( val ) );
+			    }
 
 			} else {
-			    vec.set(x, y, z, val );
+			    if ( xyzconj) {
+				vec.set(x, y, z, val );
+			    } else {
+				vec.set(x, y, z, val.conj() );
+			    }
 			}
 		    }
 		}
