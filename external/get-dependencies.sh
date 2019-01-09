@@ -2,6 +2,22 @@
 
 fileMissing=0
 
+# Check if we have all commands installed that this script needs
+
+function failcmd() {
+    if [ -x "$( command -v $1 )" ] ; then
+	return 0
+    else
+	1>&2 echo "Command \"$1\" not found, please install"
+	exit -1
+    fi
+}
+
+failcmd wget
+failcmd ar
+failcmd xz
+failcmd tar
+
 # Get the ImageJ base library (in version 1.47, which is the lowest we currently support)
 if [ ! -e ij147v.jar ] ; then
     fileMissing=1
@@ -54,7 +70,8 @@ if [ ! -e rt-1.6.jar ] ; then
     ar -x openjdk.deb
 
     # extract the rt.jar from the data.tar
-    tar -xf data.tar.xz ./usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar
+    xz -d data.tar.xz
+    tar -xf data.tar ./usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar
     mv ./usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar ../rt-1.6.jar
     cd ..
 
