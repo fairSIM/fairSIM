@@ -38,6 +38,7 @@ import ij.ImageStack;
 import ij.ImagePlus;
 import ij.IJ;
 
+import org.fairsim.utils.Args;
 
 
 
@@ -46,8 +47,6 @@ import ij.IJ;
  * */
 public class BeadsCreator {
 
-
-
     final int width,height,oversample;
     final double pxlSize;
 
@@ -55,7 +54,14 @@ public class BeadsCreator {
 
     Random posPRNG;
 
-    public BeadsCreator( int w, int h, double pxl, int over ){
+
+    // non-sense constructor only to enable this as a ImageJ plugin
+    public BeadsCreator() {
+	width=height=oversample=-1;
+	pxlSize=-1;
+    }
+
+    private BeadsCreator( int w, int h, double pxl, int over, int prngSEED ){
 	width  = w*over;
 	height = h*over;
 	pxlSize = pxl/over;
@@ -63,13 +69,11 @@ public class BeadsCreator {
     
 	groundTruth = Vec2d.createReal( width, height );
     
-	posPRNG = new Random(1337);
+	posPRNG = new Random(prngSEED);
 
     }
 
-
-
-    public void addBead( double xPos, double yPos, double rad, boolean hollow ) {
+    private void addBead( double xPos, double yPos, double rad, boolean hollow ) {
 
 	Vec2d.Real dat = groundTruth;
 
@@ -108,7 +112,7 @@ public class BeadsCreator {
     }
 
 
-    public boolean addRandomBead( double rad, boolean hollow ) {
+    private boolean addRandomBead( double rad, boolean hollow ) {
 
 	boolean success = false;
 
@@ -126,7 +130,7 @@ public class BeadsCreator {
 	return success;
     }
 
-    public static void simPattern(Vec2d.Cplx dat,
+    private static void simPattern(Vec2d.Cplx dat,
 	    final double kx, final double ky, final double pha ) {
 
 	    final int len = dat.vectorWidth();
@@ -140,28 +144,57 @@ public class BeadsCreator {
 
 
     
+    public static void main(String [] attr) { 
 
-    public static void main( String [] args ) {
+	// parse the parameters
+	// TODO: This could be done with less code using reflections, but...
 
+	Args arg = new Args();
 	
-	final double simResImpr = 1.02;	// TIRF
-	final int outputSize = 256;
-	final int photons = 25;
+	arg.addInt("outputSize",	256,	"Size of the output image (pxls)");
+	arg.addDbl("pxlSize",	0.08,	"Size of the pixels (micron)");
+	arg.addInt("angles",	3,	"Number of angles");
+	arg.addInt("phases",	3,	"Number of phases");
+	arg.addInt("phaseMult",	1,	"Phase rotation speed multiplier");
+    	arg.addInt("nrBeads",	300,	"Number of beads to simulate");
+	arg.addInt("photons",	50,	"Number of photons");
+	arg.addDbl("simResImpr",  0.9,	"Resolution improvement");
+	arg.addInt("prngSEED",	1337,	"Seed for the random number generators");
 
+	if (arg.parseArgs(attr)<0) System.exit(-1);
+
+	int    outputSize = arg.getInt("outputSize");
+	double pxlSize    = arg.getDbl("pxlSize");
+	int angles	  = arg.getInt("angles");
+	int phases	  = arg.getInt("phases");
+	int phaseMult	  = arg.getInt("phaseMult");
+	int nrBeads	  = arg.getInt("nrBeads");
+	int photons	  = arg.getInt("photons");
+	double simResImpr = arg.getDbl("simResImpr");
+	int prngSEED	  = arg.getInt("prngSEED") ;
+	double closedBeadsFraction = 0.5;
+	int oversample = 8;
+
+	arg.printParams();
+	
+	if ( phaseMult!=1 && phases % phaseMult == 0 ) {
+	    System.err.println("!! #phases is a multiple of phaseMult, not good");
+	}
+
+	// run the simulation
+	
 	ij.ImageJ inst = new ij.ImageJ( ij.ImageJ.EMBEDDED);
-    
 
-	BeadsCreator bc = new BeadsCreator(outputSize,outputSize,0.078,8);
+
+	BeadsCreator bc = new BeadsCreator(outputSize,outputSize,pxlSize,oversample,prngSEED);
 	DisplayWrapper dwSI = new DisplayWrapper( outputSize, outputSize,"Simulated data");
 	DisplayWrapper dwGT = new DisplayWrapper( bc.width, bc.height,"Bead Simulation: full res");
 
-	Random hollowPRNG = new Random(1234);
-	Random noisePRNG  = new Random(4321);
+	Random hollowPRNG = new Random(prngSEED*123+2);
+	Random noisePRNG  = new Random(prngSEED*2+123);
 
-
-	for (int i=0; i<300; i++) {
-	    //bc.addRandomBead(.2, hollowPRNG.nextBoolean());
-	    bc.addRandomBead(.2, true);
+	for (int i=0; i<nrBeads; i++) {
+	    bc.addRandomBead(.2, (hollowPRNG.nextDouble()>closedBeadsFraction));
 	}
 	   
 	dwGT.addImage( bc.groundTruth, "Ground truth");
@@ -197,7 +230,7 @@ public class BeadsCreator {
 	Tool.trace(" abbe: "+abbeLimit+" sim: "+simPttrLen+" k0: "+k0);
 
 
-	for ( int a=0; a<3; a++) { 
+	for ( int a=0; a<angles; a++) { 
 	    
 	    double kx = Math.sin( (a/3.+.2)*Math.PI*2 )*k0;
 	    double ky = Math.cos( (a/3.+.2)*Math.PI*2 )*k0;
@@ -205,9 +238,9 @@ public class BeadsCreator {
 	    Tool.trace("kx "+kx+" ky "+ky);
     
 
-	    for ( int p=0; p<3; p++) {
+	    for ( int p=0; p<phases; p++) {
 		
-		simPattern( sim, kx, ky, p*Math.PI * 2 / 3.);
+		simPattern( sim, kx, ky, p*Math.PI * 2 *phaseMult / (double)phases);
 		tmp.copy( sim );
 
 		dwGT.addImage(  tmp , "SIM field  a:"+a+" p:"+p);
