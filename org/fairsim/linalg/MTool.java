@@ -79,6 +79,20 @@ public final class MTool {
 	return (float)ret;
     }
 
+    /** Returns greatest common divisor of a and b.
+     * Uses Euclid's algorithm. */
+    public static int greatestCommonDivisor(int a, int b)
+    {
+	while (b > 0)
+	{
+	    int c = b;
+	    b = a % b; 
+	    a = c;
+	}
+	return a;
+    }
+
+
 
     /** Tests against java.lang.Math, Timings */
     public static void main(String [] args ) {

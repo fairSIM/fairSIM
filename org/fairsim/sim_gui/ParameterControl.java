@@ -52,6 +52,7 @@ import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.SimAlgorithm;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.MTool;
 
 /**
  * GUI elements to control parameter fitting
@@ -355,8 +356,17 @@ public class ParameterControl {
 	applyPhaseSteps.addActionListener( new ActionListener() {
 	    @Override
 	    public void actionPerformed(ActionEvent e) {
+		int phaseStep = phaseStepBox.getSelectedItem();
+
+		if ( MTool.greatestCommonDivisor(phaseStep, simParam.nrPha()) != 1 ) {
+		    Tool.error("This selection would lead to an ill-conditioned matrix",false);
+		    Tool.trace("phase step "+phaseStep+", phases "+simParam.nrPha()+", gcd: "+
+			MTool.greatestCommonDivisor(phaseStep, simParam.nrPha()));
+		    return;
+		}
+		
 		for (int d=0; d<simParam.nrDir();d++) {
-		    simParam.dir(d).resetPhases(phaseStepBox.getSelectedItem());
+		    simParam.dir(d).resetPhases(phaseStep);
 		}
 		simp.refreshTable();
 	    }
