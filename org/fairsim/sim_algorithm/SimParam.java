@@ -359,10 +359,25 @@ public class SimParam implements Vec2d.Size {
 	    hasIndividualPhases = true;
 	}
 
+	/** Set one individual phase.
+	 * @param pha Phase to set
+	 * @param phaIdx Index of phase to set
+	 */
+	public void setSinglePhase( double pha, int phaIdx ) {
+	    phases[phaIdx] = pha;
+	    hasIndividualPhases = true;
+	}
+
+
 	/** Reset individual phases back to equidistant. */
 	public void resetPhases() {
+	    resetPhases(1.);
+	}
+
+	/** Reset individual phases back to equidistant. */
+	public void resetPhases(double multiplier) {
 	    for (int i=0; i<nrPhases; i++) 
-		phases[i] = ( 2*Math.PI / nrPhases ) * i;
+		phases[i] = ( 2*Math.PI*multiplier / nrPhases ) * i;
 	    hasIndividualPhases = false;
 	}
 	

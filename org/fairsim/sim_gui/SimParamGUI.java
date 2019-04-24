@@ -304,19 +304,20 @@ class SimParamGUI implements TableModel {
 
     public void setValueAt( Object aValue , int row, int col) {
 	// col0 holds angles
-	/*
 	switch (col) {
 	    case 0:
-		dir(row).setPxPy( (Double)aValue;
-		break;
-		angles.get(row).k0    = (Double)aValue;
-		break;
+	    case 1:
+		return;
 	    case 2:
-		angles.get(row).startPhase = (Double)aValue;
+		par.dir(row).setPhaOff( (Double)aValue / ((displayDeg)?(180./Math.PI):(1)) );
+		par.signalRuntimeChange();
+		Tool.trace("Global phase offset updated:" + aValue);
 		break;
 	    default:
-		angles.get(row).phases.set(col-3, (Double)aValue);
-	} */
+		par.dir(row).setSinglePhase( (Double)aValue / ((displayDeg)?(180./Math.PI):(1)) , col-3);
+		par.signalRuntimeChange();
+		Tool.trace("Local phase updated:" + aValue);
+	} 
     }
 
     // all our entries are doubles
@@ -393,7 +394,8 @@ class SimParamGUI implements TableModel {
     }
 
     public boolean isCellEditable(int i, int j) {
-	return false;
+	return (j>1);
+
     }
 
 
