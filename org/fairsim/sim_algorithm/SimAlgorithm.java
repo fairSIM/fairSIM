@@ -26,7 +26,8 @@ import org.fairsim.utils.ImageDisplay;
 /** High-level parts of the SIM algorithm */
 public class SimAlgorithm {
 
-    /** Run the SIM parameter estimation 
+    /** Run the SIM parameter estimation.
+     * Default to override any phase information set in SimParam.
      * @param param  The SIM parameter instance to work on
      * @param inFFT  The input images (in Fourier space)
      * @param fitBand On which band to perform the kx,ky fit
@@ -38,6 +39,23 @@ public class SimAlgorithm {
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
 	final ImageDisplay.Factory idf, 
 	int visualFeedback, Tool.Timer tEst ) {
+	estimateParameters(param, inFFT, fitBand, fitExclude, idf,
+	    visualFeedback, tEst, false);
+    }
+
+    /** Run the SIM parameter estimation 
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitBand On which band to perform the kx,ky fit
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param idf    ImageDisplayFactory for intermediate output (may be null)
+     * @param visualFeedback Feedback Amount of visual feedback, 0..4
+     * @param tEst   Runtime measurement (may be null) 
+     * @param keepPhases If true, phase information from SimParam will be used in band separation */
+    public static void estimateParameters( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
+	final ImageDisplay.Factory idf, 
+	int visualFeedback, Tool.Timer tEst, boolean keepPhases ) {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
 	final OtfProvider otfPr = param.otf();
@@ -85,9 +103,15 @@ public class SimAlgorithm {
 		inputCpy[pha].scal( new Cplx.Float( (float)dir.getIntensityQuotient(pha)) );
 	    }
 	    
-	    
-	    BandSeparation.separateBands( inputCpy , separate , 
-		0, dir.nrBand(), null);
+	   
+	    if (!keepPhases) {
+		BandSeparation.separateBands( inputCpy , separate , 
+		    0, dir.nrBand(), null);
+	    } else {
+		Tool.trace("Fitting with preset relative phases");
+		BandSeparation.separateBands( inputCpy , separate , 
+		    dir.getPhases(), dir.nrBand(), null);
+	    }
 
 
 	    // duplicate input, as we will modify it for coarse peak finding

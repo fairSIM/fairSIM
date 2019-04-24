@@ -946,7 +946,7 @@ public class ImageControl {
 	    for (int p=0; p<simParam.dir(d).nrPha(); p++) {
 	    
 		int pos = simParam.getImgSeq().calcPosWithTime( d,p,zPos, tPos,
-		    simParam.nrDir(), simParam.dir(d).nrPha(), zpl );
+		    simParam.nrDir(), simParam.nrPha(), zpl );
 
 		imageCount++;
 
