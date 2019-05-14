@@ -36,6 +36,12 @@ public class OtfProvider {
     
     // --- internal parameters ----
 
+    public enum APPROX_TYPE {
+	EXPONENTIAL,
+	SPHERICAL,
+	NONE
+    };
+
     // vals[band][idx], where idx = cycles / cyclesPerMicron
     private Cplx.Float [][] vals	=  null; 
     private Cplx.Float [][] valsAtt	=  null; 
@@ -83,6 +89,11 @@ public class OtfProvider {
     private OtfProvider() {};
 
 
+    // TODO: deprecate and finally remove this function version
+    public static OtfProvider fromEstimate(double na, double lambda, double a ) {
+	return fromEstimate(na,lambda,a,APPROX_TYPE.EXPONENTIAL);
+    }
+
     /** Create a new OTF from a (very basic) estimate.
      *  The curvature factor account for deviation of
      *  real-world OTFs from the theoretical optimum.
@@ -91,11 +102,12 @@ public class OtfProvider {
      *  @param na Objectives NA
      *  @param lambda Emission wavelength (nm)
      *  @param a curvature factor, a = [0..1]
+     *  @param compType which compensation formula to use
      * */
-    public static OtfProvider fromEstimate(double na, double lambda, double a) {
+    public static OtfProvider fromEstimate(double na, double lambda, double a, APPROX_TYPE compType ) {
 	if ( (a<0)||(a>1) || (na<0.3) || (na>2.2) || (lambda<300) || (lambda>1500) )
 	    throw new IllegalArgumentException("unphysical input parameters");
-	
+
 	OtfProvider ret = new OtfProvider();
 
 	// compute / set parameters
@@ -114,7 +126,15 @@ public class OtfProvider {
 	    // v: normalize [0..cutoff] -> [0..1]
 	    double v = i/(double)ret.samplesLateral ;
 	    // get OTF at v, multiply empirical correction for curvature
-	    float r =(float)( valIdealOTF(v) * ( Math.pow(a,v) ) );
+	    float r =(float)valIdealOTF(v);
+	    
+	    if ( compType == APPROX_TYPE.EXPONENTIAL ) {
+		r *= (float)Math.pow(a,v);
+	    } 
+	    if ( compType == APPROX_TYPE.SPHERICAL ) {
+		r *= (float)(1 - ( (1-a)* (1 - 4*(Math.pow(v-.5,2)))  ));
+	    }
+
 	    ret.vals[0][i] = new Cplx.Float( r, 0 );
 	}
 	

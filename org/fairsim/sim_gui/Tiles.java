@@ -328,6 +328,12 @@ public class Tiles {
 	public TComboBox() {
 	    super();
 	}
+    
+	@SuppressWarnings("unchecked")
+	public T getSelectedItem() {
+	    return (T)super.getSelectedItem();
+	}
+    
     };
 
     /** Container */

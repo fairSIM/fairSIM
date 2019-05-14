@@ -216,8 +216,8 @@ public class OtfControl {
 	naSp.spr.setToolTipText("NA objective");
 	
 	// compensation
-	String [] opts = new String[ 8 ];
-	for (int i=0;i<8;i++) opts[i] = String.format("a=%4.2f",0.10+i*0.05);
+	String [] opts = new String[ 12 ];
+	for (int i=0;i<opts.length;i++) opts[i] = String.format("a=%4.2f",0.10+i*0.05);
 	opts[0] = "Ideal";
 	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(opts);	 // <-- java 1.7
 	//final TComboBox comp = new TComboBox(opts); 
@@ -226,6 +226,10 @@ public class OtfControl {
 	    "Lower valus for a's yield more medium frequency dampening (see manual)<br>"+
 	    "Typical values are a=0.2..0.4, so try with default first<br>"
 	);
+
+	final Tiles.TComboBox<OtfProvider.APPROX_TYPE> compType 
+		= new Tiles.TComboBox<OtfProvider.APPROX_TYPE>( OtfProvider.APPROX_TYPE.values());
+	compType.setToolTipText("Select the OTF compensation type");
 
 	// build the dialog
 	final JDialog otfApr = new JDialog(baseframe,
@@ -249,6 +253,8 @@ public class OtfControl {
 	p1.add( new JLabel("Comp:"));
 	p1.add( comp );
 	p1.add( Box.createHorizontalGlue());
+	p1.add( new JLabel("Type:"));
+	p1.add( compType );
 
 	JButton ok = new JButton("Set");
 	JButton cl = new JButton("Cancel");
@@ -261,7 +267,7 @@ public class OtfControl {
 		if (comp.getSelectedIndex()==0) aValue=1;
 		
 		OtfProvider otf = OtfProvider.fromEstimate( 
-		    naSp.getVal(), ldSp.getVal(), aValue );
+		    naSp.getVal(), ldSp.getVal(), aValue, compType.getSelectedItem() );
 		setOtf( otf );
 		
 		otfApr.dispose();
