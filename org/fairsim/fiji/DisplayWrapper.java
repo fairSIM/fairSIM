@@ -60,6 +60,7 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
     private ImagePlus   ip;
     private int currentPosition=0;
     private String ourTitle="[no title]";
+    private int lastCount=1;
 
     // list of images, labels, markers
     private List<ImageVector>  refs = new ArrayList<ImageVector>();
@@ -142,14 +143,13 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
 		}
 
 	    } else {
-		// TODO: for reasons currently unclear to me, this does not work
+		// SEEMS fixed: for reasons currently unclear to me, this does not work
 		// at all, and just blocks the whole program. For now, only
 		// call 'drop' from the Swing thread, I guess
-		throw new RuntimeException("drop() called from Thread other"+
-		    "then EventDispatch, currently not supported");
+		//throw new RuntimeException("drop() called from Thread other"+
+		//    "then EventDispatch, currently not supported");
 
-		/*
-		Tool.trace("DisplayWrapper: switching to EventDispatch");
+		//Tool.trace("DisplayWrapper: switching to EventDispatch");
 	
 		try {
 		    SwingUtilities.invokeAndWait(new Runnable() {
@@ -164,7 +164,7 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
 		    Tool.trace("ERR: DisplayWrapper interrupted");
 		} catch (InvocationTargetException ex) {
 		    Tool.trace("ERR: DisplayWrapper called wrong target");
-		} */
+		} 
 	    }
 
 
@@ -198,7 +198,13 @@ public class DisplayWrapper implements ImageDisplay, ImageListener {
     /** Creates and destroys the ImageWindow. */
     @Override
     public void display() {
+	
+	// this trick redisplays the DisplayWrapper with scrollbar
+	if (lastCount==1 && getCount() >1 && ip!=null) {
+	    setState(false);   
+	}
 	setState(true);
+	lastCount=getCount();
     }
 
     /** Drops all stored data, including listeners */

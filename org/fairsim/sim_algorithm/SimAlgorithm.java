@@ -27,7 +27,8 @@ import org.fairsim.utils.ImageOutputFactory;
 /** High-level parts of the SIM algorithm */
 public class SimAlgorithm {
 
-    /** Run the SIM parameter estimation 
+    /** Run the SIM parameter estimation.
+     * Default to override any phase information set in SimParam.
      * @param param  The SIM parameter instance to work on
      * @param inFFT  The input images (in Fourier space)
      * @param fitBand On which band to perform the kx,ky fit
@@ -39,6 +40,23 @@ public class SimAlgorithm {
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
 	final ImageOutputFactory idf, 
 	int visualFeedback, Tool.Timer tEst ) {
+	estimateParameters(param, inFFT, fitBand, fitExclude, idf,
+	    visualFeedback, tEst, false);
+    }
+
+    /** Run the SIM parameter estimation 
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitBand On which band to perform the kx,ky fit
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param idf    ImageDisplayFactory for intermediate output (may be null)
+     * @param visualFeedback Feedback Amount of visual feedback, 0..4
+     * @param tEst   Runtime measurement (may be null) 
+     * @param keepPhases If true, phase information from SimParam will be used in band separation */
+    public static void estimateParameters( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
+	final ImageOutputFactory idf, 
+	int visualFeedback, Tool.Timer tEst, boolean keepPhases ) {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
 	final OtfProvider otfPr = param.otf();
@@ -86,9 +104,15 @@ public class SimAlgorithm {
 		inputCpy[pha].scal( new Cplx.Float( (float)dir.getIntensityQuotient(pha)) );
 	    }
 	    
-	    
-	    BandSeparation.separateBands( inputCpy , separate , 
-		0, dir.nrBand(), null);
+	   
+	    if (!keepPhases) {
+		BandSeparation.separateBands( inputCpy , separate , 
+		    0, dir.nrBand(), null);
+	    } else {
+		Tool.trace("Fitting with preset relative phases");
+		BandSeparation.separateBands( inputCpy , separate , 
+		    dir.getPhases(), dir.nrBand(), null);
+	    }
 
 
 	    // duplicate input, as we will modify it for coarse peak finding
@@ -149,9 +173,20 @@ public class SimAlgorithm {
 		Cplx.Double p1 = Correlation.getPeak( separate[0], separate[lb], 
 		    0, 1, otfPr, peak[0]/2, peak[1]/2, 0.05 );
 
-		// Extract modulation from band0 <-> band 2
-		Cplx.Double p2 = Correlation.getPeak( separate[0], separate[hb], 
-		    0, 2, otfPr, peak[0], peak[1], 0.05 );
+		// TODO: this is a quick fix, this should be done properly by looking at the OTF
+		// overlap, to figure out if parameter extraction is possible. This just catches
+		// the 'definitely not possible' case
+		Cplx.Double p2;
+
+		if ( Math.hypot( peak[0], peak[1] ) * param.pxlSizeCyclesMicron() > otfPr.getCutoff() ) {
+		    Tool.trace( "Second peak outside of OTF overlap (non-linear SIM?)" );
+		    Tool.trace( "-> copying modulation depth for now...");
+		    p2 = p1;   
+		} else {
+		    // Extract modulation from band0 <-> band 2
+		    p2 = Correlation.getPeak( separate[0], separate[hb], 
+			0, 2, otfPr, peak[0], peak[1], 0.05 );
+		}
 
 		Tool.trace(
 		    String.format("Peak: (dir %1d): fitted --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
@@ -380,8 +415,8 @@ public class SimAlgorithm {
 	  
 	    // copy into temp. array (to not override input data) 
 	    // and apply correction factor
-	    Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrBand()*2-1, w, h);
-	    for (int i=0; i<(par.nrBand()*2-1) ;i++) {
+	    Vec2d.Cplx [] tmpArray = Vec2d.createArrayCplx( par.nrPha(), w, h);
+	    for (int i=0; i< par.nrPha() ;i++) {
 		tmpArray[i].copy( inFFT[angIdx][i] );
 		tmpArray[i].scal( new Cplx.Float( (float)par.getIntensityQuotient(i) ) );
 		Tool.trace(String.format(" Input data intensity corrected: a%1d p%1d --> %7.5f",
@@ -394,7 +429,7 @@ public class SimAlgorithm {
 	    if ( param.useRLonInput() ) {
 		
 			// deconvolve the input data
-		for (int i=0; i<(par.nrBand()*2-1) ;i++) { 
+		for (int i=0; i< par.nrPha() ;i++) { 
 
 		    if (visualFeedback>1) {
 			spSt.addImage( SimUtils.spatial( tmpArray[i]), 
@@ -419,7 +454,7 @@ public class SimAlgorithm {
 
 	    // Wiener filter: Apply OTF here
 	    if (otfBeforeShift && param.useWienerFilter() )
-		for (int i=0; i<(par.nrBand()*2-1) ;i++)  
+		for (int i=0; i<(par.nrComp()) ;i++)  
 		    otfPr.applyOtf( separate[i], (i+1)/2);
 
 	    // ------- Shifts to correct position ----------
@@ -456,9 +491,11 @@ public class SimAlgorithm {
 		    }
 		} else {
 		    // or mask for OTF support
-		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-			//wFilter.maskOtf( shifted[i], angIdx, i);
-			otfPr.maskOtf( shifted[i], angIdx, i);
+		    for (int b=1; b<par.nrBand(); b++) {
+			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
+			otfPr.maskOtf( shifted[neg], -par.px(b), -par.py(b) );
+		    }
 		}
 	    }
 	    // ------ Sum up result ------

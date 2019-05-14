@@ -28,6 +28,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JEditorPane;
+import javax.swing.JCheckBox;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -52,6 +53,7 @@ import org.fairsim.sim_algorithm.SimParam;
 import org.fairsim.sim_algorithm.SimAlgorithm;
 
 import org.fairsim.linalg.Vec2d;
+import org.fairsim.linalg.MTool;
 
 /**
  * GUI elements to control parameter fitting
@@ -74,6 +76,7 @@ public class ParameterControl {
     private int fitVerbosity = 1;   // verbosity of fit output
     private int fitBand	=2;	    // which band to use for fitting
     private double fitExclude=0.6;  // Portion of OTF support to exclude
+    private boolean fitKeepPhase = false; // if to override the relative phase when fitting new parameters
 
     public JPanel getPanel() {
 	return ourContent;
@@ -186,7 +189,7 @@ public class ParameterControl {
 		//try {
 		    SimAlgorithm.estimateParameters( 
 			simParam, imgc.theFFTImages, bandToFit, fitExclude, 
-			idpFactory, fitVerbosity, t1);
+			idpFactory, fitVerbosity, t1, fitKeepPhase);
 		/*} catch (Exception e) {
 		    Tool.trace("Problem: "+e);
 		    e.printStackTrace();
@@ -245,6 +248,8 @@ public class ParameterControl {
 	
 	    if (nr>=3) {
 		recc.paramFitFailed = true;
+	    } else {
+		recc.paramFitFailed = false;
 	    }
 	}
 
@@ -342,6 +347,42 @@ public class ParameterControl {
 
 
 
+	// handling phase stepping
+	JPanel phaseStepPanel =  new JPanel();
+	final Tiles.LComboBox<Integer>  phaseStepBox =
+	    new Tiles.LComboBox<Integer>("phase step", new Integer [] {1,2,3,4} );
+	
+	JButton applyPhaseSteps = new JButton("apply");
+
+	applyPhaseSteps.addActionListener( new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		int phaseStep = phaseStepBox.getSelectedItem();
+
+		if ( MTool.greatestCommonDivisor(phaseStep, simParam.nrPha()) != 1 ) {
+		    Tool.error("This selection would lead to an ill-conditioned matrix",false);
+		    Tool.trace("phase step "+phaseStep+", phases "+simParam.nrPha()+", gcd: "+
+			MTool.greatestCommonDivisor(phaseStep, simParam.nrPha()));
+		    return;
+		}
+		
+		for (int d=0; d<simParam.nrDir();d++) {
+		    simParam.dir(d).resetPhases(phaseStep);
+		}
+		simp.refreshTable();
+	    }
+	});
+
+	final JCheckBox phaseStepKeepBox = new JCheckBox("keep phase in fit");
+	phaseStepKeepBox.setSelected(fitKeepPhase);
+
+	phaseStepPanel.add( phaseStepBox);
+	phaseStepPanel.add( applyPhaseSteps);
+	phaseStepPanel.add( phaseStepKeepBox);
+
+
+	p1.add(phaseStepPanel);
+
 
 	// dialog	
 	final JDialog configDialog = new JDialog(baseframe,
@@ -356,7 +397,8 @@ public class ParameterControl {
 		fitVerbosity = verbosityBox.getSelectedIndex();
 		fitBand	     = fitBandBox.getSelectedItem();
 		fitExclude   = fitExclBox.getSelectedItem();
-		
+		fitKeepPhase = phaseStepKeepBox.isSelected();
+
 		configDialog.dispose();
 	    }
 	});
