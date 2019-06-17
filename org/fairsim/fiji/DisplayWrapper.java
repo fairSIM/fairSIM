@@ -36,6 +36,8 @@ import ij.gui.Roi;
 import ij.gui.OvalRoi;
 import ij.process.FloatProcessor;
 
+import ij.measure.Calibration;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,6 +61,8 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     private int currentPosition=0;
     private String ourTitle="[no title]";
     private int lastCount=1;
+    private boolean markAsDisplayWrapper = true;
+    private double pixelSizeNano = -1;
 
     // list of images, labels, markers
     private List<ImageVector>  refs = new ArrayList<ImageVector>();
@@ -101,7 +105,14 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	    
 	    // create ImagePlus
 	    ip = new ImagePlus(ourTitle, is );
-	    ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
+	    if ( markAsDisplayWrapper) {
+		ip.setProperty("org.fairsim.fiji.DisplayWrapper","yes");
+	    } else {
+		ip.setProperty("org.fairsim.fiji.DisplayWrapper","not-marked");
+	    }
+	    setPixelSize();
+
+
 	    ip.setPosition( currentPosition+1 );
 
 	    // display the ImagePlus, do this in the Swing Thread
@@ -190,6 +201,29 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
 	    is=null; ip=null;
 	}
     }
+
+    public void doMarkAsDisplayWrapper(boolean state) {
+	markAsDisplayWrapper = state;
+	if (ip!=null) {
+	    ip.setProperty("org.fairsim.fiji.DisplayWrapper",(state)?("yes"):("not-marked"));
+	}
+    }
+
+    public void setPixelSize(double nm) {
+	pixelSizeNano = nm;
+	setPixelSize();
+    }
+
+    private void setPixelSize() {
+	if (ip!=null && pixelSizeNano >0) {
+	    Calibration cb = new Calibration();
+	    cb.setUnit("um");
+	    cb.pixelWidth = pixelSizeNano/1000.;
+	    cb.pixelHeight = pixelSizeNano/1000.;
+	    ip.setCalibration(cb);
+	}   
+    }	
+    
 
     // ------ our ImageDisplay interface ------
    

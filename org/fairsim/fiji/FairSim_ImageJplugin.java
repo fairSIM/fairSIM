@@ -95,7 +95,7 @@ public class FairSim_ImageJplugin implements PlugIn {
     }
 
     /** set the logger (and amount) */
-    void setLog(boolean full) {
+    static void setLog(boolean full) {
 	if (full) {
 	    Tool.setLogger( new Tool.Logger () {
 		@Override
