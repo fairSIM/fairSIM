@@ -33,19 +33,19 @@ fi
 # Get the original version of JTransforms
 if [ ! -e JTransforms-3.1.jar ] ; then 
     fileMissing=1
-    wget http://central.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1.jar
+    wget https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1.jar
 fi
 
 # Get JTransforms JLargeArray dependency
 if [ ! -e JLargeArrays-1.6.jar ] ; then
     fileMissing=1
-    wget http://central.maven.org/maven2/pl/edu/icm/JLargeArrays/1.6/JLargeArrays-1.6.jar
+    wget https://repo1.maven.org/maven2/pl/edu/icm/JLargeArrays/1.6/JLargeArrays-1.6.jar
 fi
 
 # Get the Apache fast math dependencies
 if [ ! -e commons-math3-3.6.1.jar ] ; then
     fileMissing=1
-    wget http://central.maven.org/maven2/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar
+    wget https://repo1.maven.org/maven2/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar
 fi
 
 
