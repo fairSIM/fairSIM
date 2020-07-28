@@ -106,10 +106,15 @@ public class ImageControl {
     final Tiles.LComboBox<String> videoAutoUpdateMode =
      new Tiles.LComboBox<String>("auto-update", updateModes); 
 
-    // prefactor correction spinners
+    // prefactor correction spinners and auto selector
     Tiles.LNSpinner  []   prefactorAngSpinner; 
     Tiles.LNSpinner [][] prefactorPhaSpinner; 
-    
+    private JCheckBox prefactorAutoUpdateAngle;
+    private JCheckBox prefactorAutoUpdatePhase;
+    final Tiles.LComboBox<String> prefactorMethodBox
+	= new Tiles.LComboBox<String>("estimate, by", "average", "median"); 
+
+
     // the images
     Vec2d.Real [][] theImages    =null;
     Vec2d.Cplx [][] theFFTImages =null;
@@ -255,9 +260,7 @@ public class ImageControl {
 	}
 
 	c.gridx=0; c.gridy=0; c.gridwidth=3; 
-	final Tiles.LComboBox<String> methodBox
-	    = new Tiles.LComboBox<String>("estimate, by", "average", "median"); 
-	preprocessPanel.add( methodBox, c );
+	preprocessPanel.add( prefactorMethodBox, c );
 
 	c.gridx=3; c.gridwidth=1;
 	
@@ -266,7 +269,7 @@ public class ImageControl {
 	
 	estAngleButton.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		runEstimateAngleVariation(methodBox.getSelectedIndex());
+		runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
 	    }
 	});
 
@@ -275,7 +278,7 @@ public class ImageControl {
 	preprocessPanel.add( estPhaseButton, c );
 	estPhaseButton.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		runEstimatePhaseVariation(methodBox.getSelectedIndex());
+		runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
 	    }
 	});
 
@@ -314,10 +317,17 @@ public class ImageControl {
 	    }
 	});
 
-
 	JButton resetValuesButton = new JButton("reset");
 	c.gridx=1;
 	preprocessPanel.add( resetValuesButton,c );
+	
+	c.gridy++;
+	prefactorAutoUpdateAngle = new JCheckBox("auto-update angle");
+	prefactorAutoUpdatePhase = new JCheckBox("phase");
+	c.gridx=0;
+	preprocessPanel.add( prefactorAutoUpdateAngle,c );
+	c.gridx=2;
+	preprocessPanel.add( prefactorAutoUpdatePhase,c );
 
 	resetValuesButton.addActionListener( new ActionListener() {
 	    @Override
@@ -655,7 +665,15 @@ public class ImageControl {
 
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    videoStackPositionTime, true ); 
-	    
+
+		// update the correction factors
+		if (prefactorAutoUpdateAngle.isSelected()) {
+		    runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
+		}
+		if (prefactorAutoUpdatePhase.isSelected()) {
+		    runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
+		}
+
 		// update the parameter estimation
 		if (updateMode>2) {
 
@@ -1305,10 +1323,22 @@ public class ImageControl {
 
 
 	    for (int timePos=start; timePos<stop; timePos++) {
-
+		
+		// update the input images
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    timePos, true ); 
-	
+
+
+		// update the correction factors
+		if (prefactorAutoUpdateAngle.isSelected()) {
+		    runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
+		}
+		if (prefactorAutoUpdatePhase.isSelected()) {
+		    runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
+		}
+
+
+		// update the parameter estimation
 		if (updateMode>2) {
 		    SimAlgorithm.estimateParameters( 
 			simParam, theFFTImages, 
