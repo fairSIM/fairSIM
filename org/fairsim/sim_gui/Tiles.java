@@ -354,5 +354,47 @@ public class Tiles {
     }
 
 
+    /** Named colors for selector lists */
+    enum NAMED_COLOR {
+	GREY(128,128,128),
+	RED(255,0,0),
+	BLUE(0,0,255),
+	GREEN(0,255,0),
+	WHITE(255,255,255),
+	BLACK(0,0,0),
+	CYAN(0,255,255),
+	MAGENTA(255,0,255),
+	YELLOW(255,255,0);
+
+	int red=0,blue=0,green=0;
+
+	NAMED_COLOR(int r, int g, int b) {
+	    red=r; green=g; blue=b;
+	}
+
+
+	public Color getColor() {
+	    return new Color(red,green,blue);
+	}
+
+	public String toString() {
+	    switch (this) {
+		case GREY: return "grey";
+		case RED: return "red";
+		case BLUE: return "blue";
+		case GREEN:  return "green";
+		case WHITE: return "white";
+		case BLACK: return "black";
+		case CYAN: return "cyan";
+		case MAGENTA: return "magenta";
+		case YELLOW: return "yellow";
+	    }
+	    return null;
+	}
+    }
+    
+
+
+
 
 }
