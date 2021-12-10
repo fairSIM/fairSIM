@@ -76,6 +76,9 @@ public class ParameterControl {
     private int fitBand	=2;	    // which band to use for fitting
     private double fitExclude=0.6;  // Portion of OTF support to exclude
     private boolean fitKeepPhase = false; // if to override the relative phase when fitting new parameters
+    private boolean fitkVectorEstimate = true; // if to run the k-vector estimate
+    private boolean fitIndividualPhaseEstimate = false; // if to run individual (absolute) phase estimates for each raw frame
+
 
     public JPanel getPanel() {
 	return ourContent;
@@ -186,9 +189,16 @@ public class ParameterControl {
 	    public Object doInBackground() {
 		running = true;
 		//try {
-		    SimAlgorithm.estimateParameters( 
-			simParam, imgc.theFFTImages, bandToFit, fitExclude, 
-			idpFactory, fitVerbosity, t1, fitKeepPhase);
+		    if (fitkVectorEstimate) {
+			SimAlgorithm.estimateParameters( 
+			    simParam, imgc.theFFTImages, bandToFit, fitExclude, 
+			    idpFactory, fitVerbosity, t1, fitKeepPhase);
+		    }
+
+		    if (fitIndividualPhaseEstimate) {
+			SimAlgorithm.estimateAbsolutePhases( simParam,
+			    imgc.theFFTImages, t1);
+		    }
 		/*} catch (Exception e) {
 		    Tool.trace("Problem: "+e);
 		    e.printStackTrace();
@@ -372,15 +382,38 @@ public class ParameterControl {
 	    }
 	});
 
-	final JCheckBox phaseStepKeepBox = new JCheckBox("keep phase in fit");
-	phaseStepKeepBox.setSelected(fitKeepPhase);
-
-	phaseStepPanel.add( phaseStepBox);
+		phaseStepPanel.add( phaseStepBox);
 	phaseStepPanel.add( applyPhaseSteps);
-	phaseStepPanel.add( phaseStepKeepBox);
 
 
 	p1.add(phaseStepPanel);
+
+	JPanel fitOptionsPanel =  new JPanel();
+	fitOptionsPanel.setLayout(new BoxLayout(fitOptionsPanel, BoxLayout.PAGE_AXIS));
+	
+	final JCheckBox phaseStepKeepBox = new JCheckBox("keep phase in fit");
+	phaseStepKeepBox.setToolTipText("<html>If enabled, phase information is <b>not</b> extracted"
+	    +"<br />when running the cross-correlation parameter fit."
+	    +"<br />(typically, this option should be turned off)");
+	phaseStepKeepBox.setSelected(fitKeepPhase);
+
+	final JCheckBox fitkVectorEstimateBox = new JCheckBox("run k vector estimate");
+	fitkVectorEstimateBox.setToolTipText("<html>If enabled, k-vectors are estimated by"
+	    +"<br />cross-correlation. As this is the main part of parameter estimation,"
+	    +"<br />this should typically be on");
+	fitkVectorEstimateBox.setSelected(fitkVectorEstimate);
+
+	final JCheckBox fitIndividualPhaseEstimateBox = new JCheckBox("run individual phase estiamtes");
+	fitIndividualPhaseEstimateBox.setToolTipText("<html>If enabled, individual phases are estimated"
+	    +"<br />for each raw data frame. Typically not needed,"
+	    +"<br />but helpful for systems with e.g. phase drift");
+	fitIndividualPhaseEstimateBox.setSelected(fitIndividualPhaseEstimate);
+	
+	fitOptionsPanel.add( phaseStepKeepBox);
+	fitOptionsPanel.add( fitkVectorEstimateBox);
+	fitOptionsPanel.add( fitIndividualPhaseEstimateBox);
+    
+	p1.add(fitOptionsPanel);
 
 
 	// dialog	
@@ -397,6 +430,8 @@ public class ParameterControl {
 		fitBand	     = fitBandBox.getSelectedItem();
 		fitExclude   = fitExclBox.getSelectedItem();
 		fitKeepPhase = phaseStepKeepBox.isSelected();
+		fitkVectorEstimate = fitkVectorEstimateBox.isSelected();
+		fitIndividualPhaseEstimate = fitIndividualPhaseEstimateBox.isSelected();
 
 		configDialog.dispose();
 	    }

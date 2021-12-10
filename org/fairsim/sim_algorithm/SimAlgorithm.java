@@ -105,6 +105,9 @@ public class SimAlgorithm {
 	    
 	   
 	    if (!keepPhases) {
+		// reset any previously set phases
+		dir.resetPhases();
+
 		BandSeparation.separateBands( inputCpy , separate , 
 		    0, dir.nrBand(), null);
 	    } else {
@@ -309,6 +312,54 @@ public class SimAlgorithm {
 	}
 
 
+    }
+
+
+    /** Estimate absolute phases for each raw data frame.
+     *  This follows the non-iterative phase estimation based on auto-correlation by Wicker et al.
+     *  It requires(!) the k-Vectors to be set correctly (usually doable by running the parameter
+     *  estimation with roughly correct relative phases)
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param tEst   Runtime measurement (may be null) 
+    */
+    public static void estimateAbsolutePhases( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, 
+	Tool.Timer tEst ) {
+
+	Tool.tell("running individual phase estimator");
+
+	if (tEst != null) tEst.start();
+   
+	final OtfProvider otfPr = param.otf();
+
+	// loop all directions
+	for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+	    final SimParam.Dir par = param.dir(angIdx);
+	    
+	    // run Kai Wicker auto-correlation
+	    double [] pha = new double[par.nrPha()];
+	    for (int i=0; i < par.nrPha() ; i++) {
+	       
+		// copy input, weight with otf
+		Vec2d.Cplx ac =  inFFT[angIdx][i].duplicate();
+		otfPr.applyOtf( ac, 0); 
+		
+		// compute auto-correlation at px,py (shift of band1)
+		Cplx.Double corr = Correlation.autoCorrelation( 
+		    ac, par.px(1), par.py(1) );
+
+		Tool.trace(String.format("a%1d img %1d, Phase(Wicker et. al.) : %5.3f  ",
+		    angIdx, i, corr.phase()));
+
+		pha[i] = corr.phase();
+	    }
+	    par.setPhases( pha, true );	
+	    
+	}
+
+	if (tEst != null) tEst.stop();
     }
 
 
