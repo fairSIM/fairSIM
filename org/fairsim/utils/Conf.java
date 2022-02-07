@@ -396,7 +396,7 @@ public class Conf {
 	String prettyPrint() {
 	    String ret  = "(DBL)";
 	    for (int i=0; i<Math.min(5,ourVals.length); i++)
-		ret+=String.format(" %8.4f",ourVals[i]);
+		ret+=String.format(Locale.US, " %8.4f",ourVals[i]);
 	    if (ourVals.length>5)
 		ret+=" ... ("+ourVals.length+" total)";
 	    return ret;
@@ -407,7 +407,7 @@ public class Conf {
 	    if (! exact  ) {
 		String flttext=" ";
 		for (double i : ourVals)
-		    flttext += String.format("%8.5e ", i);
+		    flttext += String.format(Locale.US, "%8.5e ", i);
 		return flttext;
 	    } else {
 		byte [] v = new byte[ 8*ourVals.length ];
