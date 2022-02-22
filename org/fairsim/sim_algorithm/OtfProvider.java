@@ -184,7 +184,7 @@ public class OtfProvider {
 	    return Cplx.Float.zero();
 	
 	final double pos = cycl / cyclesPerMicron;
-	if (Math.ceil(pos) >= samplesLateral)
+	if (pos+1 >= samplesLateral)
 	    return Cplx.Float.zero();
 
     
@@ -195,11 +195,11 @@ public class OtfProvider {
     
 	if (att) {
 	    Cplx.Float retl = valsAtt[band][lPos].mult( 1-f );
-	    Cplx.Float reth = valsAtt[band][lPos].mult( f );
+	    Cplx.Float reth = valsAtt[band][hPos].mult( f );
 	    return Cplx.add( retl, reth );
 	} else {
 	    Cplx.Float retl = vals[band][lPos].mult( 1-f );
-	    Cplx.Float reth = vals[band][lPos].mult( f );
+	    Cplx.Float reth = vals[band][hPos].mult( f );
 	    return Cplx.add( retl, reth );
 	}
 
@@ -237,18 +237,18 @@ public class OtfProvider {
 	    throw new IndexOutOfBoundsException("cylc negative!");
 	
 	// out of support, return 1
-	if ( cycl >= cutOff )
-	    return 1.f;
-	
 	double pos = cycl / cyclesPerMicron;
-    
+	
+	if ( cycl >= cutOff || pos+1 >= samplesLateral )
+	    return 1.f;
+
 	// for now, linear interpolation, could be better with a nice cspline
 	int lPos = (int)Math.floor( pos );	
-	int hPos = (int)Math.floor( pos );
+	int hPos = (int)Math.ceil( pos );
 	float f = (float)(pos - lPos);
     
-	float retl = valsOnlyAtt[band][lPos] * f ;
 	float reth = valsOnlyAtt[band][lPos] * ( 1-f );
+	float retl = valsOnlyAtt[band][hPos] * f ;
 	return retl+reth;
     }
     
