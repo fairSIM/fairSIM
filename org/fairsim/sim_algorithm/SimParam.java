@@ -31,9 +31,10 @@ public class SimParam implements Vec2d.Size {
 
     public enum FilterStyle {
 	Wiener("Wiener filter"),	
-	RLin("RL on input"), 
+	RLin("RL on input, WF out"), 
 	RLout("RL on output"),
-	RLboth("RL on both");
+	RLboth("RL on both"),
+	NoFilter("no filtering");
 
 	final String name;
 	FilterStyle(String a) { name = a; };
@@ -218,6 +219,13 @@ public class SimParam implements Vec2d.Size {
 	return ( filterStyle == FilterStyle.RLboth || 
 		 filterStyle == FilterStyle.RLout   );
     }
+
+    /** True if all filtering is to be turned off */
+    public boolean useNoFiltering() {
+	return (filterStyle == FilterStyle.NoFilter );
+    }
+
+
 
 
     /** Set the number of RL iterations */
