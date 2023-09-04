@@ -102,9 +102,12 @@ public class ImageControl {
     final JLabel  videoPosLabel = new JLabel( String.format("t % 5d", 0));
     final JLabel maxTimePointsLabel;
     final Tiles.LNSpinner zSliceVideoSpinner ; 
-    final String [] updateModes = {"off", "widefield", "recon", "recon+par.est."};
+    final String [] videoUpdateModes = {"off", "widefield", "recon", "recon+par.est.", "rec+par+ind.pha"};
+    final String [] batchUpdateModes = {"recon", "recon+par.est.", "rec+par+ind.pha"};
     final Tiles.LComboBox<String> videoAutoUpdateMode =
-     new Tiles.LComboBox<String>("auto-update", updateModes); 
+     new Tiles.LComboBox<String>("auto-update", videoUpdateModes); 
+    final Tiles.LComboBox<String> batchUpdateMode =
+     new Tiles.LComboBox<String>("batch-update", batchUpdateModes); 
 
     // prefactor correction spinners and auto selector
     Tiles.LNSpinner  []   prefactorAngSpinner; 
@@ -182,17 +185,20 @@ public class ImageControl {
 	row1.add( importImageButton );
 	
 	JPanel row2 = new JPanel();
+	JPanel row3 = new JPanel();
 	row2.add(Box.createHorizontalGlue());
 	row2.add( importTimelapseBox );
 	row2.add( zSliceVideoSpinner);
 	row2.add(Box.createRigidArea(new Dimension(5,1)));
 	row2.add( maxTimePointsLabel );
-	row2.add(Box.createRigidArea(new Dimension(5,1)));
-	row2.add( videoAutoUpdateMode );
-	row2.add(Box.createHorizontalGlue());
+	row3.add(Box.createRigidArea(new Dimension(5,1)));
+	row3.add( videoAutoUpdateMode );
+	batchUpdateMode.setSelectedIndex(1);
+	row3.add( batchUpdateMode );
+	row3.add(Box.createHorizontalGlue());
 	
 	// add the video-select sliders
-	JPanel row3 = new JPanel();
+	JPanel row4 = new JPanel();
 	
 	videoPosSlider = new JSlider(JSlider.HORIZONTAL, 1,100,1);
 	videoPosSlider.setEnabled(false);
@@ -357,8 +363,10 @@ public class ImageControl {
 	tab1.add(row1);
 	tab1.add( Box.createVerticalGlue());
 	
-	tab2.add( Box.createVerticalGlue());
+	//tab2.add( Box.createVerticalGlue());
 	tab2.add(row2);
+	//tab2.add( Box.createVerticalGlue());
+	tab2.add(row3);
 	tab2.add(Box.createRigidArea(new Dimension(1,5)));
 	tab2.add(sliders);
 	tab2.add( Box.createVerticalGlue());
@@ -600,7 +608,7 @@ public class ImageControl {
 	// all other modes are written to the thread
 	// which is started if not existing
 	autoUpdater = new AutoUpdateThread(mode);
-	Tool.trace("Starting auto update, mode "+updateModes[mode]);
+	Tool.trace("Starting auto update, mode "+videoUpdateModes[mode]);
 	autoUpdater.start();
     }
 
@@ -676,7 +684,7 @@ public class ImageControl {
 
 		// update the parameter estimation
 		if (updateMode>2) {
-
+			Tool.trace(String.format("Auto mode: Running parameter estimation"));
 		    SimAlgorithm.estimateParameters( 
 			simParam, theFFTImages, 
 			fsGUI.parc.getFitBand(), 
@@ -684,6 +692,14 @@ public class ImageControl {
 			null, 0, null);
 
 		}
+		
+		// update individual phase estimations
+		if (updateMode>3) {
+			Tool.trace(String.format("Auto mode: Running individual absolute phases"));
+			SimAlgorithm.estimateAbsolutePhases(
+			simParam, theFFTImages, null); 
+		}
+
 
 		// update the SIM reconstruction
 		if (updateMode>1) {
@@ -1228,7 +1244,7 @@ public class ImageControl {
 	p3.add(progressBar);
 
 	final BatchReconstructionThread brt = new BatchReconstructionThread(
-	    progressBar, ok, cl, videoAutoUpdateMode.getSelectedIndex() );
+	    progressBar, ok, cl, batchUpdateMode.getSelectedIndex() );
 
 	// perform the image import
 	ok.addActionListener( new ActionListener() {
@@ -1339,12 +1355,20 @@ public class ImageControl {
 
 
 		// update the parameter estimation
-		if (updateMode>2) {
+		if (updateMode>=1) {
+			Tool.trace(String.format("Batch mode: Running parameter estimation (time slice %d)", timePos ));
 		    SimAlgorithm.estimateParameters( 
 			simParam, theFFTImages, 
 			fsGUI.parc.getFitBand(), 
 			fsGUI.parc.getFitExclude(), 
 			null, 0, null);
+		}
+
+		// update individual phase estimations
+		if (updateMode>=2) {
+			Tool.trace(String.format("Batch mode: Running individual absolute phases (time slice %d)", timePos));
+			SimAlgorithm.estimateAbsolutePhases(
+			simParam, theFFTImages, null); 
 		}
 
 		Vec2d.Real widefield = ( compWidefield )?(Vec2d.createReal(simWidth,simHeight)):(null);
