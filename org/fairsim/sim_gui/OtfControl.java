@@ -216,12 +216,21 @@ public class OtfControl {
 	naSp.spr.setToolTipText("NA objective");
 	
 	// compensation
-	String [] opts = new String[ 12 ];
-	for (int i=0;i<opts.length;i++) opts[i] = String.format("a=%4.2f",0.10+i*0.05);
-	opts[0] = "Ideal";
-	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(opts);	 // <-- java 1.7
+	final Double [] optsValue = new Double[ 20 ];
+	String [] optsLabel = new String[ optsValue.length ];
+
+	for (int i=1; i<=6; i++)		 optsValue[i] = i * 0.025;
+	for (int i=7; i<optsValue.length; i++)  optsValue[i] = 0.2 + (i-7) * 0.05;
+    
+	for (int i=1; i<optsValue.length; i++)	 optsLabel[i] = String.format("a = %5.3f",optsValue[i]);
+	
+	optsValue[0] = 1.;
+	optsLabel[0] = "Ideal";
+	
+
+	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(optsLabel);	 // <-- java 1.7
 	//final TComboBox comp = new TComboBox(opts); 
-	comp.setSelectedIndex(4);
+	comp.setSelectedIndex(9);
 	comp.setToolTipText("<html><b>Sets deviation from ideal OTF</b><br>"+
 	    "Lower valus for a's yield more medium frequency dampening (see manual)<br>"+
 	    "Typical values are a=0.2..0.4, so try with default first<br>"
@@ -263,8 +272,7 @@ public class OtfControl {
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		
-		double aValue = comp.getSelectedIndex()*0.05+0.10;
-		if (comp.getSelectedIndex()==0) aValue=1;
+		double aValue = optsValue[ comp.getSelectedIndex() ];
 		
 		OtfProvider otf = OtfProvider.fromEstimate( 
 		    naSp.getVal(), ldSp.getVal(), aValue, compType.getSelectedItem() );

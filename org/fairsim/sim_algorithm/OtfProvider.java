@@ -121,6 +121,13 @@ public class OtfProvider {
 	ret.isEstimate  = true;
 	ret.estimateAValue = a;
 
+	Tool.trace( "OTF estimate" );
+	Tool.trace( String.format("OTF NA %4.2f lamda %4.0f nm ", ret.na, ret.lambda ));
+	Tool.trace( String.format("OTF cutoff %5.3f ", ret.cutOff ));
+	Tool.trace( "OTF compensation type: "+compType);
+	Tool.trace( String.format("OTF compensation value: %5.3f",ret.estimateAValue));
+
+
 	// sample some values up to cutoff
 	for (int i=0; i< ret.samplesLateral ; i++) {
 	    // v: normalize [0..cutoff] -> [0..1]
