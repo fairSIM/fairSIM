@@ -343,14 +343,28 @@ public class ParameterControl {
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
 	// setup how much to exclude
-	Double [] excludes = new Double [] { .2,.3,.4,.5,.6,.7,.8 };
+	Double [] excludes = new Double [] { .2,.3,.4,.5,.6,.7,.8,.9,1.,1.1,1.2 };
 	final Tiles.LComboBox<Double> fitExclBox
 	     = new Tiles.LComboBox<Double>("Region to exclude from fit",excludes);
 	fitExclBox.setToolTipText("<html>In fraction of OTF support, how much<br>"
 	    +"of low frequency region not to search for peak<br>"
 	    +"(marked by circle in the output)");
 
-	fitExclBox.box.setSelectedIndex( 4 );
+	
+	// check for the entry in exlcudes[] array that is closest to the current  fitExclude value 
+	int closestIndex=4;
+	{
+	    double diff = Double.MAX_VALUE;
+	    for (int i=0; i<excludes.length; i++) {
+		double  p = Math.abs( excludes[i] - fitExclude );
+		if (p<diff) {
+		closestIndex=i;
+		diff=p;
+		}
+	    }
+	}
+
+	fitExclBox.box.setSelectedIndex( closestIndex );
 	p1.add( fitExclBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
