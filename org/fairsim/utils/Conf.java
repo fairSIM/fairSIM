@@ -82,6 +82,12 @@ public class Conf {
 	return root;
     }
 
+	public String visualizedString() {
+		String ret = "Namespace: "+namespace+"\n";
+		ret+=r().prettyPrint();
+		return ret;
+	}
+
 
     // ------ The different entries ------
 

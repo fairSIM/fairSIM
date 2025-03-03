@@ -150,6 +150,48 @@ public final class Tool {
         return currentKeyValueStore.storeString(key, value);
     }
 
+    /** Opens and returns the a default config file.
+     * This queries the 'default-config-file' key
+     * and if the key exists in the current key/value store,
+     * opens the config file. May return null
+     */
+    public static Conf getDefaultConfig() {
+        String fname = getString("default-values-file");
+        if (fname == null) {
+            Tool.trace("No default config set");
+            return null;
+        }
+        try {
+            return Conf.loadFile(fname);
+        } catch (Conf.SomeIOException e) {
+            Tool.error("IO Exception reading default config file", false);
+            return null;
+        }
+    }
+  
+    /** Opens and saves to the default config file.
+     * This queries the 'default-config-file' key
+     * and if the key exists in the current key/value store,
+     * opens and saves the config file. Returns true if successful.
+     */
+    public static boolean writeDefaultConfig(Conf cfg) {
+        String fname = getString("default-values-file");
+        if (fname == null) {
+            Tool.trace("No default config set");
+            return false;
+        }
+        try {
+            cfg.saveFile(fname);
+            return true;
+        } catch (Conf.SomeIOException e) {
+            Tool.error("IO Exception writing default config file", false);
+            return false;
+        }
+    }
+
+
+
+
 
     /** Decode a BCD timestamp (as used by PCO) 
      *	@param stamp input, typically image acquired by camera (first 16 entries used)

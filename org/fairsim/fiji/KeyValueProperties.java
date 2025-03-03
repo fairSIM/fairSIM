@@ -24,14 +24,11 @@ public class KeyValueProperties implements Tool.KeyValueStore {
     
     @Override
     public String retrieveString(String key) {
-        return Prefs.getString(Prefs.KEY_PREFIX+key);
+        return Prefs.getString(Prefs.KEY_PREFIX+"fairsim."+key);
     }
     @Override
     public boolean storeString(String key, String value) {
-        if (key.startsWith(Prefs.KEY_PREFIX)) {
-            throw new RuntimeException("IJ limitation, key cannot start with '"+Prefs.KEY_PREFIX+"'");
-        }
-        Prefs.set(key,value);    
+        Prefs.set("fairsim."+key,value);    
         Prefs.savePreferences();
         return true;
     }
