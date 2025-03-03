@@ -37,9 +37,27 @@ public class OtfProvider {
     // --- internal parameters ----
 
     public enum APPROX_TYPE {
-	EXPONENTIAL,
-	SPHERICAL,
-	NONE
+	EXPONENTIAL("exponential"),
+	SPHERICAL("spherical"),
+	NONE("none");
+
+	private final String id;
+	private APPROX_TYPE(String s) {id=s;}
+
+	public static APPROX_TYPE fromString(String name) {
+		APPROX_TYPE[] As = APPROX_TYPE.values();
+		for(int i = 0; i < As.length; i++)
+		{
+			if(As[i].id.equalsIgnoreCase(name))
+				return As[i];
+		}
+		return APPROX_TYPE.EXPONENTIAL;	// <-- TODO: Add an exception here instead of returning a default?
+	}
+
+	public String toString() {
+		return id;
+	}
+
     };
 
     // vals[band][idx], where idx = cycles / cyclesPerMicron
@@ -56,6 +74,7 @@ public class OtfProvider {
     private boolean isEstimate, isMultiBand; 
     int maxBand=1; 
     double estimateAValue=.3;
+	APPROX_TYPE estimateType=APPROX_TYPE.EXPONENTIAL;
     
     // for estimate: sample with how many points?
     // for data: this is overridden by data
@@ -120,11 +139,12 @@ public class OtfProvider {
 	ret.isMultiBand = false;
 	ret.isEstimate  = true;
 	ret.estimateAValue = a;
+	ret.estimateType = compType;
 
 	Tool.trace( "OTF estimate" );
 	Tool.trace( String.format("OTF NA %4.2f lamda %4.0f nm ", ret.na, ret.lambda ));
 	Tool.trace( String.format("OTF cutoff %5.3f ", ret.cutOff ));
-	Tool.trace( "OTF compensation type: "+compType);
+	Tool.trace( "OTF compensation type: "+compType.toString());
 	Tool.trace( String.format("OTF compensation value: %5.3f",ret.estimateAValue));
 
 
@@ -160,7 +180,7 @@ public class OtfProvider {
 	else 
 	    ret = String.format("NA %4.2f, lambda %4.0f, ", na, lambda);
 	if (isEstimate) 
-	    ret+=String.format("(est., a=%4.2f)", estimateAValue);
+	    ret+=String.format("(est., a=%4.2f, %s)", estimateAValue, estimateType.toString());
 	else
 	    ret+=String.format("(from file)");
 	return ret;
@@ -528,11 +548,23 @@ public class OtfProvider {
 	
 	// Initialize as estimate
 	if (estimate) {
-	    ret = fromEstimate(
-		fld.getDbl("NA").val(),
-		fld.getInt("emission").val(),
-		fld.getDbl("a-estimate").val()
-		);
+
+		if (fld.contains("estimation-type")) {
+		    ret = fromEstimate(
+			fld.getDbl("NA").val(),
+			fld.getInt("emission").val(),
+			fld.getDbl("a-estimate").val(),
+			APPROX_TYPE.fromString( fld.getStr("estimation-type").val() )
+			);
+		} else {
+			// backwards compatibility with old configuation files that
+			// do not have an estimation type entry, default to type 'exponential'
+			ret = fromEstimate(
+			fld.getDbl("NA").val(),
+			fld.getInt("emission").val(),
+			fld.getDbl("a-estimate").val()
+			);
+		}
 	}
 	
 	// Initialize from data	
@@ -594,6 +626,7 @@ public class OtfProvider {
 	// if this is an estimate
 	if ( this.isEstimate ) {
 	    fld.newDbl("a-estimate").setVal( this.estimateAValue );
+		fld.newStr("estimation-type").setVal( this.estimateType.toString());
 	}
 
 	// if this was read from file
@@ -641,7 +674,7 @@ public class OtfProvider {
 	    return;
 	}
 
-	OtfProvider otf = OtfProvider.fromEstimate( 1.4, 515, .241);
+	OtfProvider otf = OtfProvider.fromEstimate( 1.4, 515, .241, APPROX_TYPE.SPHERICAL);
 	
 	// output
 	if (args[0].equals("o")) {

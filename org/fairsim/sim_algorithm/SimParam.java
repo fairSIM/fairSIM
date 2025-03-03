@@ -553,7 +553,7 @@ public class SimParam implements Vec2d.Size {
 	fd.newInt("nr-angles").setVal(nrDirs);
 	fd.newInt("nr-bands").setVal(nrBands);
 	fd.newInt("nr-phases").setVal(nrPhases);
-	fd.newStr("img-seq").val( imgSeq.name());
+	fd.newStr("img-seq").setVal( imgSeq.name());
 	fd.newInt("img-size-pxl").setVal(imgSize);
 	fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
 	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );

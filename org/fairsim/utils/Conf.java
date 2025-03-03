@@ -465,9 +465,21 @@ public class Conf {
 	 * not contain any XML markup characters, as
 	 * it currently does not run through any encoding.
 	 * Use 'data' instead. */
-	public void val(String v) {
+	public void setVal(String v) {
 	    ourVal=v;
 	}
+
+	/** Set the value. 
+	 * Deprecated: use 'setVal(..)' instead.
+	 * Caution: String should
+	 * not contain any XML markup characters, as
+	 * it currently does not run through any encoding.
+	 * Use 'data' instead. */
+	@Deprecated
+	public void val(String v) {
+		ourVal=v;
+	}
+
 
 	@Override
 	String prettyPrint() {
