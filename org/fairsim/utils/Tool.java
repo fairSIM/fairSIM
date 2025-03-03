@@ -189,8 +189,30 @@ public final class Tool {
         }
     }
 
-
-
+    /** Create a mock key/value store that is not writable and only
+     * returns one key/value pair, 'default-values-file'.
+     * This is mainly for testing the config file feature
+     */
+    public static void setMockKeyValueForDefaultConfig(final String fname) {
+      setKeyValueStore( new KeyValueStore() {
+            @Override
+            public boolean storeString( String k, String v) {
+                return false;
+            }
+            @Override
+            public String retrieveString( String k) {
+                if (k.equals("default-values-file")) {
+                    return fname;
+                } else {
+                    return null;
+                }
+            }
+            @Override
+            public String toString() {
+                return "Mock key/value store, default file: "+fname;
+            }
+        });
+    }
 
 
     /** Decode a BCD timestamp (as used by PCO) 

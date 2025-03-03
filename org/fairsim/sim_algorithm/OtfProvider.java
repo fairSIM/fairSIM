@@ -616,10 +616,15 @@ public class OtfProvider {
 	return ret;
     }
 
-    /** Write out an OTF to a config */
+    /** Write out an OTF to a config, using default folder 'oft2d'  */
     public void saveConfig( Conf cfg ) {
 
-	Conf.Folder fld  = cfg.r().mk("otf2d");
+		Conf.Folder fld  = cfg.r().mk("otf2d");
+		saveConfig(fld);
+	}
+
+	/** Write out an OTF to any config folder */
+	public void saveConfig( Conf.Folder fld) {
 	fld.newDbl("NA").setVal( this.na );
 	fld.newInt("emission").setVal( (int)this.lambda );
 	

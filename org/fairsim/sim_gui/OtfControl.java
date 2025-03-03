@@ -25,6 +25,7 @@ import javax.swing.JPanel;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 
 import javax.swing.Box;
@@ -245,6 +246,7 @@ public class OtfControl {
 	    "OTF Approximation", true);
 	
 	JPanel p1 = new JPanel();
+	JPanel p1extra = new JPanel();
 	JPanel p2 = new JPanel();
 	JPanel p3 = new JPanel();
 	p3.setBorder(BorderFactory.createTitledBorder(
@@ -264,6 +266,10 @@ public class OtfControl {
 	p1.add( Box.createHorizontalGlue());
 	p1.add( new JLabel("Type:"));
 	p1.add( compType );
+	
+	final JCheckBox setNewDefaultsCB = new JCheckBox();
+	setNewDefaultsCB.setText("Set as new defaults?");
+	p1extra.add(setNewDefaultsCB);
 
 	JButton ok = new JButton("Set");
 	JButton cl = new JButton("Cancel");
@@ -277,7 +283,18 @@ public class OtfControl {
 		OtfProvider otf = OtfProvider.fromEstimate( 
 		    naSp.getVal(), ldSp.getVal(), aValue, compType.getSelectedItem() );
 		setOtf( otf );
-		
+
+		if (setNewDefaultsCB.isSelected()) {
+
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg == null) {
+				Tool.error("No default config available", false);				
+			} else {
+				otf.saveConfig( cfg.r().mk("default-otf"));
+				Tool.writeDefaultConfig(cfg);
+			}
+
+		}				
 		otfApr.dispose();
 	    }
 	});
@@ -292,6 +309,7 @@ public class OtfControl {
 	p2.add(cl);
 
 	p3.add(p1);
+	p3.add(p1extra);
 	p3.add(p2);
 	otfApr.add(p3);
 	otfApr.pack();
@@ -442,6 +460,10 @@ public class OtfControl {
 
     /** for testing */
     public static void main(String [] args ) {
+
+	if (args.length>0)
+		Tool.setMockKeyValueForDefaultConfig( args[0]);
+	
 	JFrame test = new JFrame("Test OTF GUI");
 	OtfControl oc = new OtfControl(test, SimParamGUI.dummySP());
 	test.add(oc.getPanel());
