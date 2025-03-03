@@ -32,6 +32,7 @@ public final class Tool {
     private Tool() {}
     /** The tool implementation in use*/
     static private Tool.Logger currentLogger;
+    static private Tool.KeyValueStore currentKeyValueStore;
     static private boolean errorShown = false;
 
     /** Simple logger */
@@ -111,6 +112,42 @@ public final class Tool {
 	    path=System.getProperty("user.home")+path.substring(1);
 	}
 	return new File(path).getAbsoluteFile();
+    }
+
+    /** Public interface to provide acces to a key/value store, e.g. for persistant config values */
+    public interface KeyValueStore {
+        /** Retrieve a value from the key/value store. should return null if key does not exists */
+        public String retrieveString(String key);
+        /** Enter a key a key/value pair into the key/value store.
+         * @return Return true if key/value pair was successfully saved
+        */
+        public boolean storeString(String key, String value);
+    }
+
+    /** set the key/value store used by the Tool */
+    public static void setKeyValueStore(KeyValueStore store) {
+        currentKeyValueStore = store;
+        trace("key value store updated to: "+currentKeyValueStore.toString());
+    }
+
+    /** Retrive a string from the key-value store.
+     * 
+     * @param key The key to retrieve
+     * @return The value for key, or null if key does not exist
+     */
+    public static String getString(String key) {
+        if (currentKeyValueStore == null) return null;
+        return currentKeyValueStore.retrieveString(key);
+    }
+
+    /** Enter a string into the key/value store.
+     * @param key The key to enter
+     * @param value The value to eneter
+     * @return True if the key/value pair was saved
+     */
+    public static boolean setString(String key, String value) {
+        if (currentKeyValueStore == null) return false;
+        return currentKeyValueStore.storeString(key, value);
     }
 
 
