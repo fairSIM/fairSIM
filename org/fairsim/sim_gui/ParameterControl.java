@@ -44,6 +44,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 import org.fairsim.utils.Tool;
+import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
 
@@ -208,7 +209,11 @@ public class ParameterControl {
 	    @Override
 	    protected void done() {
 		running = false;
-		showParameterResults();
+
+		Conf cfg = Tool.getDefaultConfig();
+		if (cfg==null || cfg.r().getBoolValue("show-result-summary", true) )
+			showParameterResults();
+				
 		simp.refreshTable();
 		ourState.setText("Complete");
 		if ( !recc.paramFitFailed ) {
@@ -239,7 +244,7 @@ public class ParameterControl {
 	    { "color=\"red\""   , "NO FIT!"}}; 
 
 
-	String htmlContent = "<html><body><h2>Parameter fit summery</h2>"+
+	String htmlContent = "<html><body><h2>Parameter fit summary</h2>"+
 	    "<table>";
 	htmlContent += "<tr><th>res. impr.</th><<th>mod. est.</th><th>assesment</th></tr>";
 

@@ -128,6 +128,29 @@ public class FairSim_ImageJplugin implements PlugIn {
 		IJ.log("[fairSIM] Default config cleared");
 	}
 
+	if (args[0].equals("resultSummary")) {
+
+		if (args.length<2 || (!(args[1].equals("show") || args[1].equals("hide") ))) {
+			Tool.error("Malformed plugin call",true);
+			return;
+		}
+
+		boolean summary = true;
+		if (args[1].equals("hide"))
+			summary = false;
+
+		Conf cfg = Tool.getDefaultConfig();
+		if (cfg!=null) {
+			cfg.r().newBool("show-result-summary").setVal(summary);
+			Tool.writeDefaultConfig(cfg);
+			Tool.tell("fairSIM "+((summary)?("show"):("hide"))+"s result summary");
+		} else {
+			Tool.error("No fairSIM config file selected", false);
+		}
+	}
+
+
+
 	if (sp==null)
 	    return;
 
