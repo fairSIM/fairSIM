@@ -218,17 +218,17 @@ public class OtfControl {
 	// Load default values from config, if available
 	Conf defaultConf = Tool.getDefaultConfig();
 	if (defaultConf!= null) {
+		Conf.Folder df;
 		try {
-			Conf.Folder df = defaultConf.r().cd("default-otf");
+			df = defaultConf.r().cd("default-otf");
 			defaultNA = df.getDblValue( "NA", defaultNA);
 			defaultWL = df.getIntValue( "emission", defaultWL);
 			String approxType = df.getStrValue( "estimation-type", "exponential");
 			defaultApproxType = OtfProvider.APPROX_TYPE.fromString(approxType);
 			defaultApproxValue = df.getDblValue("a-estimate", 0.3);
-			} 
-			catch (Conf.EntryNotFoundException e) {
-			 	Tool.error("OTF default config incomplete: "+e.toString(), false);
-			}
+		} catch (Conf.EntryNotFoundException e) {
+			Tool.trace("No OTF defined in default config");
+		}
 	} else {
 		Tool.trace("No default config set, using standard values");
 	}

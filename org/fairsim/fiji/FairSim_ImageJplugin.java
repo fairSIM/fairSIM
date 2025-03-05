@@ -47,9 +47,6 @@ public class FairSim_ImageJplugin implements PlugIn {
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
 
-	// set access to ImageJ key/value store
-	Tool.setKeyValueStore(new KeyValueProperties());
-
 	SimParam sp=null;
 	String [] args = inputarg.split("-");
 
@@ -58,6 +55,9 @@ public class FairSim_ImageJplugin implements PlugIn {
 	    setLog(true);
 	else
 	    setLog(false);
+
+	// set access to ImageJ key/value store
+	Tool.setKeyValueStore(new KeyValueProperties());
 
 	// show the 'about' window
 	if (args[0].equals("about")) {
@@ -117,13 +117,16 @@ public class FairSim_ImageJplugin implements PlugIn {
 				JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
 		   		JOptionPane.ERROR_MESSAGE);
 	   		}
-			Tool.tell("New default config selected: "+fname);
+			IJ.log("[fairSIM] New default config selected: "+fname);
 			Tool.setString("default-values-file",fname);
 		}
 	
 	}
 
-
+	if (args[0].equals("clearDefaultConfig")) {
+		Tool.setString("default-values-file", null);
+		IJ.log("[fairSIM] Default config cleared");
+	}
 
 	if (sp==null)
 	    return;
@@ -144,17 +147,18 @@ public class FairSim_ImageJplugin implements PlugIn {
 	    Tool.setLogger( new Tool.Logger () {
 		@Override
 		public void writeTrace(String w) {
-		    IJ.log(w);
+		    IJ.log("[fairSIM] "+w);
 		}
 		@Override
 		public void writeError(final String w, boolean fatal) {
-		    IJ.log("ERR: "+w);
+		    IJ.log("[fairSIM ERROR] "+w);
 		    if (fatal)
 			IJ.error(w);
 		}
 		@Override
 		public void writeShortMessage(String w) {
 		    IJ.showStatus(w);
+			IJ.log("(fairSIM) " + w);
 		}
 
 	    });
@@ -171,7 +175,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 		}
 		@Override
 		public void writeError(final String w, boolean fatal) {
-		    IJ.log("ERR: "+w);
+		    IJ.log("[fairSIM ERROR] "+w);
 		    if (fatal)
 			IJ.error(w);
 		}

@@ -127,7 +127,7 @@ public final class Tool {
     /** set the key/value store used by the Tool */
     public static void setKeyValueStore(KeyValueStore store) {
         currentKeyValueStore = store;
-        trace("key value store updated to: "+currentKeyValueStore.toString());
+        Tool.trace("using key/value store provided by: "+currentKeyValueStore.toString());
     }
 
     /** Retrive a string from the key-value store.
