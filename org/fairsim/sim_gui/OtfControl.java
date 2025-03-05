@@ -210,13 +210,39 @@ public class OtfControl {
     /** Displays the OTF approx dialog */
     void displDialog() {
 	
+	double 	defaultNA = 1.4;
+	int 	defaultWL = 525;
+	OtfProvider.APPROX_TYPE defaultApproxType = OtfProvider.APPROX_TYPE.EXPONENTIAL;
+	double  defaultApproxValue = 0.3;
+
+	// Load default values from config, if available
+	Conf defaultConf = Tool.getDefaultConfig();
+	if (defaultConf!= null) {
+		try {
+			Conf.Folder df = defaultConf.r().cd("default-otf");
+			defaultNA = df.getDblValue( "NA", defaultNA);
+			defaultWL = df.getIntValue( "emission", defaultWL);
+			String approxType = df.getStrValue( "estimation-type", "exponential");
+			defaultApproxType = OtfProvider.APPROX_TYPE.fromString(approxType);
+			defaultApproxValue = df.getDblValue("a-estimate", 0.3);
+			} 
+			catch (Conf.EntryNotFoundException e) {
+			 	Tool.error("OTF default config incomplete: "+e.toString(), false);
+			}
+	} else {
+		Tool.trace("No default config set, using standard values");
+	}
+
 	// NA, lambda, compensation
-	final Tiles.LNSpinner naSp = new Tiles.LNSpinner("NA", 1.4,0.5,1.7,0.01);
-	final Tiles.LNSpinner ldSp = new Tiles.LNSpinner("\u03bb",  525,380,1200,5);
+	final Tiles.LNSpinner naSp = new Tiles.LNSpinner("NA", defaultNA,0.5,1.7,0.01);
+	final Tiles.LNSpinner ldSp = new Tiles.LNSpinner("\u03bb",  defaultWL,380,1200,5);
 	ldSp.spr.setToolTipText("emission wavelength");
 	naSp.spr.setToolTipText("NA objective");
 	
 	// compensation
+	final Tiles.LNSpinner comp = new Tiles.LNSpinner("a", defaultApproxValue, 0.05,1,0.025);
+
+	/*
 	final Double [] optsValue = new Double[ 20 ];
 	String [] optsLabel = new String[ optsValue.length ];
 
@@ -232,6 +258,8 @@ public class OtfControl {
 	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(optsLabel);	 // <-- java 1.7
 	//final TComboBox comp = new TComboBox(opts); 
 	comp.setSelectedIndex(9);
+	*/
+
 	comp.setToolTipText("<html><b>Sets deviation from ideal OTF</b><br>"+
 	    "Lower valus for a's yield more medium frequency dampening (see manual)<br>"+
 	    "Typical values are a=0.2..0.4, so try with default first<br>"
@@ -239,7 +267,11 @@ public class OtfControl {
 
 	final Tiles.TComboBox<OtfProvider.APPROX_TYPE> compType 
 		= new Tiles.TComboBox<OtfProvider.APPROX_TYPE>( OtfProvider.APPROX_TYPE.values());
+		
+	compType.setSelectedItem(defaultApproxType);
 	compType.setToolTipText("Select the OTF compensation type");
+
+
 
 	// build the dialog
 	final JDialog otfApr = new JDialog(baseframe,
@@ -278,10 +310,10 @@ public class OtfControl {
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		
-		double aValue = optsValue[ comp.getSelectedIndex() ];
-		
+		//double aValue = optsValue[ comp.getSelectedIndex() ];
+				
 		OtfProvider otf = OtfProvider.fromEstimate( 
-		    naSp.getVal(), ldSp.getVal(), aValue, compType.getSelectedItem() );
+		    naSp.getVal(), ldSp.getVal(), comp.getVal(), compType.getSelectedItem() );
 		setOtf( otf );
 
 		if (setNewDefaultsCB.isSelected()) {
