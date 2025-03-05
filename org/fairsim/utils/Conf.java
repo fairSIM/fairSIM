@@ -232,6 +232,31 @@ public class Conf {
 			return defaultValue;
 		}
 	}
+
+	/** Return the Boolean Entry named 'name', raises an exception
+	 *  if it does not exist.
+	 *  Convenience shortcut to getEntryOrFail(name, BoolEntry.class) */
+	public BoolEntry getBool(String name) throws EntryNotFoundException {
+	    return getEntryOrFail(name,BoolEntry.class);
+	}
+	
+	/** Create a new Boolean Entry 'i' named 'name' (and returns it). */
+	public BoolEntry newBool(String name) {
+	    BoolEntry e = new BoolEntry();
+	    setEntry(name, e);
+	    return e;
+	}
+
+	/** Return the value of the Boolean Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public boolean getBoolValue(String name, boolean defaultValue) {
+		try {
+			return getEntryOrFail(name, BoolEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
 	
 	/** Return the Double Entry named 'name', or null.
 	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
@@ -406,6 +431,68 @@ public class Conf {
 
     }
    
+
+/** Entry for the common case of storing one or more ints */
+	public static class BoolEntry extends Entry {
+	boolean [] ourVals=new boolean[1];
+
+	/** Get all values */
+	public boolean [] vals() {
+	    return ourVals;
+	}
+	/** Get first value */
+	public boolean val() {
+	    return ourVals[0];
+	}
+	/** Set new values */
+	public BoolEntry setVal(boolean ... i) {
+	    if (i.length==0)
+		throw new RuntimeException("Array empty!");
+	    ourVals=new boolean[i.length];
+	    System.arraycopy( i, 0, ourVals, 0, i.length);
+	    return this;
+	}
+	
+	@Override
+	String prettyPrint() {
+	    String ret  = "(BOOL) ";
+	    for (int i=0; i<Math.min(5,ourVals.length); i++)
+		ret+=" "+((ourVals[i])?("true"):("false"));
+	    if (ourVals.length>5)
+		ret+=" ... ("+ourVals.length+" total)";
+	    return ret;
+	}
+	
+	@Override
+	String getText() {
+	    String booltext=" ";
+	    for (boolean b : ourVals)
+		booltext += ((b)?("1"):("0"))+" ";
+	    return booltext;
+	}
+	
+	@Override
+	String getType() { return "bool"; }
+	
+	@Override
+	void fromText( String text ) {
+	    Scanner sc = new Scanner(text);
+	    sc.useLocale( Locale.US );
+	    
+	    ArrayList<Integer> i = new ArrayList<Integer>();
+	    while ( sc.hasNextInt() )
+			i.add( sc.nextInt() );
+	    
+	    ourVals = new boolean [ i.size() ];
+	    for (int j=0; j<ourVals.length; j++)
+		ourVals[j] = (i.get(j) !=0)?(true):(false);
+
+	}
+	}
+
+
+
+
     /** Entry for the common case of storing one or more Doubles */
     public static class DoubleEntry extends Entry {
 	
@@ -525,7 +612,7 @@ public class Conf {
 
 	@Override
 	String prettyPrint() {
-	    String ret  = " (STR) "+ourVal+"\n";
+	    String ret  = " (STR) "+ourVal;
 	    return ret;
 	}
 	@Override
@@ -679,14 +766,18 @@ public class Conf {
 	    Node n = cld.item(i);
 	    if (n.getNodeType() != Node.ELEMENT_NODE)
 		continue;
-	    
+	    		
 	    Element e = (Element)n;
 	    String name = e.getTagName();
 
+		// check if we found the data type
+		boolean typeFound = false;
+
 	    // now, if no type is set, assume it is a folder, recurse into to
 	    if (e.getAttribute("type").equals("")) {
-		Folder nf = fdl.mk( name );
-		importXmlElement( e, nf );
+			Folder nf = fdl.mk( name );
+			importXmlElement( e, nf );
+			typeFound=true;
 	    }
 
 	    // otherwise, see if we can import it
@@ -699,25 +790,44 @@ public class Conf {
 		System.out.print("["+j+"]");
 	    System.out.println(""); */
 
+		
+		// TODO: create an option for new data types to register themselves here
+		
+		try {
 
-	    try {
-
-		if ( t.equals( "int" )) 
+		if ( t.equals( "int" )) {
 		    fdl.newInt( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "decimal" )) 
+		if ( t.equals( "decimal" )) {
 		    fdl.newDbl( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "string" )) 
+		if ( t.equals( "string" )) {
 		    fdl.newStr( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "data" )) 
+		if ( t.equals( "data" )) {
 		    fdl.newData( name ).fromText( c );
-	    
-	    
+			typeFound = true;
+		}
+
+		if ( t.equals( "bool")) {
+			fdl.newBool( name ).fromText( c );
+			typeFound = true;
+		}
+	    	    
 	    } catch ( Exception ex ) {
-		throw new SomeIOException(ex);
+			throw new SomeIOException(ex);
 	    }
+
+		if (!typeFound) {
+			Exception ex = new Exception("Found unkonwn data type " + t);
+			throw new SomeIOException(ex);
+		}
 	
 	
 	}
@@ -741,6 +851,7 @@ public class Conf {
 	public final Exception original;
 	SomeIOException(Exception e) {
 	    super("IO Problem: "+e.toString());
+		e.printStackTrace();
 	    original = e;
 	}
     }
@@ -801,6 +912,11 @@ public class Conf {
 
 	    cfg.r().mk("exaple-dbl").newDbl("array").setVal(1.2, 3.4, 5.6, 6.5);
 	    cfg.r().mk("exaple-dbl").newDbl("exact").setVal(1.6).setExactOutput(true);
+		
+		cfg.r().mk("exaple-bool").newBool("boolean-values").setVal(true, false);
+		cfg.r().mk("exaple-bool").newBool("single-boolean").setVal(true);
+
+		cfg.r().mk("example-string").newStr("just-a-string").setVal("A string value");
 
 	    byte [] test = new byte[40];
 	    for (int i=0; i<40; i++) test[i]=(byte)(Math.random()*255);
