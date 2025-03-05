@@ -208,53 +208,89 @@ public class Conf {
 
 	// ------ Convenient element shortcuts ------
 
-	/** Return the Integer named 'name', raises an exception
+	/** Return the Integer Entry named 'name', raises an exception
 	 *  if it does not exist.
 	 *  Convenience shortcut to getEntryOrFail(name, IntEntry.class) */
 	public IntEntry getInt(String name) throws EntryNotFoundException {
 	    return getEntryOrFail(name,IntEntry.class);
 	}
 	
-	/** Create a new Integer 'i' named 'name' (and returns it). */
+	/** Create a new Integer Entry 'i' named 'name' (and returns it). */
 	public IntEntry newInt(String name) {
 	    IntEntry e = new IntEntry();
 	    setEntry(name, e);
 	    return e;
 	}
+
+	/** Return the value of the Integer Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public int getIntValue(String name, int defaultValue) {
+		try {
+			return getEntryOrFail(name, IntEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
 	
-	/** Return the Double named 'name', or null.
+	/** Return the Double Entry named 'name', or null.
 	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
 	public DoubleEntry getDbl(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, DoubleEntry.class ); 
 	}
 	
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new Double Entry 'd' named 'name' */
 	public DoubleEntry newDbl(String name ) {
 	    DoubleEntry e = new DoubleEntry();
 	    setEntry(name, e);
 	    return e;
 	}
 	
-	/** Return the Double named 'name', or null.
-	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
+	/** Return the value of the Dobule Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public double getDblValue(String name, double defaultValue) {
+		try {
+			return getEntryOrFail(name, DoubleEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+
+
+	/** Return the String Entry named 'name', or null.
+	 *  Convenience shortcut to getEntry(name, StringEntry.class) */
 	public StringEntry getStr(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, StringEntry.class ); 
 	}
 	
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new String Entry named 'name' */
 	public StringEntry newStr(String name) {
 	    StringEntry e = new StringEntry();
 	    setEntry(name, e);
 	    return e;
 	}
+
+	/** Return the value of the String Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public String getStrValue(String name, String defaultValue) {
+		try {
+			return getEntryOrFail(name, StringEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+
+
 	
-	/** Return the Double named 'name', or null.
-	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
+	/** Return the Data Entry named 'name', or null.
+	 *  Convenience shortcut to getEntry(name, DataEntry.class) */
 	public DataEntry getData(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, DataEntry.class ); 
 	}
 	
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new Data Entry named 'name' */
 	public DataEntry newData(String name) {
 	    DataEntry e = new DataEntry();
 	    setEntry(name, e);
