@@ -93,6 +93,7 @@ public class OtfProvider {
 	private double [][] attFWHM;
 	private int [] attLength = {1};
     private boolean useAttenuation;
+	private boolean bandsShareAttenuation;
 
 
     /** For [0..cutoff] normalized to [0..1], return the ideal OTF. OTF of an ideal, 
@@ -183,10 +184,7 @@ public class OtfProvider {
 	ret.attStrength = new double[bands][1];
 	ret.attFWHM = new double[bands][1];
 	
-	for (int b=0;b<bands;b++) {		
-		ret.addAttenuation( b, Tool.copy(0.99), Tool.copy(1.2) );
-	}
-	
+	ret.addAttenuation( Tool.copy(0.99), Tool.copy(1.2) );
 	ret.switchAttenuation( false );
 
 	return ret;
@@ -311,8 +309,20 @@ public class OtfProvider {
 	@Deprecated
 	public void setAttenuation( double strength, double fwhm) {
 		for ( int b = 0; b<vals.length; b++)
-			addAttenuation( b, Tool.copy(strength), Tool.copy(fwhm));
+			addAttenuationPerBand( b, Tool.copy(strength), Tool.copy(fwhm));
 		switchAttenuation(true);
+	}
+
+	/** Add attenuation to all OTF bands
+	 * 
+	 * @param strengths A list of attenuation strengths.
+	 * @param fwhms A list of attenuations FWHM, in cycles/micron
+	 */
+	public void addAttenuation( double [] strengths, double [] fwhms) {
+		for (int b=0; b<maxBand; b++) {
+			addAttenuationPerBand( b, strengths, fwhms);
+		}
+		bandsShareAttenuation = true;
 	}
 
 	/** Add attenuations to a specific OTF band.
@@ -321,8 +331,10 @@ public class OtfProvider {
 	 * @param strengths A list of attenuation strengths.
 	 * @param fwhms A list of attenuations FWHM, in cycles/micron
 	 */
-    public void addAttenuation( int band, double [] strengths, double [] fwhms) {
-	
+    public void addAttenuationPerBand( int band, double [] strengths, double [] fwhms) {
+
+	bandsShareAttenuation=false;
+
 	if (band<0 || band >= maxBand)
 		throw new IllegalArgumentException("band needs to be >=0, <maxBand, out of range");
 
@@ -383,6 +395,11 @@ public class OtfProvider {
         return useAttenuation;
     }
     
+	/** Get if all bands share the same attenuation */
+	public boolean getBandsShareAttenuation() {
+		return bandsShareAttenuation;
+	}
+
 	/** Get the attenuation strengths for a band*/
 	public double [] getAttenuationStrengths(int band) {
 		// TODO range check exceptions
@@ -690,10 +707,7 @@ public class OtfProvider {
 		ret.attStrength = new double[ret.maxBand][1];
 		ret.attFWHM = new double[ret.maxBand][1];
 	
-		for (int b=0;b<ret.maxBand;b++) {		
-			ret.addAttenuation( b, Tool.copy(0.99), Tool.copy(1.2) );
-		}
-		    
+		ret.addAttenuation( Tool.copy(0.99), Tool.copy(1.2) );	 
 	    ret.switchAttenuation( false );
 	}
 
@@ -704,12 +718,12 @@ public class OtfProvider {
 		// if no 'band' folders are presend, assume the same for all bands
 		if (!att.contains("band-0")) {
 			for (int b=0; b<ret.maxBand; b++) {
-	    		ret.addAttenuation(b, att.getDbl("strength").vals(), att.getDbl("FWHM").vals());
+	    		ret.addAttenuation(att.getDbl("strength").vals(), att.getDbl("FWHM").vals());
 			}
 		} else {
 			for (int b=0; b<ret.maxBand; b++) {
 				Conf.Folder attBand = att.cd(String.format("band-%d", b));
-				ret.addAttenuation( b, attBand.getDbl("strength").vals(), attBand.getDbl("FWHM").vals());
+				ret.addAttenuationPerBand( b, attBand.getDbl("strength").vals(), attBand.getDbl("FWHM").vals());
 			}
 		}
 	    ret.switchAttenuation( true );
@@ -782,8 +796,8 @@ public class OtfProvider {
 	}
 
 	OtfProvider otf = OtfProvider.fromEstimate( 1.4, 515, .4, APPROX_TYPE.SPHERICAL, 2);
-	otf.addAttenuation(0, Tool.copy(0.9999, 0.5), Tool.copy(.5, 6.));
-	otf.addAttenuation(1, Tool.copy(0.97, 0.9), Tool.copy(.6, 4.0));
+	otf.addAttenuationPerBand(0, Tool.copy(0.9999, 0.5), Tool.copy(.5, 6.));
+	otf.addAttenuationPerBand(1, Tool.copy(0.97, 0.9), Tool.copy(.6, 4.0));
 	
 	// output
 	if (args[0].equals("o")) {

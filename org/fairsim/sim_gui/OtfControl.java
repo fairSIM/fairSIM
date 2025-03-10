@@ -386,13 +386,15 @@ public class OtfControl {
 	final Tiles.LNSpinner [][] attFWHM = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
 	final JCheckBox attEnableCB [][] = new JCheckBox[ sp.nrBand() ][maxAttenuationFilterCount];
 	final boolean attState [][] = new boolean[sp.nrBand()][maxAttenuationFilterCount];
-	
+
 	for ( int b=0; b<sp.nrBand(); b++) {
 		JPanel pPerBand = new JPanel();
 		pPerBand.setLayout( new BoxLayout( pPerBand, BoxLayout.PAGE_AXIS ));
 		pPerBand.setBorder(BorderFactory.createTitledBorder(String.format("Band %d",b)));
 		attState[b][0] = true;
 		final int band = b;
+
+		boolean bandEnabled = ((b==0) || (!sp.otf().getBandsShareAttenuation()));
 
 		double [] attPresetStr  = sp.otf().getAttenuationStrengths(b);
 		double [] attPresetFWHM = sp.otf().getAttenuationFWHMs(b);
@@ -415,8 +417,8 @@ public class OtfControl {
 			attStr[b][fc].setToolTipText("Strength of the attenuation");
 			attFWHM[b][fc].setToolTipText("FWHM of the attenuation");
 			
-			attStr[b][fc].setEnabled( fc==0 );
-			attFWHM[b][fc].setEnabled( fc==0 );
+			attStr[b][fc].setEnabled( attPresetStr.length>fc && bandEnabled);
+			attFWHM[b][fc].setEnabled( attPresetStr.length>fc && bandEnabled);
 
 			p1.add( Box.createHorizontalGlue());
 			p1.add( attStr[b][fc] );
@@ -427,7 +429,7 @@ public class OtfControl {
 			JPanel p2 = new JPanel();
 			p2.setLayout( new BoxLayout( p2, BoxLayout.PAGE_AXIS ));
 			attEnableCB[b][fc] = new JCheckBox("enable filter",(attPresetStr.length>fc));
-			attEnableCB[b][fc].setEnabled(fc!=0);
+			attEnableCB[b][fc].setEnabled( fc!=0 && bandEnabled );
 			attEnableCB[b][fc].addActionListener( new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					boolean state = attEnableCB[band][filterCount].isSelected();
@@ -444,7 +446,7 @@ public class OtfControl {
 		p0.add(pPerBand);
 	}
 	
-	final JCheckBox linkBandsBox = new JCheckBox("Link bands");
+	final JCheckBox linkBandsBox = new JCheckBox("Link bands", sp.otf().getBandsShareAttenuation());
 	linkBandsBox.addActionListener( new ActionListener(){
 		@Override
 		public void actionPerformed( ActionEvent e) {
@@ -458,7 +460,6 @@ public class OtfControl {
 			}
 		}
 	);
-	linkBandsBox.setSelected(true);
 	p0.add(linkBandsBox);
 
 	final JDialog attDialog = new JDialog(baseframe,
@@ -473,29 +474,32 @@ public class OtfControl {
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		
-			for (int band = 0 ; band<sp.nrBand(); band++) {
-				
-				// take all valus from band 0 if band linking is selected
-				int b = (linkBandsBox.isSelected())?(0):(band);
+			int maxBand = (linkBandsBox.isSelected())?(1):(sp.nrBand());
+
+			for (int band = 0 ; band<maxBand; band++) {
 				
 				// extract only selected filter channels
 				int count=0;
 				for (int i=0; i<maxAttenuationFilterCount; i++) {
-					if (attState[b][i]) count++;
+					if (attState[band][i]) count++;
 				}
 				double [] attValueStr  = new double[count];
 				double [] attValueFWHM = new double[count];
 				count=0;
 				for (int i=0; i<maxAttenuationFilterCount; i++) {
-					if (attState[b][i]) {
-						attValueStr[count]=attStr[b][i].getVal();
-						attValueFWHM[count]=attFWHM[b][i].getVal();
+					if (attState[band][i]) {
+						attValueStr[count]=attStr[band][i].getVal();
+						attValueFWHM[count]=attFWHM[band][i].getVal();
 						count++;
 					}
 				}
 				
 				// update OTF
-				sp.otf().addAttenuation(b, attValueStr, attValueFWHM);
+				if (maxBand==1) {
+					sp.otf().addAttenuation( attValueStr, attValueFWHM);
+				} else {
+					sp.otf().addAttenuationPerBand(band, attValueStr, attValueFWHM);
+				}
 			}
 		
 		
