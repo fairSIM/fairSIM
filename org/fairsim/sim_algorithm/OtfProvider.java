@@ -19,6 +19,9 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.sim_algorithm;
 
 import org.fairsim.linalg.Vec2d;
+
+import java.util.Arrays;
+
 import org.fairsim.linalg.Cplx;
 import org.fairsim.linalg.MTool;
 
@@ -63,8 +66,9 @@ public class OtfProvider {
     // vals[band][idx], where idx = cycles / cyclesPerMicron
     private Cplx.Float [][] vals	=  null; 
     private Cplx.Float [][] valsAtt	=  null; 
-    private float      [][] valsOnlyAtt =  null; 
-    
+    private float      [][][] valsOnlyAtt =  null; 
+
+
     // physical units
     private double cyclesPerMicron;
     private double na, lambda, cutOff;
@@ -85,7 +89,9 @@ public class OtfProvider {
     private double vecCyclesPerMicron=-1;
 
     // attenuation strength (0..1) and fhwm (in cycles/micron)
-    private double attStrength = .99, attFWHM = 1.2;
+	private double [][] attStrength;
+	private double [][] attFWHM;
+	private int [] attLength = {1};
     private boolean useAttenuation;
 
 
@@ -110,7 +116,7 @@ public class OtfProvider {
 
     // TODO: deprecate and finally remove this function version
     public static OtfProvider fromEstimate(double na, double lambda, double a ) {
-	return fromEstimate(na,lambda,a,APPROX_TYPE.EXPONENTIAL);
+	return fromEstimate(na,lambda,a,APPROX_TYPE.EXPONENTIAL, 1);
     }
 
     /** Create a new OTF from a (very basic) estimate.
@@ -118,14 +124,17 @@ public class OtfProvider {
      *  real-world OTFs from the theoretical optimum.
      *  a=1 yields an ideal OTF, a=0.2 .. 0.4 are more realistic,
      *  a has no effect on cutoff.
-     *  @param na Objectives NA
-     *  @param lambda Emission wavelength (nm)
-     *  @param a curvature factor, a = [0..1]
+     *  @param na Objectives NA [0.1 .. 3.0]
+     *  @param lambda Emission wavelength (nm) [100..3000]
+     *  @param a curvature factor, a = [0..1.1]
      *  @param compType which compensation formula to use
      * */
-    public static OtfProvider fromEstimate(double na, double lambda, double a, APPROX_TYPE compType ) {
-	if ( (a<0)||(a>1) || (na<0.3) || (na>2.2) || (lambda<300) || (lambda>1500) )
+    public static OtfProvider fromEstimate(double na, double lambda, double a, APPROX_TYPE compType, final int bands ) {
+	if ( (a<0)||(a>1.1) || (na<0.1) || (na>3) || (lambda<100) || (lambda>3000) )
 	    throw new IllegalArgumentException("unphysical input parameters");
+
+	if (bands <1 || bands>5)
+		throw new IllegalArgumentException("please use 1 to 5 bands in OTF estimation");
 
 	OtfProvider ret = new OtfProvider();
 
@@ -133,16 +142,17 @@ public class OtfProvider {
 	ret.na = na; ret.lambda = lambda;
 	ret.cutOff = 1000 / ( lambda / na / 2 ); 
 	ret.cyclesPerMicron = ret.cutOff / ret.samplesLateral ;
-	ret.vals	= new Cplx.Float[1][ ret.samplesLateral ];
-	ret.valsAtt	= new Cplx.Float[1][ ret.samplesLateral ];
-	ret.valsOnlyAtt = new	   float[1][ ret.samplesLateral ];
-	ret.isMultiBand = false;
+	ret.vals	= new Cplx.Float[bands][ ret.samplesLateral ];
+	ret.valsAtt	= new Cplx.Float[bands][ ret.samplesLateral ];
+	ret.valsOnlyAtt = new  float[bands][1][ ret.samplesLateral ];
+	ret.isMultiBand = (bands>1);
+	ret.maxBand = bands;
 	ret.isEstimate  = true;
 	ret.estimateAValue = a;
 	ret.estimateType = compType;
 
 	Tool.trace( "OTF estimate" );
-	Tool.trace( String.format("OTF NA %4.2f lamda %4.0f nm ", ret.na, ret.lambda ));
+	Tool.trace( String.format("OTF NA %4.2f lamda %4.0f nm, %d bands ", ret.na, ret.lambda, bands ));
 	Tool.trace( String.format("OTF cutoff %5.3f ", ret.cutOff ));
 	Tool.trace( "OTF compensation type: "+compType.toString());
 	Tool.trace( String.format("OTF compensation value: %5.3f",ret.estimateAValue));
@@ -162,11 +172,21 @@ public class OtfProvider {
 		r *= (float)(1 - ( (1-a)* (1 - 4*(Math.pow(v-.5,2)))  ));
 	    }
 
-	    ret.vals[0][i] = new Cplx.Float( r, 0 );
+		for (int b=0; b<ret.maxBand; b++) {
+	    	ret.vals[b][i] = new Cplx.Float( r, 0 );
+			ret.valsAtt[b][i] = new Cplx.Float( r, 0 );
+		}
 	}
 	
-	// initialize attenuation cache
-	ret.setAttenuation( ret.attStrength, ret.attFWHM );
+	// initialize attenuation values
+	ret.attLength = new int[bands];
+	ret.attStrength = new double[bands][1];
+	ret.attFWHM = new double[bands][1];
+	
+	for (int b=0;b<bands;b++) {		
+		ret.addAttenuation( b, Tool.copy(0.99), Tool.copy(1.2) );
+	}
+	
 	ret.switchAttenuation( false );
 
 	return ret;
@@ -274,43 +294,88 @@ public class OtfProvider {
 	int hPos = (int)Math.ceil( pos );
 	float f = (float)(pos - lPos);
     
-	float reth = valsOnlyAtt[band][lPos] * ( 1-f );
-	float retl = valsOnlyAtt[band][hPos] * f ;
-	return retl+reth;
+	float reth=1.f, retl=1.f;
+	for (int i = 0; i<attLength[band]; i++) {
+		reth *= valsOnlyAtt[band][i][lPos];
+		retl *= valsOnlyAtt[band][i][hPos];
+	}
+	return (reth*(1-f)) +(retl *f);
     }
     
-    /** Sets the OTF attenuation parameters.
+    /** Set one set of OTF attenuation parameters of all bands.
+	 * Deprecated. Use addAttenuations() instead.
      * Attenuation is also swichted on by this function.
      * @param strength Strength of attenuation, 0..1, usually 0.9 .. 0.99
      * @param fwhm     FWHM of the attenuation, in cycles / micron
      * */
-    public void setAttenuation( double strength, double fwhm) {
+	@Deprecated
+	public void setAttenuation( double strength, double fwhm) {
+		for ( int b = 0; b<vals.length; b++)
+			addAttenuation( b, Tool.copy(strength), Tool.copy(fwhm));
+		switchAttenuation(true);
+	}
+
+	/** Add attenuations to a specific OTF band.
+	 * 
+	 * @param band The band to add the attentuations to
+	 * @param strengths A list of attenuation strengths.
+	 * @param fwhms A list of attenuations FWHM, in cycles/micron
+	 */
+    public void addAttenuation( int band, double [] strengths, double [] fwhms) {
 	
-	attStrength = strength; attFWHM = fwhm;
-	
+	if (band<0 || band >= maxBand)
+		throw new IllegalArgumentException("band needs to be >=0, <maxBand, out of range");
+
+	if ( strengths.length!=fwhms.length)
+		throw new IllegalArgumentException("length of strength and fwhm array parameter mismatch");
+
+	attLength[band] = strengths.length;
+
+	// TODO: This is arbitrary, but might catch some nonsense values
+	if (strengths.length>10)
+		throw new IllegalArgumentException("too many strenght values");
+
+	attStrength[band] = Tool.copy(strengths); 
+	attFWHM[band] = Tool.copy(fwhms);
+
+	// new value cache
+	valsOnlyAtt[band] = new  float[attLength[band]][samplesLateral];
+
+	for (int i=0;i<strengths.length;i++) {
+		Tool.trace(String.format("OTF: band %d attenuation #%d strength %5.3f FWHM %5.3f", 
+			band, i, attStrength[band][i], attFWHM[band][i]));
+		//Tool.trace(String.format("--> %d %d", attLength[band], valsOnlyAtt[band][i].length));
+	}
+
 	// update cached attenuation values
-	for ( int b = 0; b<vals.length; b++)
-	for ( int v = 0; v<vals[b].length; v++) {
+	for ( int v = 0; v<vals[band].length; v++) {
 	    double dist = v * cyclesPerMicron;
-	    valsOnlyAtt[b][v] = valAttenuation( dist, attStrength, attFWHM ) ;
-	    valsAtt[b][v] = vals[b][v].mult( valsOnlyAtt[b][v] ); 
+		float multiplier = 1.f;
+		for (int i=0; i<attLength[band]; i++) {
+				 float val = valAttenuation( dist, attStrength[band][i], attFWHM[band][i] );
+				 valsOnlyAtt[band][i][v] = val;
+				 multiplier *= val;
+		}
+		valsAtt[band][v] = vals[band][v].mult( multiplier );
 	}
     }
 
-    /** Like {@link #setAttenuation} called with the current FWHM */
+	/* TODO: remove code block completely after mentioning API change in git commit
+    // Like {@link #setAttenuation} called with the current FWHM 
     public void setAttenuationStrength( double strength ) {
 	setAttenuation( strength, attFWHM );
     }
-    /** Like {@link #setAttenuation} called with the current strength */
+    // Like {@link #setAttenuation} called with the current strength 
     public void setAttenuationFWHM( double fwhm ) {
 	setAttenuation( attStrength, fwhm );
     }
+	*/
     
 
 
     /** Set if to apply attenuation to the OTF. */
     public void switchAttenuation( boolean on ) {
-	useAttenuation = on;
+		useAttenuation = on;
     }
     
     /** Get if attenuation will be used. */
@@ -318,14 +383,31 @@ public class OtfProvider {
         return useAttenuation;
     }
     
-    /** Get attenuation strength */
+	/** Get the attenuation strengths for a band*/
+	public double [] getAttenuationStrengths(int band) {
+		// TODO range check exceptions
+		return Tool.copy(attStrength[band]);
+	}
+
+	/** Get the attenuation FWHMs for a band*/
+	public double [] getAttenuationFWHMs(int band) {
+		// TODO range check exceptions
+		return Tool.copy(attFWHM[band]);
+	}
+
+    /** Get attenuation strength.
+	 * Deprecated, this only returns the first attenuation value!
+	 . Use {@link getAttenuationStrengths instead}
+	 */
+	@Deprecated
     public double getAttStr(int band) {
-	return this.attStrength;
+	return this.attStrength[band][0];
     }
     
-    /** Get attenuation FWHM */
+	/** Get attenuation FWHM */
+	@Deprecated
     public double getAttFWHM(int band) {
-	return this.attFWHM;
+	return this.attFWHM[band][0];
     }
 
     // ------ applying OTF to vectors -------
@@ -554,7 +636,8 @@ public class OtfProvider {
 			fld.getDbl("NA").val(),
 			fld.getInt("emission").val(),
 			fld.getDbl("a-estimate").val(),
-			APPROX_TYPE.fromString( fld.getStr("estimation-type").val() )
+			APPROX_TYPE.fromString( fld.getStr("estimation-type").val()),
+			fld.getIntValue("bands",1) 
 			);
 		} else {
 			// backwards compatibility with old configuation files that
@@ -589,7 +672,7 @@ public class OtfProvider {
 	    // init bands
 	    ret.vals	= new Cplx.Float[ret.maxBand][ ret.samplesLateral ];
 	    ret.valsAtt	= new Cplx.Float[ret.maxBand][ ret.samplesLateral ];
-	    ret.valsOnlyAtt = new  float[ret.maxBand][ ret.samplesLateral ];
+	    ret.valsOnlyAtt = new  float[ret.maxBand][][];
 
 	    // copy bands
 	    for (int b=0; b<ret.maxBand; b++) {
@@ -601,15 +684,34 @@ public class OtfProvider {
 		    
 		}
 	    }
+
+		// initialize attenuation values
+		ret.attLength = new int[ret.maxBand];
+		ret.attStrength = new double[ret.maxBand][1];
+		ret.attFWHM = new double[ret.maxBand][1];
 	
-	    ret.setAttenuation( ret.attStrength, ret.attFWHM );
+		for (int b=0;b<ret.maxBand;b++) {		
+			ret.addAttenuation( b, Tool.copy(0.99), Tool.copy(1.2) );
+		}
+		    
 	    ret.switchAttenuation( false );
 	}
 
 	// attenuation, if set
 	if ( fld.contains("attenuation") ) {
 	    Conf.Folder att = fld.cd("attenuation");
-	    ret.setAttenuation( att.getDbl("strength").val(), att.getDbl("FWHM").val());
+
+		// if no 'band' folders are presend, assume the same for all bands
+		if (!att.contains("band-0")) {
+			for (int b=0; b<ret.maxBand; b++) {
+	    		ret.addAttenuation(b, att.getDbl("strength").vals(), att.getDbl("FWHM").vals());
+			}
+		} else {
+			for (int b=0; b<ret.maxBand; b++) {
+				Conf.Folder attBand = att.cd(String.format("band-%d", b));
+				ret.addAttenuation( b, attBand.getDbl("strength").vals(), attBand.getDbl("FWHM").vals());
+			}
+		}
 	    ret.switchAttenuation( true );
 	}
 	
@@ -656,14 +758,14 @@ public class OtfProvider {
 	// attenuation
 	if ( this.useAttenuation ) {
 	    Conf.Folder att = fld.mk("attenuation");
-	    att.newDbl("strength").setVal( attStrength ); 
-	    att.newDbl("FWHM").setVal( attFWHM ); 
+			for (int b=0; b<this.maxBand; b++) {
+				Conf.Folder attBand = att.mk(String.format("band-%d", b));
+	    		attBand.newDbl("strength").setVal( attStrength[b] ); 
+	    		attBand.newDbl("FWHM").setVal( attFWHM[b] ); 
+			}
+		}
+	
 	}
-
-
-
-
-    }
 
 
 
@@ -679,21 +781,29 @@ public class OtfProvider {
 	    return;
 	}
 
-	OtfProvider otf = OtfProvider.fromEstimate( 1.4, 515, .241, APPROX_TYPE.SPHERICAL);
+	OtfProvider otf = OtfProvider.fromEstimate( 1.4, 515, .4, APPROX_TYPE.SPHERICAL, 2);
+	otf.addAttenuation(0, Tool.copy(0.9999, 0.5), Tool.copy(.5, 6.));
+	otf.addAttenuation(1, Tool.copy(0.97, 0.9), Tool.copy(.6, 4.0));
 	
 	// output
 	if (args[0].equals("o")) {
 
 	    for (float cycl = 0; cycl < 6; cycl +=0.025 )
 		System.out.println(String.format(" %5.3f %6.4f A", 
-		    cycl, otf.getOtfVal(0, cycl, false).re ));
-	    for (int i=0;i<512;i++)
+		    cycl, otf.getOtfVal(0, cycl, true).re ));
+
+		for (float cycl = 0; cycl < 6; cycl +=0.025 )
+		System.out.println(String.format(" %5.3f %6.4f O", 
+			cycl, otf.getOtfVal(0, cycl, false).re ));
+			
+		for (int i=0;i<512;i++)
 		System.out.println(String.format(" %d %6.4f B",  
 		    i, otf.getOtfVal(0, i/(512*0.082), false ).re )); 
 	    
 	    // save as test 
 	    if ( args.length >= 2 ) {
 		Conf cfgOut = new Conf("fairsim");
+		otf.switchAttenuation(true);
 		otf.saveConfig(cfgOut);
 		cfgOut.saveFile( args[1]);
 	    }

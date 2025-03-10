@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.utils;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.logging.Level;
 import javax.swing.JOptionPane;
@@ -412,6 +413,23 @@ public final class Tool {
     }
 
 
+    /** Return a copy of an array (or a list of doubles)
+     *  @param A list of doubles or an array of doubles
+     *  @return The copy of the array consisting of the doubles passed to the function
+    */
+    public static double [] copy(double ... a) {
+        return Arrays.copyOf(a, a.length);
+    }
+
+    /**  Return a copy of an array (or a list of ints)
+     *  @param A list of ints or an array of ints
+     *  @return The copy of the array consisting of the ints passed to the function
+    */
+    public static int [] copy(int ... i) {
+        return Arrays.copyOf(i, i.length);
+    }
+
+    
     /* TODO: compare this to utils.Future and such, and maybe finish it
     public static class Errant<D, Tool.Callback<R>> {
 	

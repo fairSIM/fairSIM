@@ -313,7 +313,7 @@ public class OtfControl {
 		//double aValue = optsValue[ comp.getSelectedIndex() ];
 				
 		OtfProvider otf = OtfProvider.fromEstimate( 
-		    naSp.getVal(), ldSp.getVal(), comp.getVal(), compType.getSelectedItem() );
+		    naSp.getVal(), ldSp.getVal(), comp.getVal(), compType.getSelectedItem(), sp.nrBand() );
 		setOtf( otf );
 
 		if (setNewDefaultsCB.isSelected()) {
