@@ -264,6 +264,13 @@ public class DisplayWrapper implements ImageDisplay, ImageListener  {
     @Override
     public int height() { return height; }
 
+	/** {@inheritDoc} */
+	@Override
+	public void switchToFrame(int b) {
+		if (b>0 && b<getCount())
+			ip.setPosition(b+1);
+	}
+
 
     /** {@inheritDoc} */
     @Override

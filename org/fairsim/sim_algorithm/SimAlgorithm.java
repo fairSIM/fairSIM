@@ -413,6 +413,7 @@ public class SimAlgorithm {
 	final OtfProvider otfPr = param.otf();
 
 	ImageDisplay pwSt=null,pwSt2=null, spSt=null, spSt2=null;
+	int finalImageFrame=0, finalFrequencyFrame=0;
 	
 	if (idf!=null) {
 	    pwSt  = idf.create(w,h, "Power Spectra" );
@@ -672,12 +673,15 @@ public class SimAlgorithm {
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
 
-	    if (spSt2 != null) 
-		spSt2.addImage( fullResultImage, "full result");
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result");			
+		}
 
 
 	    if (visualFeedback>0) {
-		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");			
 	    }
 
 
@@ -799,12 +803,15 @@ public class SimAlgorithm {
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
 
-	    if (spSt2 != null) 
-		spSt2.addImage( fullResultImage, "full result (RL)");
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result (RL)");
+		}
 
 
 	    if (visualFeedback>0) {
-		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (RL)");
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (RL)");
 	    }
 
 
@@ -873,12 +880,15 @@ public class SimAlgorithm {
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
 
-	    if (spSt2 != null) 
-		spSt2.addImage( fullResultImage, "full result (unfiltered!)");
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result (unfiltered!)");
+		}
 
 
 	    if (visualFeedback>0) {
-		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (unfiltered)");
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (unfiltered)");
 	    }
 
 
@@ -936,10 +946,13 @@ public class SimAlgorithm {
 	    pwSt.display();
 	    spSt.display();
 	    pwSt2.display();
+		pwSt2.switchToFrame(finalFrequencyFrame);
 	}
 	
-	if (spSt2 != null)
+	if (spSt2 != null) {
 	    spSt2.display();
+		spSt2.switchToFrame(finalImageFrame);
+	}
 
 	return fullResultImage;
     }
