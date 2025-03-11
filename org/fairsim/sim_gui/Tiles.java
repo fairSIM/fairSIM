@@ -98,7 +98,11 @@ public class Tiles {
 	public double getVal() {
 	    return ((Number)spr.getValue()).doubleValue();
 	}
-    
+
+	public void setVal(double val) {
+		spr.setValue(val);
+	}
+
 	/** Add a NumberListener */
 	public void addNumberListener( NumberListener l ) {
 	    listener.add( l );
@@ -333,7 +337,12 @@ public class Tiles {
 	public T getSelectedItem() {
 	    return (T)super.getSelectedItem();
 	}
-    
+   
+	@SuppressWarnings("unchecked")
+	public void addItemTypesave(T item) {
+		super.addItem(item);
+	}
+
     };
 
     /** Container */

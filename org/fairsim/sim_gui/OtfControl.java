@@ -36,6 +36,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.JFileChooser;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 
 import java.awt.Dimension;
 import java.awt.ComponentOrientation;
@@ -461,6 +462,197 @@ public class OtfControl {
 		}
 	);
 	p0.add(linkBandsBox);
+
+	// --------------
+	// Handle presets
+	// --------------
+	
+	JPanel presetPanel=new JPanel();
+	presetPanel.setLayout( new BoxLayout( presetPanel, BoxLayout.LINE_AXIS ));
+	presetPanel.setBorder(BorderFactory.createTitledBorder(
+	    "Presets") );
+
+	// read in preset list
+	final Tiles.TComboBox<String> presetList = new Tiles.TComboBox<String>();
+	presetList.setEditable(true);
+	presetPanel.add(presetList);
+		
+	class PresetHandler {
+
+		final String foldername="attenuation-presets";
+
+		void readInPresets() {
+	
+			presetList.removeAllItems();
+
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg!=null && cfg.r().contains(foldername)) {
+				try {
+					List<Conf.Folder> lst = cfg.r().cd(foldername).subfolders();
+					for (Conf.Folder f : lst ) {
+						presetList.addItemTypesave(f.toString());
+					}
+				} catch (Conf.EntryNotFoundException e) {
+					Tool.error("preset contains attenuation folder, but malformed entries", false);
+				}
+			}
+		}
+
+		void loadPreset(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg!=null && cfg.r().contains(foldername)) {
+				Conf.Folder preset;
+				try {						
+					preset = cfg.r().cd(foldername).cd(name);
+				} catch (Conf.EntryNotFoundException e) {
+					Tool.error("No preset named: "+name, false);
+					return;
+				}
+			
+			
+				for (int b=0;b<sp.nrBand();b++) {
+					
+					linkBandsBox.setSelected(preset.getBoolValue("attenuationBandsShareFilter",true));
+					boolean bandEnable = (!linkBandsBox.isSelected()) || b==0;
+					
+					for (int fc=0;fc<maxAttenuationFilterCount; fc++) {
+						attStr[b][fc].setVal( preset.getDblValue(
+							String.format("attenuationStrenght-band_%d-filter_%d",b,fc),.9));
+						attFWHM[b][fc].setVal( preset.getDblValue(
+							String.format("attenuationFWHM-band_%d-filter_%d",b,fc),.9));
+						boolean enableFilter = preset.getBoolValue(
+							String.format("attenuationFilterOn-band_%d-filter_%d",b,fc),
+							 (fc==0));
+
+						attEnableCB[b][fc].setSelected( enableFilter );
+						attEnableCB[b][fc].setEnabled( fc!=0 && bandEnable );
+						attStr[b][fc].setEnabled(enableFilter && bandEnable );
+						attFWHM[b][fc].setEnabled(enableFilter && bandEnable );
+					}
+				}
+	
+			
+			}
+
+		} 
+
+		void savePresets(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg==null) {
+				Tool.error("No default config set (check menu)", false);
+				return;
+			}
+				
+			Conf.Folder preset = cfg.r().mk(foldername).mk(name);
+		
+			for (int b=0;b<sp.nrBand();b++) {
+				for (int fc=0;fc<maxAttenuationFilterCount; fc++) {
+					preset.newDbl(String.format("attenuationStrenght-band_%d-filter_%d",b,fc)).setVal(
+						attStr[b][fc].getVal()
+					);
+					preset.newDbl(String.format("attenuationFWHM-band_%d-filter_%d",b,fc)).setVal(
+						attFWHM[b][fc].getVal()
+					);
+					preset.newBool(String.format("attenuationFilterOn-band_%d-filter_%d",b,fc)).setVal(
+						attEnableCB[b][fc].isSelected()
+					);
+				}
+			}
+			preset.newBool("attenuationBandsShareFilter").setVal(linkBandsBox.isSelected() );
+			Tool.writeDefaultConfig(cfg);
+		}
+
+		void removePreset(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg==null) {
+				Tool.error("No default config set (check menu)", false);
+				return;
+			}
+			try {
+				cfg.r().cd(foldername).delete(name);
+			} catch (Conf.EntryNotFoundException e) {
+				Tool.error("No attenuation preset in config file",false);
+			}
+			Tool.writeDefaultConfig(cfg);
+		}
+
+
+	}
+
+	final PresetHandler psh = new PresetHandler();
+	
+	psh.readInPresets();
+
+	// save button
+	JButton addButton = new JButton("+");
+	addButton.setToolTipText("Add new preset (enter name in box) or override selected preset");
+	addButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			psh.savePresets(nameNow);
+			Tool.trace("New attenuation preset saved: "+nameNow);
+			psh.readInPresets();
+			presetList.setSelectedItem(nameNow);
+		}
+	});
+	
+	// load button
+	JButton loadButton = new JButton("L");
+	loadButton.setToolTipText("load the selected preset");
+	loadButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			Tool.trace("Loading attenuation preset: "+nameNow);
+			psh.loadPreset(nameNow);			
+		}
+	});
+
+	// delete button
+	JButton deleteButton = new JButton("-");
+	deleteButton.setToolTipText("remove the selected preset");
+	deleteButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			psh.removePreset(nameNow);			
+			Tool.trace("Removing attenuation preset: "+nameNow);
+			psh.readInPresets();
+		}
+	});
+
+
+	presetPanel.add(loadButton);
+	presetPanel.add(addButton);
+	presetPanel.add(deleteButton);
+	
+	p0.add(presetPanel);
+
+
+
+
+
+
+
 
 	final JDialog attDialog = new JDialog(baseframe,
 	    "OTF Attenuation", true);

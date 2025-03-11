@@ -144,7 +144,7 @@ public class Conf {
 	public boolean contains(String name) {
 	    return subEntry.containsKey(name);
 	}
-	
+
 	/** Returns if an element named 'name', of type 'type', exists in this folder */
 	public <T extends Entry> boolean contains(String name, Class<T> type) {
 	    return (type.isInstance(subEntry.get(name)));
@@ -177,6 +177,24 @@ public class Conf {
 	    }
 	    return f;
 	}
+
+	/** Returns a set of subfolders */
+	public ArrayList<Folder> subfolders() {
+		ArrayList<Folder> ret = new ArrayList<Folder>();
+		for (Entry e : subEntry.values()) {
+			if (Folder.class.isInstance(e)) {
+				ret.add(Folder.class.cast(e));
+			}
+		}
+		return ret;
+	}
+
+	/** Return the name of the folder */
+	@Override
+	public String toString() {
+		return ourName;
+	}
+
 
 	@Override
 	String prettyPrint() {
