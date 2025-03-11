@@ -386,13 +386,13 @@ public class OtfControl {
 	final Tiles.LNSpinner [][] attStr  = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
 	final Tiles.LNSpinner [][] attFWHM = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
 	final JCheckBox attEnableCB [][] = new JCheckBox[ sp.nrBand() ][maxAttenuationFilterCount];
-	final boolean attState [][] = new boolean[sp.nrBand()][maxAttenuationFilterCount];
+	//final boolean attState [][] = new boolean[sp.nrBand()][maxAttenuationFilterCount];
 
 	for ( int b=0; b<sp.nrBand(); b++) {
 		JPanel pPerBand = new JPanel();
 		pPerBand.setLayout( new BoxLayout( pPerBand, BoxLayout.PAGE_AXIS ));
 		pPerBand.setBorder(BorderFactory.createTitledBorder(String.format("Band %d",b)));
-		attState[b][0] = true;
+		//attState[b][0] = true;
 		final int band = b;
 
 		boolean bandEnabled = ((b==0) || (!sp.otf().getBandsShareAttenuation()));
@@ -430,11 +430,13 @@ public class OtfControl {
 			JPanel p2 = new JPanel();
 			p2.setLayout( new BoxLayout( p2, BoxLayout.PAGE_AXIS ));
 			attEnableCB[b][fc] = new JCheckBox("enable filter",(attPresetStr.length>fc));
-			attEnableCB[b][fc].setEnabled( fc!=0 && bandEnabled );
+
+			attEnableCB[b][fc].setEnabled( bandEnabled && fc!=0);
+			attEnableCB[b][fc].setSelected( bandEnabled && attPresetStr.length>fc);
 			attEnableCB[b][fc].addActionListener( new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					boolean state = attEnableCB[band][filterCount].isSelected();
-					attState[band][filterCount] = state;
+					//attState[band][filterCount] = state;
 					attStr[band][filterCount].setEnabled(state);
 					attFWHM[band][filterCount].setEnabled(state);
 				}
@@ -454,9 +456,13 @@ public class OtfControl {
 			boolean state = linkBandsBox.isSelected();
 				for (int b=1; b<sp.nrBand(); b++) 
 				for (int fc=0; fc<maxAttenuationFilterCount; fc++) {
-					attStr[b][fc].setEnabled( (state)?(false):(attState[b][fc]));
-					attFWHM[b][fc].setEnabled( (state)?(false):(attState[b][fc]));
 					attEnableCB[b][fc].setEnabled( (state)?(false):((fc!=0)));
+					attEnableCB[b][fc].setSelected( 
+						(state)?(b==0 && (fc==0 || attEnableCB[b][fc].isSelected())):
+						( fc==0 || attEnableCB[b][fc].isSelected() ));
+						
+					attStr[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
+					attFWHM[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
 				}
 			}
 		}
@@ -673,13 +679,13 @@ public class OtfControl {
 				// extract only selected filter channels
 				int count=0;
 				for (int i=0; i<maxAttenuationFilterCount; i++) {
-					if (attState[band][i]) count++;
+					if (attEnableCB[band][i].isSelected()) count++;
 				}
 				double [] attValueStr  = new double[count];
 				double [] attValueFWHM = new double[count];
 				count=0;
 				for (int i=0; i<maxAttenuationFilterCount; i++) {
-					if (attState[band][i]) {
+					if (attEnableCB[band][i].isSelected()) {
 						attValueStr[count]=attStr[band][i].getVal();
 						attValueFWHM[count]=attFWHM[band][i].getVal();
 						count++;
