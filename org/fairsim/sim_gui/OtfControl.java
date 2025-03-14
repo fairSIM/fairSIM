@@ -386,13 +386,11 @@ public class OtfControl {
 	final Tiles.LNSpinner [][] attStr  = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
 	final Tiles.LNSpinner [][] attFWHM = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
 	final JCheckBox attEnableCB [][] = new JCheckBox[ sp.nrBand() ][maxAttenuationFilterCount];
-	//final boolean attState [][] = new boolean[sp.nrBand()][maxAttenuationFilterCount];
 
 	for ( int b=0; b<sp.nrBand(); b++) {
 		JPanel pPerBand = new JPanel();
 		pPerBand.setLayout( new BoxLayout( pPerBand, BoxLayout.PAGE_AXIS ));
 		pPerBand.setBorder(BorderFactory.createTitledBorder(String.format("Band %d",b)));
-		//attState[b][0] = true;
 		final int band = b;
 
 		boolean bandEnabled = ((b==0) || (!sp.otf().getBandsShareAttenuation()));
@@ -410,7 +408,7 @@ public class OtfControl {
 			attStr[b][fc]  = new Tiles.LNSpinner( "strength" , 
 				((attPresetStr.length>fc)?(attPresetStr[fc]):(0.95)) , 0.1, 1.0, 0.0005);
 			attFWHM[b][fc] = new Tiles.LNSpinner( "FWHM" , 
-				((attPresetFWHM.length>fc)?(attPresetFWHM[fc]):(1.2)), 0.1, 12.0, 0.05);
+				((attPresetFWHM.length>fc)?(attPresetFWHM[fc]):(1.2)), 0.05, 20.0, 0.05);
 
 			attStr[b][fc].spr.setEditor( new JSpinner.NumberEditor( attStr[b][fc].spr, "0.0000"));
 			attFWHM[b][fc].spr.setEditor( new JSpinner.NumberEditor( attFWHM[b][fc].spr, "0.00"));
@@ -436,7 +434,6 @@ public class OtfControl {
 			attEnableCB[b][fc].addActionListener( new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					boolean state = attEnableCB[band][filterCount].isSelected();
-					//attState[band][filterCount] = state;
 					attStr[band][filterCount].setEnabled(state);
 					attFWHM[band][filterCount].setEnabled(state);
 				}
@@ -460,7 +457,7 @@ public class OtfControl {
 					attEnableCB[b][fc].setSelected( 
 						(state)?(b==0 && (fc==0 || attEnableCB[b][fc].isSelected())):
 						( fc==0 || attEnableCB[b][fc].isSelected() ));
-						
+
 					attStr[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
 					attFWHM[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
 				}
