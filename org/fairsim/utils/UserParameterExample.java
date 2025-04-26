@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 */
 
+
 package org.fairsim.utils;
 
 import org.fairsim.utils.UserParameter;
@@ -41,7 +42,7 @@ public class UserParameterExample {
     // command line
     public static void main(String [] args) {
 	
-	UserParameterParser.staticCmdLineParser( args, UserParameterExample.class, true);
+	UserParameterParser.defaultParserStatic( args, UserParameterExample.class, true);
 
 	// from here on, all fields annotated 'UserParameter' have been updated if
 	// the user has provided new parameter, mandatory ones have been checked,

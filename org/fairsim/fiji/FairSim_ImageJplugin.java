@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.fiji;
 
 import org.fairsim.utils.Tool;
+import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageDisplay;
 
 import org.fairsim.sim_gui.FairSimGUI;
@@ -27,11 +28,10 @@ import org.fairsim.sim_algorithm.SimParam;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.event.HyperlinkEvent;
 import java.awt.Desktop;
-
-
 import java.util.Scanner;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -46,7 +46,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
-	
+
 	SimParam sp=null;
 	String [] args = inputarg.split("-");
 
@@ -55,6 +55,9 @@ public class FairSim_ImageJplugin implements PlugIn {
 	    setLog(true);
 	else
 	    setLog(false);
+
+	// set access to ImageJ key/value store
+	Tool.setKeyValueStore(new KeyValueProperties());
 
 	// show the 'about' window
 	if (args[0].equals("about")) {
@@ -81,6 +84,73 @@ public class FairSim_ImageJplugin implements PlugIn {
 
 	}
 
+
+	if (args[0].equals("createDefaultConfig")) {
+		JFileChooser fc = new JFileChooser();
+		fc.setDialogTitle("Create new fairsim default values config file");
+		int returnVal = fc.showSaveDialog( IJ.getInstance());
+	
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			String fname = fc.getSelectedFile().getAbsolutePath();
+			Conf cfg = new Conf("fairsim-default-values");
+			try {
+				cfg.saveFile(fname);
+			} catch (Conf.SomeIOException e) {
+				JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
+				JOptionPane.ERROR_MESSAGE);
+			}
+			Tool.tell("New default config created: "+fname);
+			Tool.setString("default-values-file",fname);
+		}
+	
+	}
+	if (args[0].equals("selectDefaultConfig")) {
+		JFileChooser fc = new JFileChooser();
+		fc.setDialogTitle("Select fairsim default values config file");
+		int returnVal = fc.showOpenDialog( IJ.getInstance());
+	
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			String fname = fc.getSelectedFile().getAbsolutePath();
+			try {
+				Conf cfg = Conf.loadFile(fname);
+			} catch (Conf.SomeIOException e) {
+				JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
+		   		JOptionPane.ERROR_MESSAGE);
+	   		}
+			IJ.log("[fairSIM] New default config selected: "+fname);
+			Tool.setString("default-values-file",fname);
+		}
+	
+	}
+
+	if (args[0].equals("clearDefaultConfig")) {
+		Tool.setString("default-values-file", null);
+		IJ.log("[fairSIM] Default config cleared");
+	}
+
+	if (args[0].equals("resultSummary")) {
+
+		if (args.length<2 || (!(args[1].equals("show") || args[1].equals("hide") ))) {
+			Tool.error("Malformed plugin call",true);
+			return;
+		}
+
+		boolean summary = true;
+		if (args[1].equals("hide"))
+			summary = false;
+
+		Conf cfg = Tool.getDefaultConfig();
+		if (cfg!=null) {
+			cfg.r().newBool("show-result-summary").setVal(summary);
+			Tool.writeDefaultConfig(cfg);
+			Tool.tell("fairSIM "+((summary)?("show"):("hide"))+"s result summary");
+		} else {
+			Tool.error("No fairSIM config file selected", false);
+		}
+	}
+
+
+
 	if (sp==null)
 	    return;
 
@@ -95,22 +165,23 @@ public class FairSim_ImageJplugin implements PlugIn {
     }
 
     /** set the logger (and amount) */
-    void setLog(boolean full) {
+    static void setLog(boolean full) {
 	if (full) {
 	    Tool.setLogger( new Tool.Logger () {
 		@Override
 		public void writeTrace(String w) {
-		    IJ.log(w);
+		    IJ.log("[fairSIM] "+w);
 		}
 		@Override
 		public void writeError(final String w, boolean fatal) {
-		    IJ.log("ERR: "+w);
+		    IJ.log("[fairSIM ERROR] "+w);
 		    if (fatal)
 			IJ.error(w);
 		}
 		@Override
 		public void writeShortMessage(String w) {
 		    IJ.showStatus(w);
+			IJ.log("(fairSIM) " + w);
 		}
 
 	    });
@@ -127,7 +198,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 		}
 		@Override
 		public void writeError(final String w, boolean fatal) {
-		    IJ.log("ERR: "+w);
+		    IJ.log("[fairSIM ERROR] "+w);
 		    if (fatal)
 			IJ.error(w);
 		}
@@ -218,7 +289,14 @@ public class FairSim_ImageJplugin implements PlugIn {
     }
 
 
+	
+	
+	
 
+	
+		
+
+	
 
 
     /** for testing */
@@ -229,6 +307,21 @@ public class FairSim_ImageJplugin implements PlugIn {
 	    pl.showAbout();
 	    return;
 	}
+	
+	new ij.ImageJ( ij.ImageJ.EMBEDDED );
+	
+	// TODO: Clean this up, written in a hurry in 2025
+	if (arg[0].equals("test") && arg.length>=2 ) {
+		
+		if (arg.length>=3) {
+			ImagePlus ip = IJ.openImage(arg[0]);
+			ip.show();
+		}
+		
+		FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
+		pl.run(arg[1]);
+		return;
+	} 
 	
 	ImagePlus ip = IJ.openImage(arg[0]);
 	ip.show();

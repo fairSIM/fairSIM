@@ -192,7 +192,7 @@ public class SimAlgorithm3D {
 		    ImageVector cntrl    = ImageVector.create(30,10);
 		  
 		    peak = Correlation3d.fitPeak( separate[0], separate[hb], 0, 2, otfPr,
-			-peak[0], -peak[1], 0.005, 2.5, runFastFit, cntrl );
+			-peak[0], -peak[1], 0.0005, 2.5, runFastFit, cntrl );
 		
 		    /*
 		    peak[0]*=-1;

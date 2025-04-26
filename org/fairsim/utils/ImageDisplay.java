@@ -67,6 +67,10 @@ public interface ImageDisplay {
     /** Get image height */
     public int height();
 
+    /** Switch the display to image #n. Implementations may ignore this call (e.g.
+     * systems that output images to disk). */
+    public void switchToFrame(int i);
+
     // ------------------------------------------------------------------------
 
 

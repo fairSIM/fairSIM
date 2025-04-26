@@ -25,6 +25,7 @@ import javax.swing.JPanel;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 
 import javax.swing.Box;
@@ -34,6 +35,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.JFileChooser;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 
 import java.awt.Dimension;
 import java.awt.ComponentOrientation;
@@ -67,6 +70,9 @@ public class OtfControl {
 
     private Tiles.LComboBox<String> attSw;
     private Tiles.LNSpinner attStr, attFWHM;
+
+	// how many concurrent filters to show for attenuation filtering
+	private final static int maxAttenuationFilterCount = 3;
 
     public JPanel getPanel() {
 	return ourContent;
@@ -169,8 +175,7 @@ public class OtfControl {
 		}	
 		if ((i==1)&&(sp.otf()!=null)) {
 		    sp.otf().switchAttenuation( true );	    
-		    attText.setText( String.format("a=%5.3f, FWHM=%4.2f",
-			sp.otf().getAttStr(0), sp.otf().getAttFWHM(0)));
+		    attText.setText( "OTF attenuation on");
 		    attText.setForeground(Color.GREEN.darker());
 
 		}
@@ -209,29 +214,75 @@ public class OtfControl {
     /** Displays the OTF approx dialog */
     void displDialog() {
 	
+	double 	defaultNA = 1.4;
+	int 	defaultWL = 525;
+	OtfProvider.APPROX_TYPE defaultApproxType = OtfProvider.APPROX_TYPE.EXPONENTIAL;
+	double  defaultApproxValue = 0.3;
+
+	// Load default values from config, if available
+	Conf defaultConf = Tool.getDefaultConfig();
+	if (defaultConf!= null) {
+		Conf.Folder df;
+		try {
+			df = defaultConf.r().cd("default-otf");
+			defaultNA = df.getDblValue( "NA", defaultNA);
+			defaultWL = df.getIntValue( "emission", defaultWL);
+			String approxType = df.getStrValue( "estimation-type", "exponential");
+			defaultApproxType = OtfProvider.APPROX_TYPE.fromString(approxType);
+			defaultApproxValue = df.getDblValue("a-estimate", 0.3);
+		} catch (Conf.EntryNotFoundException e) {
+			Tool.trace("No OTF defined in default config");
+		}
+	} else {
+		Tool.trace("No default config set, using standard values");
+	}
+
 	// NA, lambda, compensation
-	final Tiles.LNSpinner naSp = new Tiles.LNSpinner("NA", 1.4,0.5,1.7,0.01);
-	final Tiles.LNSpinner ldSp = new Tiles.LNSpinner("\u03bb",  525,380,1200,5);
+	final Tiles.LNSpinner naSp = new Tiles.LNSpinner("NA", defaultNA,0.5,1.7,0.01);
+	final Tiles.LNSpinner ldSp = new Tiles.LNSpinner("\u03bb",  defaultWL,380,1200,5);
 	ldSp.spr.setToolTipText("emission wavelength");
 	naSp.spr.setToolTipText("NA objective");
 	
 	// compensation
-	String [] opts = new String[ 8 ];
-	for (int i=0;i<8;i++) opts[i] = String.format("a=%4.2f",0.10+i*0.05);
-	opts[0] = "Ideal";
-	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(opts);	 // <-- java 1.7
+	final Tiles.LNSpinner comp = new Tiles.LNSpinner("a", defaultApproxValue, 0.05,1,0.025);
+
+	/*
+	final Double [] optsValue = new Double[ 20 ];
+	String [] optsLabel = new String[ optsValue.length ];
+
+	for (int i=1; i<=6; i++)		 optsValue[i] = i * 0.025;
+	for (int i=7; i<optsValue.length; i++)  optsValue[i] = 0.2 + (i-7) * 0.05;
+    
+	for (int i=1; i<optsValue.length; i++)	 optsLabel[i] = String.format("a = %5.3f",optsValue[i]);
+	
+	optsValue[0] = 1.;
+	optsLabel[0] = "Ideal";
+	
+
+	final Tiles.TComboBox<String> comp = new Tiles.TComboBox<String>(optsLabel);	 // <-- java 1.7
 	//final TComboBox comp = new TComboBox(opts); 
-	comp.setSelectedIndex(4);
+	comp.setSelectedIndex(9);
+	*/
+
 	comp.setToolTipText("<html><b>Sets deviation from ideal OTF</b><br>"+
 	    "Lower valus for a's yield more medium frequency dampening (see manual)<br>"+
 	    "Typical values are a=0.2..0.4, so try with default first<br>"
 	);
+
+	final Tiles.TComboBox<OtfProvider.APPROX_TYPE> compType 
+		= new Tiles.TComboBox<OtfProvider.APPROX_TYPE>( OtfProvider.APPROX_TYPE.values());
+		
+	compType.setSelectedItem(defaultApproxType);
+	compType.setToolTipText("Select the OTF compensation type");
+
+
 
 	// build the dialog
 	final JDialog otfApr = new JDialog(baseframe,
 	    "OTF Approximation", true);
 	
 	JPanel p1 = new JPanel();
+	JPanel p1extra = new JPanel();
 	JPanel p2 = new JPanel();
 	JPanel p3 = new JPanel();
 	p3.setBorder(BorderFactory.createTitledBorder(
@@ -249,6 +300,12 @@ public class OtfControl {
 	p1.add( new JLabel("Comp:"));
 	p1.add( comp );
 	p1.add( Box.createHorizontalGlue());
+	p1.add( new JLabel("Type:"));
+	p1.add( compType );
+	
+	final JCheckBox setNewDefaultsCB = new JCheckBox();
+	setNewDefaultsCB.setText("Set as new defaults?");
+	p1extra.add(setNewDefaultsCB);
 
 	JButton ok = new JButton("Set");
 	JButton cl = new JButton("Cancel");
@@ -257,13 +314,23 @@ public class OtfControl {
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
 		
-		double aValue = comp.getSelectedIndex()*0.05+0.10;
-		if (comp.getSelectedIndex()==0) aValue=1;
-		
+		//double aValue = optsValue[ comp.getSelectedIndex() ];
+				
 		OtfProvider otf = OtfProvider.fromEstimate( 
-		    naSp.getVal(), ldSp.getVal(), aValue );
+		    naSp.getVal(), ldSp.getVal(), comp.getVal(), compType.getSelectedItem(), sp.nrBand() );
 		setOtf( otf );
-		
+
+		if (setNewDefaultsCB.isSelected()) {
+
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg == null) {
+				Tool.error("No default config available", false);				
+			} else {
+				otf.saveConfig( cfg.r().mk("default-otf"));
+				Tool.writeDefaultConfig(cfg);
+			}
+
+		}				
 		otfApr.dispose();
 	    }
 	});
@@ -278,6 +345,7 @@ public class OtfControl {
 	p2.add(cl);
 
 	p3.add(p1);
+	p3.add(p1extra);
 	p3.add(p2);
 	otfApr.add(p3);
 	otfApr.pack();
@@ -315,37 +383,280 @@ public class OtfControl {
 	p0.setBorder(BorderFactory.createTitledBorder(
 	    "Attenuation parameters") );
 
-	final Tiles.LNSpinner [] attStr  = new Tiles.LNSpinner[ sp.nrBand() ];
-	final Tiles.LNSpinner [] attFWHM = new Tiles.LNSpinner[ sp.nrBand() ];
-	//for ( int b=0; b<sp.nrBand(); b++) {
-	{
-	    // TODO: This is largely set up to support different
-	    // values for different bands... complete
-	    final int b=0;
-	    JPanel p1 = new JPanel();
-	    p1.setLayout( new BoxLayout( p1, BoxLayout.LINE_AXIS ));
+	final Tiles.LNSpinner [][] attStr  = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
+	final Tiles.LNSpinner [][] attFWHM = new Tiles.LNSpinner[ sp.nrBand() ][maxAttenuationFilterCount];
+	final JCheckBox attEnableCB [][] = new JCheckBox[ sp.nrBand() ][maxAttenuationFilterCount];
 
-	    attStr[b]  = new Tiles.LNSpinner( "strength" , sp.otf().getAttStr(b) , 0.1, 1.0, 0.0005);
-	    attFWHM[b] = new Tiles.LNSpinner( "FWHM" , sp.otf().getAttFWHM(b) , 0.1, 6.0, 0.05);
+	for ( int b=0; b<sp.nrBand(); b++) {
+		JPanel pPerBand = new JPanel();
+		pPerBand.setLayout( new BoxLayout( pPerBand, BoxLayout.PAGE_AXIS ));
+		pPerBand.setBorder(BorderFactory.createTitledBorder(String.format("Band %d",b)));
+		final int band = b;
 
-	    attStr[b].spr.setEditor( new JSpinner.NumberEditor( attStr[b].spr, "0.0000"));
-	    attFWHM[b].spr.setEditor( new JSpinner.NumberEditor( attFWHM[b].spr, "0.00"));
-	    
+		boolean bandEnabled = ((b==0) || (!sp.otf().getBandsShareAttenuation()));
 
-	    attStr[b].setToolTipText("Strength of the attenuation");
-	    attFWHM[b].setToolTipText("FWHM of the attenuation");
+		double [] attPresetStr  = sp.otf().getAttenuationStrengths(b);
+		double [] attPresetFWHM = sp.otf().getAttenuationFWHMs(b);
 
-	     attStr[b].setEnabled( (b==0) );
-	    attFWHM[b].setEnabled( (b==0) );
+		for ( int fc = 0; fc<maxAttenuationFilterCount; fc++) {
 
-	    p1.add( Box.createHorizontalGlue());
-	    p1.add( attStr[b] );
-	    p1.add( Box.createRigidArea(new Dimension(5,0)));
-	    p1.add( attFWHM[b] );
-	    p1.add( Box.createHorizontalGlue());
-	    p0.add(p1);
+			final int filterCount = fc;
+			
+			JPanel p1 = new JPanel();
+			p1.setLayout( new BoxLayout( p1, BoxLayout.LINE_AXIS ));
+			
+			attStr[b][fc]  = new Tiles.LNSpinner( "strength" , 
+				((attPresetStr.length>fc)?(attPresetStr[fc]):(0.95)) , 0.1, 1.0, 0.0005);
+			attFWHM[b][fc] = new Tiles.LNSpinner( "FWHM" , 
+				((attPresetFWHM.length>fc)?(attPresetFWHM[fc]):(1.2)), 0.05, 20.0, 0.05);
+
+			attStr[b][fc].spr.setEditor( new JSpinner.NumberEditor( attStr[b][fc].spr, "0.0000"));
+			attFWHM[b][fc].spr.setEditor( new JSpinner.NumberEditor( attFWHM[b][fc].spr, "0.00"));
+			
+			attStr[b][fc].setToolTipText("Strength of the attenuation");
+			attFWHM[b][fc].setToolTipText("FWHM of the attenuation");
+			
+			attStr[b][fc].setEnabled( attPresetStr.length>fc && bandEnabled);
+			attFWHM[b][fc].setEnabled( attPresetStr.length>fc && bandEnabled);
+
+			p1.add( Box.createHorizontalGlue());
+			p1.add( attStr[b][fc] );
+			p1.add( Box.createRigidArea(new Dimension(5,0)));
+			p1.add( attFWHM[b][fc] );
+			p1.add( Box.createHorizontalGlue());
+			
+			JPanel p2 = new JPanel();
+			p2.setLayout( new BoxLayout( p2, BoxLayout.PAGE_AXIS ));
+			attEnableCB[b][fc] = new JCheckBox("enable filter",(attPresetStr.length>fc));
+
+			attEnableCB[b][fc].setEnabled( bandEnabled && fc!=0);
+			attEnableCB[b][fc].setSelected( bandEnabled && attPresetStr.length>fc);
+			attEnableCB[b][fc].addActionListener( new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					boolean state = attEnableCB[band][filterCount].isSelected();
+					attStr[band][filterCount].setEnabled(state);
+					attFWHM[band][filterCount].setEnabled(state);
+				}
+			});
+			p2.add(p1);
+			p2.add(attEnableCB[b][fc]);
+			
+			pPerBand.add(p2);
+		}
+		p0.add(pPerBand);
 	}
 	
+	final JCheckBox linkBandsBox = new JCheckBox("Link bands", sp.otf().getBandsShareAttenuation());
+	linkBandsBox.addActionListener( new ActionListener(){
+		@Override
+		public void actionPerformed( ActionEvent e) {
+			boolean state = linkBandsBox.isSelected();
+				for (int b=1; b<sp.nrBand(); b++) 
+				for (int fc=0; fc<maxAttenuationFilterCount; fc++) {
+					attEnableCB[b][fc].setEnabled( (state)?(false):((fc!=0)));
+					attEnableCB[b][fc].setSelected( 
+						(state)?(b==0 && (fc==0 || attEnableCB[b][fc].isSelected())):
+						( fc==0 || attEnableCB[b][fc].isSelected() ));
+
+					attStr[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
+					attFWHM[b][fc].setEnabled( (state)?(false):(attEnableCB[b][fc].isSelected()));
+				}
+			}
+		}
+	);
+	p0.add(linkBandsBox);
+
+	// --------------
+	// Handle presets
+	// --------------
+	
+	JPanel presetPanel=new JPanel();
+	presetPanel.setLayout( new BoxLayout( presetPanel, BoxLayout.LINE_AXIS ));
+	presetPanel.setBorder(BorderFactory.createTitledBorder(
+	    "Presets") );
+
+	// read in preset list
+	final Tiles.TComboBox<String> presetList = new Tiles.TComboBox<String>();
+	presetList.setEditable(true);
+	presetPanel.add(presetList);
+		
+	class PresetHandler {
+
+		final String foldername="attenuation-presets";
+
+		void readInPresets() {
+	
+			presetList.removeAllItems();
+
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg!=null && cfg.r().contains(foldername)) {
+				try {
+					List<Conf.Folder> lst = cfg.r().cd(foldername).subfolders();
+					for (Conf.Folder f : lst ) {
+						presetList.addItemTypesave(f.toString());
+					}
+				} catch (Conf.EntryNotFoundException e) {
+					Tool.error("preset contains attenuation folder, but malformed entries", false);
+				}
+			}
+		}
+
+		void loadPreset(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg!=null && cfg.r().contains(foldername)) {
+				Conf.Folder preset;
+				try {						
+					preset = cfg.r().cd(foldername).cd(name);
+				} catch (Conf.EntryNotFoundException e) {
+					Tool.error("No preset named: "+name, false);
+					return;
+				}
+			
+			
+				for (int b=0;b<sp.nrBand();b++) {
+					
+					linkBandsBox.setSelected(preset.getBoolValue("attenuationBandsShareFilter",true));
+					boolean bandEnable = (!linkBandsBox.isSelected()) || b==0;
+					
+					for (int fc=0;fc<maxAttenuationFilterCount; fc++) {
+						attStr[b][fc].setVal( preset.getDblValue(
+							String.format("attenuationStrenght-band_%d-filter_%d",b,fc),.9));
+						attFWHM[b][fc].setVal( preset.getDblValue(
+							String.format("attenuationFWHM-band_%d-filter_%d",b,fc),.9));
+						boolean enableFilter = preset.getBoolValue(
+							String.format("attenuationFilterOn-band_%d-filter_%d",b,fc),
+							 (fc==0));
+
+						attEnableCB[b][fc].setSelected( enableFilter );
+						attEnableCB[b][fc].setEnabled( fc!=0 && bandEnable );
+						attStr[b][fc].setEnabled(enableFilter && bandEnable );
+						attFWHM[b][fc].setEnabled(enableFilter && bandEnable );
+					}
+				}
+	
+			
+			}
+
+		} 
+
+		void savePresets(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg==null) {
+				Tool.error("No default config set (check menu)", false);
+				return;
+			}
+				
+			Conf.Folder preset = cfg.r().mk(foldername).mk(name);
+		
+			for (int b=0;b<sp.nrBand();b++) {
+				for (int fc=0;fc<maxAttenuationFilterCount; fc++) {
+					preset.newDbl(String.format("attenuationStrenght-band_%d-filter_%d",b,fc)).setVal(
+						attStr[b][fc].getVal()
+					);
+					preset.newDbl(String.format("attenuationFWHM-band_%d-filter_%d",b,fc)).setVal(
+						attFWHM[b][fc].getVal()
+					);
+					preset.newBool(String.format("attenuationFilterOn-band_%d-filter_%d",b,fc)).setVal(
+						attEnableCB[b][fc].isSelected()
+					);
+				}
+			}
+			preset.newBool("attenuationBandsShareFilter").setVal(linkBandsBox.isSelected() );
+			Tool.writeDefaultConfig(cfg);
+		}
+
+		void removePreset(String name) {
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg==null) {
+				Tool.error("No default config set (check menu)", false);
+				return;
+			}
+			try {
+				cfg.r().cd(foldername).delete(name);
+			} catch (Conf.EntryNotFoundException e) {
+				Tool.error("No attenuation preset in config file",false);
+			}
+			Tool.writeDefaultConfig(cfg);
+		}
+
+
+	}
+
+	final PresetHandler psh = new PresetHandler();
+	
+	psh.readInPresets();
+
+	// save button
+	JButton addButton = new JButton("+");
+	addButton.setToolTipText("Add new preset (enter name in box) or override selected preset");
+	addButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			psh.savePresets(nameNow);
+			Tool.trace("New attenuation preset saved: "+nameNow);
+			psh.readInPresets();
+			presetList.setSelectedItem(nameNow);
+		}
+	});
+	
+	// load button
+	JButton loadButton = new JButton("L");
+	loadButton.setToolTipText("load the selected preset");
+	loadButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			Tool.trace("Loading attenuation preset: "+nameNow);
+			psh.loadPreset(nameNow);			
+		}
+	});
+
+	// delete button
+	JButton deleteButton = new JButton("-");
+	deleteButton.setToolTipText("remove the selected preset");
+	deleteButton.addActionListener( new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if ( presetList.getSelectedItem() == null || 
+				presetList.getSelectedItem().toString().trim().length()<3) {
+					Tool.error("Please enter a name (min 3 char) for the preset", false);
+					return;
+				}
+			
+			String nameNow = presetList.getSelectedItem().toString().trim();
+			psh.removePreset(nameNow);			
+			Tool.trace("Removing attenuation preset: "+nameNow);
+			psh.readInPresets();
+		}
+	});
+
+
+	presetPanel.add(loadButton);
+	presetPanel.add(addButton);
+	presetPanel.add(deleteButton);
+	
+	p0.add(presetPanel);
+
+
+
+
+
+
+
+
 	final JDialog attDialog = new JDialog(baseframe,
 	    "OTF Attenuation", true);
 	
@@ -357,10 +668,38 @@ public class OtfControl {
 	
 	ok.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		sp.otf().setAttenuation( attStr[0].getVal(), attFWHM[0].getVal());
+		
+			int maxBand = (linkBandsBox.isSelected())?(1):(sp.nrBand());
+
+			for (int band = 0 ; band<maxBand; band++) {
+				
+				// extract only selected filter channels
+				int count=0;
+				for (int i=0; i<maxAttenuationFilterCount; i++) {
+					if (attEnableCB[band][i].isSelected()) count++;
+				}
+				double [] attValueStr  = new double[count];
+				double [] attValueFWHM = new double[count];
+				count=0;
+				for (int i=0; i<maxAttenuationFilterCount; i++) {
+					if (attEnableCB[band][i].isSelected()) {
+						attValueStr[count]=attStr[band][i].getVal();
+						attValueFWHM[count]=attFWHM[band][i].getVal();
+						count++;
+					}
+				}
+				
+				// update OTF
+				if (maxBand==1) {
+					sp.otf().addAttenuation( attValueStr, attValueFWHM);
+				} else {
+					sp.otf().addAttenuationPerBand(band, attValueStr, attValueFWHM);
+				}
+			}
+		
+		
 		if (sp.otf().isAttenuate()) {
-		    attText.setText( String.format("a=%5.3f, FWHM=%4.2f",
-			sp.otf().getAttStr(0), sp.otf().getAttFWHM(0)));
+		    attText.setText( "OTF attenuation set");
 		}
 		attDialog.dispose();
 	    }
@@ -428,6 +767,10 @@ public class OtfControl {
 
     /** for testing */
     public static void main(String [] args ) {
+
+	if (args.length>0)
+		Tool.setMockKeyValueForDefaultConfig( args[0]);
+	
 	JFrame test = new JFrame("Test OTF GUI");
 	OtfControl oc = new OtfControl(test, SimParamGUI.dummySP());
 	test.add(oc.getPanel());

@@ -37,6 +37,8 @@ import ij.plugin.PlugIn;
 import ij.ImageStack;
 import ij.ImagePlus;
 import ij.IJ;
+import ij.gui.GenericDialog;
+import ij.measure.Calibration;
 
 import org.fairsim.utils.Args;
 
@@ -45,7 +47,7 @@ import org.fairsim.utils.Args;
 /** 
  * Small plugin that generate bead surfaces
  * */
-public class BeadsCreator {
+public class BeadsCreator implements PlugIn{
 
     final int width,height,oversample;
     final double pxlSize;
@@ -140,6 +142,65 @@ public class BeadsCreator {
 		double v = Math.cos( 2*Math.PI* (-kx*x + ky*y)/(len) + pha );
 		dat.set(x,y,new Cplx.Float( (float)(v+1)*0.3f+.4f, 0f)) ;
 	    }
+    }
+
+
+
+    public void run(String arg)  {
+
+	GenericDialog gd = new GenericDialog("Bead surface simulator");
+
+	gd.addNumericField("#beads" , 300, 0);
+	gd.addNumericField("image size (pxl)" , 256, 0);
+	gd.addNumericField("oversample" , 4, 0);
+	gd.addNumericField("pxl size (nm)" , 80, 0);
+	gd.addNumericField("min. bead size (nm)" , 200, 0);
+	gd.addNumericField("max. bead size (nm)" , 220, 0);
+	gd.addNumericField("doughnut fraction", 0.5,2);
+	gd.addNumericField("PRNG seed" , 42, 0);
+
+
+	gd.showDialog();
+	if (gd.wasCanceled()) {
+	    return;
+	}
+
+	final int nrBeads		= (int)gd.getNextNumber();
+	final int imgSize		= (int)gd.getNextNumber();
+	final int overSample		= (int)gd.getNextNumber();
+	final double pxlSize		= gd.getNextNumber();
+	final double minBeadSize	= gd.getNextNumber();
+	final double maxBeadSize	= gd.getNextNumber();
+	final double doughnutFraction   = gd.getNextNumber();
+	final int prngSeed		= (int)gd.getNextNumber();
+
+	BeadsCreator bc = new BeadsCreator(imgSize,imgSize,pxlSize/1000.,overSample,prngSeed);
+
+	Random hollowPRNG = new Random(prngSeed*123+3);
+	Random noisePRNG  = new Random(prngSeed*3+123);
+	Random sizePRNG   = new Random(prngSeed*5+123);
+
+	for (int i=0; i<nrBeads; i++) {
+
+	    double beadSize = minBeadSize + (maxBeadSize-minBeadSize)*sizePRNG.nextDouble();
+	    bc.addRandomBead(beadSize/1000., (hollowPRNG.nextDouble()<doughnutFraction));
+	    IJ.showProgress(i,nrBeads-1);
+	}
+	 
+	
+	ImageVector img = ImageVector.create( imgSize*overSample, imgSize*overSample );
+	img.copy( bc.groundTruth );
+	img.scal(1000.f);
+
+
+	ImagePlus ip = new ImagePlus("bead_surface", img.img());
+	Calibration cb = new Calibration();
+	cb.setUnit("um");
+	cb.pixelWidth = pxlSize / overSample / 1000;
+	cb.pixelHeight = pxlSize / overSample /1000;
+	ip.setCalibration(cb);
+
+	ip.show();
     }
 
 

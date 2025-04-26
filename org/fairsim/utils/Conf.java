@@ -41,6 +41,7 @@ import org.w3c.dom.NodeList;
 // Data structure
 import java.util.Map;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Locale;
@@ -49,6 +50,7 @@ import java.util.Locale;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.DoubleBuffer;
+
 
 /** Wrappers around entries to a configuration file */
 public class Conf {
@@ -84,6 +86,12 @@ public class Conf {
 	    throw new EntryNotFoundException(namespace);
 	return root;
     }
+
+	public String visualizedString() {
+		String ret = "Namespace: "+namespace+"\n";
+		ret+=r().prettyPrint();
+		return ret;
+	}
 
 
     // ------ The different entries ------
@@ -141,7 +149,7 @@ public class Conf {
 	public boolean contains(String name) {
 	    return subEntry.containsKey(name);
 	}
-	
+
 	/** Returns if an element named 'name', of type 'type', exists in this folder */
 	public <T extends Entry> boolean contains(String name, Class<T> type) {
 	    return (type.isInstance(subEntry.get(name)));
@@ -175,6 +183,24 @@ public class Conf {
 	    return f;
 	}
 
+	/** Returns a set of subfolders */
+	public ArrayList<Folder> subfolders() {
+		ArrayList<Folder> ret = new ArrayList<Folder>();
+		for (Entry e : subEntry.values()) {
+			if (Folder.class.isInstance(e)) {
+				ret.add(Folder.class.cast(e));
+			}
+		}
+		return ret;
+	}
+
+	/** Return the name of the folder */
+	@Override
+	public String toString() {
+		return ourName;
+	}
+
+
 	@Override
 	String prettyPrint() {
 	    return prettyPrint("");
@@ -205,21 +231,57 @@ public class Conf {
 
 	// ------ Convenient element shortcuts ------
 
-	/** Return the Integer named 'name', raises an exception
+	/** Return the Integer Entry named 'name', raises an exception
 	 *  if it does not exist.
 	 *  Convenience shortcut to getEntryOrFail(name, IntEntry.class) */
 	public IntEntry getInt(String name) throws EntryNotFoundException {
 	    return getEntryOrFail(name,IntEntry.class);
 	}
 	
-	/** Create a new Integer 'i' named 'name' (and returns it). */
+	/** Create a new Integer Entry 'i' named 'name' (and returns it). */
 	public IntEntry newInt(String name) {
 	    IntEntry e = new IntEntry();
 	    setEntry(name, e);
 	    return e;
 	}
+
+	/** Return the value of the Integer Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public int getIntValue(String name, int defaultValue) {
+		try {
+			return getEntryOrFail(name, IntEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+
+	/** Return the Boolean Entry named 'name', raises an exception
+	 *  if it does not exist.
+	 *  Convenience shortcut to getEntryOrFail(name, BoolEntry.class) */
+	public BoolEntry getBool(String name) throws EntryNotFoundException {
+	    return getEntryOrFail(name,BoolEntry.class);
+	}
 	
-	/** Return the Double named 'name', or null.
+	/** Create a new Boolean Entry 'i' named 'name' (and returns it). */
+	public BoolEntry newBool(String name) {
+	    BoolEntry e = new BoolEntry();
+	    setEntry(name, e);
+	    return e;
+	}
+
+	/** Return the value of the Boolean Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public boolean getBoolValue(String name, boolean defaultValue) {
+		try {
+			return getEntryOrFail(name, BoolEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+	
+	/** Return the Double Entry named 'name', or null.
 	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
 	public DoubleEntry getDbl(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, DoubleEntry.class ); 
@@ -231,7 +293,7 @@ public class Conf {
 	    return getEntryOrFail( name, TimeDateEntry.class ); 
 	}
 
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new Double Entry 'd' named 'name' */
 	public DoubleEntry newDbl(String name ) {
 	    DoubleEntry e = new DoubleEntry();
 	    setEntry(name, e);
@@ -245,26 +307,51 @@ public class Conf {
 	    return e;
 	}
 	
-	/** Return the Double named 'name', or null.
-	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
+	/** Return the value of the Dobule Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public double getDblValue(String name, double defaultValue) {
+		try {
+			return getEntryOrFail(name, DoubleEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+
+
+	/** Return the String Entry named 'name', or null.
+	 *  Convenience shortcut to getEntry(name, StringEntry.class) */
 	public StringEntry getStr(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, StringEntry.class ); 
 	}
 	
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new String Entry named 'name' */
 	public StringEntry newStr(String name) {
 	    StringEntry e = new StringEntry();
 	    setEntry(name, e);
 	    return e;
 	}
+
+	/** Return the value of the String Entry 'name', or a default
+	 *  value if 'name' does not exist.
+	 */
+	public String getStrValue(String name, String defaultValue) {
+		try {
+			return getEntryOrFail(name, StringEntry.class).val();
+		} catch (EntryNotFoundException e) {
+			return defaultValue;
+		}
+	}
+
+
 	
-	/** Return the Double named 'name', or null.
-	 *  Convenience shortcut to getEntry(name, DoubleEntry.class) */
+	/** Return the Data Entry named 'name', or null.
+	 *  Convenience shortcut to getEntry(name, DataEntry.class) */
 	public DataEntry getData(String name) throws EntryNotFoundException {    
 	    return getEntryOrFail( name, DataEntry.class ); 
 	}
 	
-	/** Create a new Double 'd' named 'name' */
+	/** Create a new Data Entry named 'name' */
 	public DataEntry newData(String name) {
 	    DataEntry e = new DataEntry();
 	    setEntry(name, e);
@@ -380,6 +467,68 @@ public class Conf {
 
     }
    
+
+/** Entry for the common case of storing one or more ints */
+	public static class BoolEntry extends Entry {
+	boolean [] ourVals=new boolean[1];
+
+	/** Get all values */
+	public boolean [] vals() {
+	    return ourVals;
+	}
+	/** Get first value */
+	public boolean val() {
+	    return ourVals[0];
+	}
+	/** Set new values */
+	public BoolEntry setVal(boolean ... i) {
+	    if (i.length==0)
+		throw new RuntimeException("Array empty!");
+	    ourVals=new boolean[i.length];
+	    System.arraycopy( i, 0, ourVals, 0, i.length);
+	    return this;
+	}
+	
+	@Override
+	String prettyPrint() {
+	    String ret  = "(BOOL) ";
+	    for (int i=0; i<Math.min(5,ourVals.length); i++)
+		ret+=" "+((ourVals[i])?("true"):("false"));
+	    if (ourVals.length>5)
+		ret+=" ... ("+ourVals.length+" total)";
+	    return ret;
+	}
+	
+	@Override
+	String getText() {
+	    String booltext=" ";
+	    for (boolean b : ourVals)
+		booltext += ((b)?("1"):("0"))+" ";
+	    return booltext;
+	}
+	
+	@Override
+	String getType() { return "bool"; }
+	
+	@Override
+	void fromText( String text ) {
+	    Scanner sc = new Scanner(text);
+	    sc.useLocale( Locale.US );
+	    
+	    ArrayList<Integer> i = new ArrayList<Integer>();
+	    while ( sc.hasNextInt() )
+			i.add( sc.nextInt() );
+	    
+	    ourVals = new boolean [ i.size() ];
+	    for (int j=0; j<ourVals.length; j++)
+		ourVals[j] = (i.get(j) !=0)?(true):(false);
+
+	}
+	}
+
+
+
+
     /** Entry for the common case of storing one or more Doubles */
     public static class DoubleEntry extends Entry {
 	
@@ -412,7 +561,7 @@ public class Conf {
 	String prettyPrint() {
 	    String ret  = "(DBL)";
 	    for (int i=0; i<Math.min(5,ourVals.length); i++)
-		ret+=String.format(" %8.4f",ourVals[i]);
+		ret+=String.format(Locale.US, " %8.4f",ourVals[i]);
 	    if (ourVals.length>5)
 		ret+=" ... ("+ourVals.length+" total)";
 	    return ret;
@@ -423,7 +572,7 @@ public class Conf {
 	    if (! exact  ) {
 		String flttext=" ";
 		for (double i : ourVals)
-		    flttext += String.format("%8.5e ", i);
+		    flttext += String.format(Locale.US, "%8.5e ", i);
 		return flttext;
 	    } else {
 		byte [] v = new byte[ 8*ourVals.length ];
@@ -481,13 +630,25 @@ public class Conf {
 	 * not contain any XML markup characters, as
 	 * it currently does not run through any encoding.
 	 * Use 'data' instead. */
-	public void val(String v) {
+	public void setVal(String v) {
 	    ourVal=v;
 	}
 
+	/** Set the value. 
+	 * Deprecated: use 'setVal(..)' instead.
+	 * Caution: String should
+	 * not contain any XML markup characters, as
+	 * it currently does not run through any encoding.
+	 * Use 'data' instead. */
+	@Deprecated
+	public void val(String v) {
+		ourVal=v;
+	}
+
+
 	@Override
 	String prettyPrint() {
-	    String ret  = " (STR) "+ourVal+"\n";
+	    String ret  = " (STR) "+ourVal;
 	    return ret;
 	}
 	@Override
@@ -542,8 +703,9 @@ public class Conf {
 
     }
 
+
     /** Entry for storing a time and date */
-    public static class TimeDateEntry extends Entry {
+    public static class TimeDateEntry  extends Entry {
 
 	long ourTime = 0;
 
@@ -696,14 +858,18 @@ public class Conf {
 	    Node n = cld.item(i);
 	    if (n.getNodeType() != Node.ELEMENT_NODE)
 		continue;
-	    
+	    		
 	    Element e = (Element)n;
 	    String name = e.getTagName();
 
+		// check if we found the data type
+		boolean typeFound = false;
+
 	    // now, if no type is set, assume it is a folder, recurse into to
 	    if (e.getAttribute("type").equals("")) {
-		Folder nf = fdl.mk( name );
-		importXmlElement( e, nf );
+			Folder nf = fdl.mk( name );
+			importXmlElement( e, nf );
+			typeFound=true;
 	    }
 
 	    // otherwise, see if we can import it
@@ -716,28 +882,49 @@ public class Conf {
 		System.out.print("["+j+"]");
 	    System.out.println(""); */
 
+		
+		// TODO: create an option for new data types to register themselves here
+		
+		try {
 
-	    try {
-
-		if ( t.equals( "int" )) 
+		if ( t.equals( "int" )) {
 		    fdl.newInt( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "decimal" ))
+		if ( t.equals( "decimal" )) {
 		    fdl.newDbl( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "string" )) 
+		if ( t.equals( "string" )) {
 		    fdl.newStr( name ).fromText( c );
+			typeFound = true;
+		}
 		
-		if ( t.equals( "data" )) 
+		if ( t.equals( "data" )) {
 		    fdl.newData( name ).fromText( c );
-		
-		if ( t.equals( "timepoint" )) 
+			typeFound = true;
+		}
+
+		if ( t.equals( "bool")) {
+			fdl.newBool( name ).fromText( c );
+			typeFound = true;
+		}
+
+		if ( t.equals( "timepoint")) {
 		    fdl.newTDE( name ).fromText( c );
-	    
-	    
+			typeFound = true;
+		}
+	    	    
 	    } catch ( Exception ex ) {
-		throw new SomeIOException(ex);
+			throw new SomeIOException(ex);
 	    }
+
+		if (!typeFound) {
+			Exception ex = new Exception("Found unkonwn data type " + t);
+			throw new SomeIOException(ex);
+		}
 	
 	
 	}
@@ -761,6 +948,7 @@ public class Conf {
 	public final Exception original;
 	SomeIOException(Exception e) {
 	    super("IO Problem: "+e.toString());
+		e.printStackTrace();
 	    original = e;
 	}
     }
@@ -821,6 +1009,11 @@ public class Conf {
 
 	    cfg.r().mk("exaple-dbl").newDbl("array").setVal(1.2, 3.4, 5.6, 6.5);
 	    cfg.r().mk("exaple-dbl").newDbl("exact").setVal(1.6).setExactOutput(true);
+		
+		cfg.r().mk("exaple-bool").newBool("boolean-values").setVal(true, false);
+		cfg.r().mk("exaple-bool").newBool("single-boolean").setVal(true);
+
+		cfg.r().mk("example-string").newStr("just-a-string").setVal("A string value");
 
 	    byte [] test = new byte[40];
 	    for (int i=0; i<40; i++) test[i]=(byte)(Math.random()*255);

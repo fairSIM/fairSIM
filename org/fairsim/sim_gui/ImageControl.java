@@ -104,14 +104,22 @@ public class ImageControl {
     final JLabel  videoPosLabel = new JLabel( String.format("t % 5d", 0));
     final JLabel maxTimePointsLabel;
     final Tiles.LNSpinner zSliceVideoSpinner ; 
-    final String [] updateModes = {"off", "widefield", "recon", "recon+par.est."};
+    final String [] videoUpdateModes = {"off", "widefield", "recon", "recon+par.est.", "rec+par+ind.pha"};
+    final String [] batchUpdateModes = {"recon", "recon+par.est.", "rec+par+ind.pha"};
     final Tiles.LComboBox<String> videoAutoUpdateMode =
-     new Tiles.LComboBox<String>("auto-update", updateModes); 
+     new Tiles.LComboBox<String>("auto-update", videoUpdateModes); 
+    final Tiles.LComboBox<String> batchUpdateMode =
+     new Tiles.LComboBox<String>("batch-update", batchUpdateModes); 
 
-    // prefactor correction spinners
+    // prefactor correction spinners and auto selector
     Tiles.LNSpinner  []   prefactorAngSpinner; 
     Tiles.LNSpinner [][] prefactorPhaSpinner; 
-    
+    private JCheckBox prefactorAutoUpdateAngle;
+    private JCheckBox prefactorAutoUpdatePhase;
+    final Tiles.LComboBox<String> prefactorMethodBox
+	= new Tiles.LComboBox<String>("estimate, by", "average", "median"); 
+
+
     // the images
     Vec2d.Real [][] theImages    =null;
     Vec2d.Cplx [][] theFFTImages =null;
@@ -186,20 +194,20 @@ public class ImageControl {
 	row1.add( importImageButton );
 	
 	JPanel row2 = new JPanel();
-	JPanel row21 = new JPanel();
-	row21.setLayout(new BoxLayout(row21, BoxLayout.PAGE_AXIS));
-	row2.setLayout(new BoxLayout(row2, BoxLayout.LINE_AXIS));
-	row2.add( autoTimelapseBox );
-	row21.add( importTimelapseBox );
-	row21.add( zSliceVideoSpinner);
-	row2.add(row21);
-	row2.add(Box.createRigidArea(new Dimension(5,1)));
-	row2.add(Box.createRigidArea(new Dimension(5,1)));
-	row2.add( videoAutoUpdateMode );
+	JPanel row3 = new JPanel();
 	row2.add(Box.createHorizontalGlue());
+	row2.add( importTimelapseBox );
+	row2.add( zSliceVideoSpinner);
+	row2.add(Box.createRigidArea(new Dimension(5,1)));
+	row2.add( maxTimePointsLabel );
+	row3.add(Box.createRigidArea(new Dimension(5,1)));
+	row3.add( videoAutoUpdateMode );
+	batchUpdateMode.setSelectedIndex(1);
+	row3.add( batchUpdateMode );
+	row3.add(Box.createHorizontalGlue());
 	
 	// add the video-select sliders
-	JPanel row3 = new JPanel();
+	JPanel row4 = new JPanel();
 	
 	videoPosSlider = new JSlider(JSlider.HORIZONTAL, 1,100,1);
 	videoPosSlider.setEnabled(false);
@@ -269,9 +277,7 @@ public class ImageControl {
 	}
 
 	c.gridx=0; c.gridy=0; c.gridwidth=3; 
-	final Tiles.LComboBox<String> methodBox
-	    = new Tiles.LComboBox<String>("estimate, by", "average", "median"); 
-	preprocessPanel.add( methodBox, c );
+	preprocessPanel.add( prefactorMethodBox, c );
 
 	c.gridx=3; c.gridwidth=1;
 	
@@ -280,7 +286,7 @@ public class ImageControl {
 	
 	estAngleButton.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		runEstimateAngleVariation(methodBox.getSelectedIndex());
+		runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
 	    }
 	});
 
@@ -289,7 +295,7 @@ public class ImageControl {
 	preprocessPanel.add( estPhaseButton, c );
 	estPhaseButton.addActionListener( new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		runEstimatePhaseVariation(methodBox.getSelectedIndex());
+		runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
 	    }
 	});
 
@@ -328,10 +334,17 @@ public class ImageControl {
 	    }
 	});
 
-
 	JButton resetValuesButton = new JButton("reset");
 	c.gridx=1;
 	preprocessPanel.add( resetValuesButton,c );
+	
+	c.gridy++;
+	prefactorAutoUpdateAngle = new JCheckBox("auto-update angle");
+	prefactorAutoUpdatePhase = new JCheckBox("phase");
+	c.gridx=0;
+	preprocessPanel.add( prefactorAutoUpdateAngle,c );
+	c.gridx=2;
+	preprocessPanel.add( prefactorAutoUpdatePhase,c );
 
 	resetValuesButton.addActionListener( new ActionListener() {
 	    @Override
@@ -361,8 +374,10 @@ public class ImageControl {
 	tab1.add(row1);
 	tab1.add( Box.createVerticalGlue());
 	
-	tab2.add( Box.createVerticalGlue());
+	//tab2.add( Box.createVerticalGlue());
 	tab2.add(row2);
+	//tab2.add( Box.createVerticalGlue());
+	tab2.add(row3);
 	tab2.add(Box.createRigidArea(new Dimension(1,5)));
 	tab2.add(sliders);
 	tab2.add( Box.createVerticalGlue());
@@ -667,7 +682,7 @@ public class ImageControl {
 	// all other modes are written to the thread
 	// which is started if not existing
 	autoUpdater = new AutoUpdateThread(mode);
-	Tool.trace("Starting auto update, mode "+updateModes[mode]);
+	Tool.trace("Starting auto update, mode "+videoUpdateModes[mode]);
 	autoUpdater.start();
     }
 
@@ -732,10 +747,18 @@ public class ImageControl {
 
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    videoStackPositionTime, true ); 
-	    
+
+		// update the correction factors
+		if (prefactorAutoUpdateAngle.isSelected()) {
+		    runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
+		}
+		if (prefactorAutoUpdatePhase.isSelected()) {
+		    runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
+		}
+
 		// update the parameter estimation
 		if (updateMode>2) {
-
+			Tool.trace(String.format("Auto mode: Running parameter estimation"));
 		    SimAlgorithm.estimateParameters( 
 			simParam, theFFTImages, 
 			fsGUI.parc.getFitBand(), 
@@ -743,6 +766,14 @@ public class ImageControl {
 			null, 0, null);
 
 		}
+		
+		// update individual phase estimations
+		if (updateMode>3) {
+			Tool.trace(String.format("Auto mode: Running individual absolute phases"));
+			SimAlgorithm.estimateAbsolutePhases(
+			simParam, theFFTImages, null); 
+		}
+
 
 		// update the SIM reconstruction
 		if (updateMode>1) {
@@ -1287,7 +1318,7 @@ public class ImageControl {
 	p3.add(progressBar);
 
 	final BatchReconstructionThread brt = new BatchReconstructionThread(
-	    progressBar, ok, cl, videoAutoUpdateMode.getSelectedIndex() );
+	    progressBar, ok, cl, batchUpdateMode.getSelectedIndex() );
 
 	// perform the image import
 	ok.addActionListener( new ActionListener() {
@@ -1382,16 +1413,36 @@ public class ImageControl {
 
 
 	    for (int timePos=start; timePos<stop; timePos++) {
-
+		
+		// update the input images
 		importImages(imgBox.getSelectedItem(), videoStackPositionZ, 
 		    timePos, true ); 
-	
-		if (updateMode>2) {
+
+
+		// update the correction factors
+		if (prefactorAutoUpdateAngle.isSelected()) {
+		    runEstimateAngleVariation(prefactorMethodBox.getSelectedIndex());
+		}
+		if (prefactorAutoUpdatePhase.isSelected()) {
+		    runEstimatePhaseVariation(prefactorMethodBox.getSelectedIndex());
+		}
+
+
+		// update the parameter estimation
+		if (updateMode>=1) {
+			Tool.trace(String.format("Batch mode: Running parameter estimation (time slice %d)", timePos ));
 		    SimAlgorithm.estimateParameters( 
 			simParam, theFFTImages, 
 			fsGUI.parc.getFitBand(), 
 			fsGUI.parc.getFitExclude(), 
 			null, 0, null);
+		}
+
+		// update individual phase estimations
+		if (updateMode>=2) {
+			Tool.trace(String.format("Batch mode: Running individual absolute phases (time slice %d)", timePos));
+			SimAlgorithm.estimateAbsolutePhases(
+			simParam, theFFTImages, null); 
 		}
 
 		Vec2d.Real widefield = ( compWidefield )?(Vec2d.createReal(simWidth,simHeight)):(null);

@@ -21,7 +21,8 @@ failcmd tar
 # Get the ImageJ base library (in version 1.48, which is the lowest we currently support)
 if [ ! -e ij148v.jar ] ; then
     fileMissing=1
-    wget https://imagej.nih.gov/ij/download/jars/ij148v.jar
+#    wget https://imagej.nih.gov/ij/download/jars/ij148v.jar
+    wget -c https://wsr.imagej.net/download/jars/ij148v.jar
 fi
 
 # Get our forked version of JTransforms 

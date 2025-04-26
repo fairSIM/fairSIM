@@ -88,8 +88,10 @@ public class ImageOpener
 
 	    ImagePlus curImg  = ij.WindowManager.getImage(ids[i]);
 	    // dont use our own images
-	    if (curImg.getProperty("org.fairsim.fiji.DisplayWrapper")!=null)
+	    if (curImg.getProperty("org.fairsim.fiji.DisplayWrapper")!=null &&
+		curImg.getProperty("org.fairsim.fiji.DisplayWrapper").equals("yes")) {
 		continue;
+	    }
 
 	    // get pxl size // TODO: this should check for pixelX != pixelY and simmilar things
 	    double micronsLateral = -1, micronsAxial = -1;

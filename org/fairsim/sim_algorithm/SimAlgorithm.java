@@ -106,6 +106,9 @@ public class SimAlgorithm {
 	    
 	   
 	    if (!keepPhases) {
+		// reset any previously set phases
+		dir.resetPhases();
+
 		BandSeparation.separateBands( inputCpy , separate , 
 		    0, dir.nrBand(), null);
 	    } else {
@@ -313,6 +316,54 @@ public class SimAlgorithm {
     }
 
 
+    /** Estimate absolute phases for each raw data frame.
+     *  This follows the non-iterative phase estimation based on auto-correlation by Wicker et al.
+     *  It requires(!) the k-Vectors to be set correctly (usually doable by running the parameter
+     *  estimation with roughly correct relative phases)
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param tEst   Runtime measurement (may be null) 
+    */
+    public static void estimateAbsolutePhases( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, 
+	Tool.Timer tEst ) {
+
+	Tool.tell("running individual phase estimator");
+
+	if (tEst != null) tEst.start();
+   
+	final OtfProvider otfPr = param.otf();
+
+	// loop all directions
+	for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+	    final SimParam.Dir par = param.dir(angIdx);
+	    
+	    // run Kai Wicker auto-correlation
+	    double [] pha = new double[par.nrPha()];
+	    for (int i=0; i < par.nrPha() ; i++) {
+	       
+		// copy input, weight with otf
+		Vec2d.Cplx ac =  inFFT[angIdx][i].duplicate();
+		otfPr.applyOtf( ac, 0); 
+		
+		// compute auto-correlation at px,py (shift of band1)
+		Cplx.Double corr = Correlation.autoCorrelation( 
+		    ac, par.px(1), par.py(1) );
+
+		Tool.trace(String.format("a%1d img %1d, Phase(Wicker et. al.) : %5.3f  ",
+		    angIdx, i, corr.phase()));
+
+		pha[i] = corr.phase();
+	    }
+	    par.setPhases( pha, true );	
+	    
+	}
+
+	if (tEst != null) tEst.stop();
+    }
+
+
     // TODO: deprecate this function at some point
     // it is only here to be compatible with existing scripts / examples,
     // use more complete version below
@@ -363,6 +414,7 @@ public class SimAlgorithm {
 	final OtfProvider otfPr = param.otf();
 
 	ImageDisplay pwSt=null,pwSt2=null, spSt=null, spSt2=null;
+	int finalImageFrame=0, finalFrequencyFrame=0;
 	
 	if (idf!=null) {
 	    pwSt  = idf.create(w,h, "Power Spectra" );
@@ -382,7 +434,7 @@ public class SimAlgorithm {
 	WienerFilter wFilter = new WienerFilter( param );
 	double wienParam     = param.getWienerFilter();
 
-	if (visualFeedback>0) {
+	if (visualFeedback>0 && param.useWienerFilter()) {
 	    Vec2d.Real wd = wFilter.getDenominator(wienParam);
 	    wd.reciproc();
 	    wd.normalize();
@@ -490,7 +542,7 @@ public class SimAlgorithm {
 			otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
 		    }
 		} else {
-		    // or mask for OTF support
+		    // or mask for OTF support 
 		    for (int b=1; b<par.nrBand(); b++) {
 			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
 			otfPr.maskOtf( shifted[pos],  par.px(b),  par.py(b) );
@@ -533,7 +585,7 @@ public class SimAlgorithm {
 			thisband.add( shifted[i*2-1] );
 	
 		    // output the wiener denominator
-		    if (visualFeedback>1) {
+		    if (visualFeedback>1 && !param.useNoFiltering()) {
 			Vec2d.Real wd = denom.duplicate();
 			wd.reciproc();
 			wd.normalize();
@@ -543,7 +595,9 @@ public class SimAlgorithm {
 		    }
 		    
 		    // apply filter and output result
-		    thisband.times( denom );
+		    if (!param.useNoFiltering()) {
+			thisband.times( denom );
+		    }
 		    
 		    pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
 			"a%1d: band %1d",angIdx,i));
@@ -552,17 +606,19 @@ public class SimAlgorithm {
 		}
 
 		// per direction wiener denominator	
-		Vec2d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);	
-		result.times( fDenom );
+		if (!param.useNoFiltering()) {
+		    Vec2d.Real fDenom =  wFilter.getIntermediateDenominator( angIdx, wienParam);	
+		    result.times( fDenom );
 		    
-		// output the wiener denominator
-		if (visualFeedback>1) {
-		    Vec2d.Real wd = fDenom.duplicate();
-		    wd.reciproc();
-		    wd.normalize();
-		    Transforms.swapQuadrant( wd );
-		    pwSt2.addImage( wd, String.format(
-			"a%1d: OTF/Wiener all bands",angIdx ));
+		    // output the wiener denominator
+		    if (visualFeedback>1) {
+			Vec2d.Real wd = fDenom.duplicate();
+			wd.reciproc();
+			wd.normalize();
+			Transforms.swapQuadrant( wd );
+			pwSt2.addImage( wd, String.format(
+			    "a%1d: OTF/Wiener all bands",angIdx ));
+		    }
 		}
 		
 		pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
@@ -618,12 +674,15 @@ public class SimAlgorithm {
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
 
-	    if (spSt2 != null) 
-		spSt2.addImage( fullResultImage, "full result");
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result");			
+		}
 
 
 	    if (visualFeedback>0) {
-		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result");			
 	    }
 
 
@@ -745,12 +804,15 @@ public class SimAlgorithm {
 	    
 	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
 
-	    if (spSt2 != null) 
-		spSt2.addImage( fullResultImage, "full result (RL)");
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result (RL)");
+		}
 
 
 	    if (visualFeedback>0) {
-		pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (RL)");
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (RL)");
 	    }
 
 
@@ -807,6 +869,69 @@ public class SimAlgorithm {
 	    }
 	}	
 
+
+	// ------------------------------------------------------------------------
+	// fully unfiltered SIM output
+	// ------------------------------------------------------------------------
+
+
+	if ( param.useNoFiltering() ) {
+
+	    Tool.tell("Computing unfiltered result");
+	    
+	    fullResultImage = SimUtils.spatial( fullResult, imgClipScale);
+
+	    if (spSt2 != null) {
+			finalImageFrame=spSt2.getCount();
+			spSt2.addImage( fullResultImage, "full result (unfiltered!)");
+		}
+
+
+	    if (visualFeedback>0) {
+			finalFrequencyFrame=pwSt2.getCount();
+			pwSt2.addImage( SimUtils.pwSpec( fullResult), "full result (unfiltered)");
+	    }
+
+
+	    // Add wide-field for comparison
+	    if (visualFeedback>=0 || widefieldResult != null || filteredWidefieldResult != null ) {
+	    
+		Tool.tell("Computing wide-field");
+		
+		// obtain the low freq result
+		Vec2d.Cplx lowFreqResult = Vec2d.createCplx( param, 2);
+		
+		// have to do the separation again, result before had the OTF multiplied
+		for (int angIdx = 0; angIdx < param.nrDir(); angIdx ++ ) {
+		    
+		    final SimParam.Dir par = param.dir(angIdx);
+		    
+		    Vec2d.Cplx [] separate  = Vec2d.createArrayCplx( par.nrComp(), w, h);
+		    BandSeparation.separateBands( inFFT[angIdx] , separate , 
+			par.getPhases(), par.nrBand(), par.getModulations());
+
+		    Vec2d.Cplx tmp  = Vec2d.createCplx( param, 2 );
+		    SimUtils.placeFreq( separate[0],  tmp);
+		    lowFreqResult.add( tmp );
+		}	
+		
+		// now, output the widefield
+		if (visualFeedback>0)
+		    pwSt2.addImage( SimUtils.pwSpec(lowFreqResult), "Widefield" );
+		if (visualFeedback>=0)
+		    spSt2.addImage( SimUtils.spatial(lowFreqResult, imgClipScale), "Widefield" );
+		
+		if (widefieldResult!=null) { 
+		    widefieldResult.copy( SimUtils.spatial(lowFreqResult, imgClipScale));
+		    Tool.trace("generating widefield output");
+		}
+
+	    }
+	}	
+
+
+
+
 	// -----------------------------------------------------------------------
 
 	// stop timers
@@ -822,10 +947,13 @@ public class SimAlgorithm {
 	    pwSt.display();
 	    spSt.display();
 	    pwSt2.display();
+		pwSt2.switchToFrame(finalFrequencyFrame);
 	}
 	
-	if (spSt2 != null)
+	if (spSt2 != null) {
 	    spSt2.display();
+		spSt2.switchToFrame(finalImageFrame);
+	}
 
 	return fullResultImage;
     }

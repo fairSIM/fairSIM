@@ -46,6 +46,12 @@ import java.awt.Font;
 import javax.swing.JCheckBox;
 import javax.swing.SwingConstants;
 
+import java.awt.geom.Line2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Color;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -140,6 +146,37 @@ public class PlainImageDisplay {
 	}
     
     };
+
+
+    enum CROSSHAIRS {
+	NONE(0),
+	XY(1),
+	CROSS(2),
+	XYCIRCLE(3),
+	CROSSCIRCLE(4);
+
+	int number =0;
+
+	CROSSHAIRS(int i) {number = i;};
+
+	public int getInt() { return number; }
+
+	public String toString() {
+
+	    switch (number) {
+		case 0: return "off";
+		case 1: return "XY";
+		case 2: return "cross";
+		case 3: return "XY + circle";
+		case 4: return "cross + circle";
+
+	    }
+
+	    return null;
+	}
+	
+    }
+
 
     public PlainImageDisplay(int nrChannels, int w, int h, String ... names) {
 	this(nrChannels, w, h, true, names );
@@ -302,6 +339,8 @@ public class PlainImageDisplay {
 
 	    lutSelector.box.setSelectedIndex( (channel+1)%7 );
 	    
+	  
+	    
 	    // show checkBox
             final JCheckBox showCheckBox = new JCheckBox("Show Channel", true);
             showCheckBox.addActionListener( new ActionListener() {
@@ -350,6 +389,7 @@ public class PlainImageDisplay {
 	    sliders.add( (new JPanel()).add(lValues),c);
 	    c.gridx=7; c.gridy=9; c.gridwidth=3; c.gridheight=1;
 	    sliders.add( bitDepthSelector,c  );
+	    
 
 	    /* 
 	    c.gridx=7; c.gridy=0; c.gridwidth=2;
@@ -357,14 +397,43 @@ public class PlainImageDisplay {
 	    c.gridy=1;
 	    sliders.add( autoMax, c ); */
 	
-	    
-	   
 	    JPanel perChannelPanel = new JPanel();
 	    perChannelPanel.setBorder( BorderFactory.createTitledBorder(chName));
 	    perChannelPanel.add( sliders );
 
 	    channelsPanel.add( perChannelPanel );
 	}
+
+
+	Tiles.LComboBox<CROSSHAIRS> crosshairSelector = 
+	    new Tiles.LComboBox<CROSSHAIRS>("Crosshair", CROSSHAIRS.values()); 
+	crosshairSelector.addSelectListener( new Tiles.SelectListener<CROSSHAIRS>() {
+	    @Override
+	    public void selected( CROSSHAIRS c, int i ) {
+		Tool.trace(c.toString());
+		ic.crosshair = c.getInt();
+	    }
+	});
+
+
+	Tiles.LComboBox<Tiles.NAMED_COLOR> crosshairColorSelector =
+	    new Tiles.LComboBox<Tiles.NAMED_COLOR>("color", Tiles.NAMED_COLOR.values()); 
+	crosshairColorSelector.addSelectListener( new Tiles.SelectListener<Tiles.NAMED_COLOR>() {
+	    @Override
+	    public void selected( Tiles.NAMED_COLOR c, int i) {
+		ic.crosshairColor = c.getColor();
+	    }
+	});
+
+
+
+	JPanel crosshairPanel = new JPanel();
+	crosshairPanel.add( crosshairSelector  );
+	crosshairPanel.add( crosshairColorSelector  );
+
+	channelsPanel.add( crosshairPanel );
+    
+
 
 	// info
 	final JLabel imageInfoLabel=new JLabel("use mousewheel to zoom");
@@ -616,6 +685,9 @@ public class PlainImageDisplay {
 	final int nrChannels;
    
 	IUpdate ourUpdateListener = null;
+	    
+	int crosshair = 0;
+	Color crosshairColor = Color.GRAY;
 
 	final int gammaLookupTableSize = 1024;
 
@@ -818,6 +890,38 @@ public class PlainImageDisplay {
 	    
 	    this.repaint();
 	}
+
+
+	/** Add our own components after being drawn */
+	@Override
+	public void paint(Graphics g) {
+	    super.paint(g);
+
+
+	    if (crosshair>0) {
+		g.setColor( crosshairColor );
+		if ( crosshair%2 == 1 ) {
+		    Line2D line1 = new Line2D.Double(width/2.,height/10.,width/2.,height*9./10.);
+		    Line2D line2 = new Line2D.Double(width/10.,height/2.,width*9./10.,height/2.);
+		    ((Graphics2D)g).draw(line1);
+		    ((Graphics2D)g).draw(line2);
+		}
+		if ( crosshair%2 == 0 ) {
+		    Line2D line1 = new Line2D.Double(width/10. ,height/10. , width*9./10., height*9./10.);
+		    Line2D line2 = new Line2D.Double(width*9/10.,height/10.,width/10.,height*9./10.);
+		    ((Graphics2D)g).draw(line1);
+		    ((Graphics2D)g).draw(line2);
+		}
+	    }
+	    if ( crosshair > 2 ) {
+		double size = (width+height)/4.;
+		Ellipse2D cir = new Ellipse2D.Double(width/2.-size/2, height/2.-size/2, size,size);
+		((Graphics2D)g).draw(cir);
+	    }
+
+	}
+
+
 
 	/** Set the zoom level and midpoint position */
 	public void setZoom( int level, int xPos, int yPos ) {

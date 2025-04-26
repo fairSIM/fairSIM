@@ -362,6 +362,44 @@ public abstract class AbstractVectorReal implements  Vec.Real {
     }
 
 
+    public int[] nLargestIdx(final int n) {
+	this.readyBuffer();
+	// TODO: add an exception should n>vectorSize;
+
+
+	double vals [] = new double[n];
+	int idx [] = new int[n];
+
+	for (int i=0; i<n; i++) {
+	    vals[i] = Double.MIN_VALUE;
+	    idx[i] = -1;
+	}
+
+
+	for ( int j=0;j<data.length; j++ ) {
+	
+	    final float v = data[j];
+
+	    int pos = -1;
+	    for ( int i=n-1;i>=0; i--) {
+		if (v>vals[i]) pos = i;
+	    }
+
+	    if (pos<n&&pos>=0) {
+		for (int i=n-1; i>pos;i--) {
+		    vals[i] = vals[i-1];
+		    idx[i]  = idx[i-1];
+		}
+		vals[pos]=v;
+		idx[pos] =j;
+	    }
+
+	}
+
+	return idx;
+    }
+
+
 }
 
 

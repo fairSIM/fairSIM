@@ -44,6 +44,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 import org.fairsim.utils.Tool;
+import org.fairsim.utils.Conf;
 import org.fairsim.utils.ImageSelector;
 import org.fairsim.utils.ImageDisplay;
 import org.fairsim.utils.ImageOutputFactory;
@@ -77,6 +78,9 @@ public class ParameterControl {
     private int fitBand	=2;	    // which band to use for fitting
     private double fitExclude=0.6;  // Portion of OTF support to exclude
     private boolean fitKeepPhase = false; // if to override the relative phase when fitting new parameters
+    private boolean fitkVectorEstimate = true; // if to run the k-vector estimate
+    private boolean fitIndividualPhaseEstimate = false; // if to run individual (absolute) phase estimates for each raw frame
+
 
     public JPanel getPanel() {
 	return ourContent;
@@ -187,9 +191,16 @@ public class ParameterControl {
 	    public Object doInBackground() {
 		running = true;
 		//try {
-		    SimAlgorithm.estimateParameters( 
-			simParam, imgc.theFFTImages, bandToFit, fitExclude, 
-			idpFactory, fitVerbosity, t1, fitKeepPhase);
+		    if (fitkVectorEstimate) {
+			SimAlgorithm.estimateParameters( 
+			    simParam, imgc.theFFTImages, bandToFit, fitExclude, 
+			    idpFactory, fitVerbosity, t1, fitKeepPhase);
+		    }
+
+		    if (fitIndividualPhaseEstimate) {
+			SimAlgorithm.estimateAbsolutePhases( simParam,
+			    imgc.theFFTImages, t1);
+		    }
 		/*} catch (Exception e) {
 		    Tool.trace("Problem: "+e);
 		    e.printStackTrace();
@@ -199,7 +210,11 @@ public class ParameterControl {
 	    @Override
 	    protected void done() {
 		running = false;
-		showParameterResults();
+
+		Conf cfg = Tool.getDefaultConfig();
+		if (cfg==null || cfg.r().getBoolValue("show-result-summary", true) )
+			showParameterResults();
+				
 		simp.refreshTable();
 		ourState.setText("Complete");
 		if ( !recc.paramFitFailed ) {
@@ -230,7 +245,7 @@ public class ParameterControl {
 	    { "color=\"red\""   , "NO FIT!"}}; 
 
 
-	String htmlContent = "<html><body><h2>Parameter fit summery</h2>"+
+	String htmlContent = "<html><body><h2>Parameter fit summary</h2>"+
 	    "<table>";
 	htmlContent += "<tr><th>res. impr.</th><<th>mod. est.</th><th>assesment</th></tr>";
 
@@ -334,14 +349,28 @@ public class ParameterControl {
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
 	// setup how much to exclude
-	Double [] excludes = new Double [] { .2,.3,.4,.5,.6,.7,.8 };
+	Double [] excludes = new Double [] { .1,.2,.3,.4,.5,.6,.7,.8,.9,1.,1.1,1.2 };
 	final Tiles.LComboBox<Double> fitExclBox
 	     = new Tiles.LComboBox<Double>("Region to exclude from fit",excludes);
 	fitExclBox.setToolTipText("<html>In fraction of OTF support, how much<br>"
 	    +"of low frequency region not to search for peak<br>"
 	    +"(marked by circle in the output)");
 
-	fitExclBox.box.setSelectedIndex( 4 );
+	
+	// check for the entry in exlcudes[] array that is closest to the current  fitExclude value 
+	int closestIndex=5;
+	{
+	    double diff = Double.MAX_VALUE;
+	    for (int i=0; i<excludes.length; i++) {
+		double  p = Math.abs( excludes[i] - fitExclude );
+		if (p<diff) {
+		closestIndex=i;
+		diff=p;
+		}
+	    }
+	}
+
+	fitExclBox.box.setSelectedIndex( closestIndex );
 	p1.add( fitExclBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
@@ -373,15 +402,38 @@ public class ParameterControl {
 	    }
 	});
 
-	final JCheckBox phaseStepKeepBox = new JCheckBox("keep phase in fit");
-	phaseStepKeepBox.setSelected(fitKeepPhase);
-
-	phaseStepPanel.add( phaseStepBox);
+		phaseStepPanel.add( phaseStepBox);
 	phaseStepPanel.add( applyPhaseSteps);
-	phaseStepPanel.add( phaseStepKeepBox);
 
 
 	p1.add(phaseStepPanel);
+
+	JPanel fitOptionsPanel =  new JPanel();
+	fitOptionsPanel.setLayout(new BoxLayout(fitOptionsPanel, BoxLayout.PAGE_AXIS));
+	
+	final JCheckBox phaseStepKeepBox = new JCheckBox("keep phase in fit");
+	phaseStepKeepBox.setToolTipText("<html>If enabled, phase information is <b>not</b> extracted"
+	    +"<br />when running the cross-correlation parameter fit."
+	    +"<br />(typically, this option should be turned off)");
+	phaseStepKeepBox.setSelected(fitKeepPhase);
+
+	final JCheckBox fitkVectorEstimateBox = new JCheckBox("run k vector estimate");
+	fitkVectorEstimateBox.setToolTipText("<html>If enabled, k-vectors are estimated by"
+	    +"<br />cross-correlation. As this is the main part of parameter estimation,"
+	    +"<br />this should typically be on");
+	fitkVectorEstimateBox.setSelected(fitkVectorEstimate);
+
+	final JCheckBox fitIndividualPhaseEstimateBox = new JCheckBox("run individual phase estiamtes");
+	fitIndividualPhaseEstimateBox.setToolTipText("<html>If enabled, individual phases are estimated"
+	    +"<br />for each raw data frame. Typically not needed,"
+	    +"<br />but helpful for systems with e.g. phase drift");
+	fitIndividualPhaseEstimateBox.setSelected(fitIndividualPhaseEstimate);
+	
+	fitOptionsPanel.add( phaseStepKeepBox);
+	fitOptionsPanel.add( fitkVectorEstimateBox);
+	fitOptionsPanel.add( fitIndividualPhaseEstimateBox);
+    
+	p1.add(fitOptionsPanel);
 
 
 	// dialog	
@@ -398,6 +450,8 @@ public class ParameterControl {
 		fitBand	     = fitBandBox.getSelectedItem();
 		fitExclude   = fitExclBox.getSelectedItem();
 		fitKeepPhase = phaseStepKeepBox.isSelected();
+		fitkVectorEstimate = fitkVectorEstimateBox.isSelected();
+		fitIndividualPhaseEstimate = fitIndividualPhaseEstimateBox.isSelected();
 
 		configDialog.dispose();
 	    }

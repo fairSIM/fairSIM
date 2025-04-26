@@ -32,9 +32,10 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 
     public enum FilterStyle {
 	Wiener("Wiener filter"),	
-	RLin("RL on input"), 
+	RLin("RL on input, WF out"), 
 	RLout("RL on output"),
-	RLboth("RL on both");
+	RLboth("RL on both"),
+	NoFilter("no filtering");
 
 	final String name;
 	FilterStyle(String a) { name = a; };
@@ -314,6 +315,13 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	return ( filterStyle == FilterStyle.RLboth || 
 		 filterStyle == FilterStyle.RLout   );
     }
+
+    /** True if all filtering is to be turned off */
+    public boolean useNoFiltering() {
+	return (filterStyle == FilterStyle.NoFilter );
+    }
+
+
 
 
     /** Set the number of RL iterations */
@@ -702,7 +710,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	fd.newInt("nr-angles").setVal(nrDirs);
 	fd.newInt("nr-bands").setVal(nrBands);
 	fd.newInt("nr-phases").setVal(nrPhases);
-	fd.newStr("img-seq").val( imgSeq.name());
+	fd.newStr("img-seq").setVal( imgSeq.name());
 	fd.newInt("img-size-pxl").setVal(imgSize);
 	fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
 	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );

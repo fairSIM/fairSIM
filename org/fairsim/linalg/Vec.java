@@ -247,6 +247,11 @@ public final class Vec {
 	/** Output the first 10 vector elements for debugging */	
 	public String first10Elem() ;
 
+
+	/** Return the index of the n largest elements */
+	public int [] nLargestIdx(int n);
+
+
 	/** Computes the average of all elements */
 	public double avr();
 

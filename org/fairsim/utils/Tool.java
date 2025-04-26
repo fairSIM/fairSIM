@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.utils;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.logging.Level;
 import javax.swing.JOptionPane;
@@ -33,6 +34,7 @@ public final class Tool {
 
     /** The tool implementation in use*/
     static private Tool.Logger currentLogger;
+    static private Tool.KeyValueStore currentKeyValueStore;
     static private boolean errorShown = false;
 
     static private boolean runningHeadless = false;
@@ -130,6 +132,106 @@ public final class Tool {
 	    path=System.getProperty("user.home")+path.substring(1);
 	}
 	return new File(path).getAbsoluteFile();
+    }
+
+    /** Public interface to provide acces to a key/value store, e.g. for persistant config values */
+    public interface KeyValueStore {
+        /** Retrieve a value from the key/value store. should return null if key does not exists */
+        public String retrieveString(String key);
+        /** Enter a key a key/value pair into the key/value store.
+         * @return Return true if key/value pair was successfully saved
+        */
+        public boolean storeString(String key, String value);
+    }
+
+    /** set the key/value store used by the Tool */
+    public static void setKeyValueStore(KeyValueStore store) {
+        currentKeyValueStore = store;
+        Tool.trace("using key/value store provided by: "+currentKeyValueStore.toString());
+    }
+
+    /** Retrive a string from the key-value store.
+     * 
+     * @param key The key to retrieve
+     * @return The value for key, or null if key does not exist
+     */
+    public static String getString(String key) {
+        if (currentKeyValueStore == null) return null;
+        return currentKeyValueStore.retrieveString(key);
+    }
+
+    /** Enter a string into the key/value store.
+     * @param key The key to enter
+     * @param value The value to eneter
+     * @return True if the key/value pair was saved
+     */
+    public static boolean setString(String key, String value) {
+        if (currentKeyValueStore == null) return false;
+        return currentKeyValueStore.storeString(key, value);
+    }
+
+    /** Opens and returns the a default config file.
+     * This queries the 'default-config-file' key
+     * and if the key exists in the current key/value store,
+     * opens the config file. May return null
+     */
+    public static Conf getDefaultConfig() {
+        String fname = getString("default-values-file");
+        if (fname == null) {
+            Tool.trace("No default config set");
+            return null;
+        }
+        try {
+            return Conf.loadFile(fname);
+        } catch (Conf.SomeIOException e) {
+            Tool.error("IO Exception reading default config file", false);
+            return null;
+        }
+    }
+  
+    /** Opens and saves to the default config file.
+     * This queries the 'default-config-file' key
+     * and if the key exists in the current key/value store,
+     * opens and saves the config file. Returns true if successful.
+     */
+    public static boolean writeDefaultConfig(Conf cfg) {
+        String fname = getString("default-values-file");
+        if (fname == null) {
+            Tool.trace("No default config set");
+            return false;
+        }
+        try {
+            cfg.saveFile(fname);
+            return true;
+        } catch (Conf.SomeIOException e) {
+            Tool.error("IO Exception writing default config file", false);
+            return false;
+        }
+    }
+
+    /** Create a mock key/value store that is not writable and only
+     * returns one key/value pair, 'default-values-file'.
+     * This is mainly for testing the config file feature
+     */
+    public static void setMockKeyValueForDefaultConfig(final String fname) {
+      setKeyValueStore( new KeyValueStore() {
+            @Override
+            public boolean storeString( String k, String v) {
+                return false;
+            }
+            @Override
+            public String retrieveString( String k) {
+                if (k.equals("default-values-file")) {
+                    return fname;
+                } else {
+                    return null;
+                }
+            }
+            @Override
+            public String toString() {
+                return "Mock key/value store, default file: "+fname;
+            }
+        });
     }
 
 
@@ -330,6 +432,23 @@ public final class Tool {
     }
 
 
+    /** Return a copy of an array (or a list of doubles)
+     *  @param A list of doubles or an array of doubles
+     *  @return The copy of the array consisting of the doubles passed to the function
+    */
+    public static double [] copy(double ... a) {
+        return Arrays.copyOf(a, a.length);
+    }
+
+    /**  Return a copy of an array (or a list of ints)
+     *  @param A list of ints or an array of ints
+     *  @return The copy of the array consisting of the ints passed to the function
+    */
+    public static int [] copy(int ... i) {
+        return Arrays.copyOf(i, i.length);
+    }
+
+    
     /* TODO: compare this to utils.Future and such, and maybe finish it
     public static class Errant<D, Tool.Callback<R>> {
 	
