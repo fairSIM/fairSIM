@@ -320,6 +320,8 @@ public class Correlation3d {
 	otf.writeOtfVector( wt1, bn1,-kx,-ky);
 
 	int cutCount =0;
+	Tool.trace(String.format(" %5.3f kx %5.3f ky, %d b0 %d b1", kx,ky, bn0, bn1));
+
 
 	// place the weight1 at its presumed position (currently, to pxl. prec)
 	for (int z=0; z<d; z++)
@@ -357,8 +359,11 @@ public class Correlation3d {
 		band1.set(x,y,z, band1.get(x,y,z).div( weight1.get(x,y,z).conj() ));
 	    }
 	   
+		// TODO: not quite sure if this is needed, quite sure it is not 
+		// correctly implemented. Check before using!
 	    // set zero around DC component
-	    // TODO: the 'z>2' avoids all axial contribution (fine for band 0<>2, but has to be fixed!)
+		/*
+		// TODO: the 'z>2' avoids all axial contribution (fine for band 0<>2, but has to be fixed!)
 	    if ((ratio<dist ) || (ratio>(1-dist) || ( z<2 ))) {
 		band0.set(x,y,z, Cplx.Float.zero());
 		band1.set(
@@ -367,7 +372,9 @@ public class Correlation3d {
 		    z,
 		    Cplx.Float.zero());
 		if (!cutted) cutCount++;
-	    } 
+		}*/
+	     
+		
 	}
 	
 	Tool.trace("Cuts (b"+bn1+"): "+cutCount+"/"+(w*h*d)+" --> "+(float)cutCount/(w*h*d));
