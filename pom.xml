@@ -6,6 +6,7 @@
 
   <properties>
     <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
+    <maven.javadoc.skip>true</maven.javadoc.skip>
   </properties>
 
   <groupId>org.fairsim</groupId>
@@ -48,6 +49,18 @@
     <url>http://github.com/fairSIM/fairSIM/issues</url>
   </issueManagement>
 
+
+  <repositories>
+    <repository>
+      <id>imagej.public</id>
+      <url>http://maven.imagej.net/content/groups/public</url>
+    </repository>
+    <repository>
+      <id>fairsim.org</id>
+      <url>https://github.com/fairSIM</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>net.imagej</groupId>
@@ -72,14 +85,6 @@
 -->
 
   </dependencies>
-
-  <repositories>
-    <repository>
-      <id>imagej.public</id>
-      <url>http://maven.imagej.net/content/groups/public</url>
-    </repository>
-  </repositories>
-
 
   <build>
 
@@ -116,8 +121,8 @@
         -->
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
 	  <!-- this keeps the forked/internal version of JTransform from being build
 	       with maven dependencies, we can just rely on the original being there instead -->
 	  <excludes>
@@ -175,20 +180,25 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9.1</version>
-        <executions>
+        <version>2.10.2</version>
+	<configuration>
+	    <additionalparam>-Xdoclint:none</additionalparam>
+	    <quiet>true</quiet>
+	    <source>8</source>
+	    <sourcepath>${basedir}</sourcepath>
+	    <excludePackageNames>
+		org.fairsim.extern.jtransforms
+	    </excludePackageNames>
+	    <sourceFileExcludes>
+		<exclude>org/fairsim/linalg/*.java</exclude>
+	    </sourceFileExcludes> 
+	</configuration>
+	<executions>
           <execution>
             <id>attach-javadocs</id>
             <goals>
               <goal>jar</goal>
             </goals>
-            <configuration>
-		<quiet>true</quiet>
-		<excludes>
-		    <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
-		</excludes>
-	    
-            </configuration>
           </execution>
         </executions>
       </plugin>
