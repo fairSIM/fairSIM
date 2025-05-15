@@ -50,7 +50,6 @@ import java.util.Locale;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.DoubleBuffer;
-import javax.xml.bind.DatatypeConverter;
 
 
 /** Wrappers around entries to a configuration file */
