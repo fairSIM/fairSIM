@@ -17,6 +17,7 @@ failcmd wget
 failcmd ar
 failcmd xz
 failcmd tar
+failcmd zstd
 
 # Get the ImageJ base library (in version 1.48, which is the lowest we currently support)
 if [ ! -e ij148v.jar ] ; then
@@ -50,8 +51,8 @@ if [ ! -e commons-math3-3.6.1.jar ] ; then
 fi
 
 
-# This fetches the java 1.6 runtime, needed for backwards-compatible
-# compilation to Java 6 with newer compilers
+# This fetches the java 1.8 runtime, needed for backwards-compatible
+# compilation to Java 8 with newer compilers
 #   unfortunately, Java 6's rt.jar does not seem to be on Maven, so
 #   fetch it by extracting it from Ubuntu's openjdk deb.
 #   Java 9 will make it much more easier with the "-release" option
@@ -62,18 +63,19 @@ if [ ! -e rt-1.6.jar ] ; then
     cd tmp-rt-jar
 
     # download the 'openjdk-6-jre-headless' deb file
-    wget http://security.ubuntu.com/ubuntu/pool/universe/o/openjdk-6/openjdk-6-jre-headless_6b41-1.13.13-0ubuntu0.14.04.1_amd64.deb -O openjdk.deb
+    #wget http://security.ubuntu.com/ubuntu/pool/universe/o/openjdk-6/openjdk-6-jre-headless_6b41-1.13.13-0ubuntu0.14.04.1_amd64.deb -O openjdk-6.deb
+    wget https://security.ubuntu.com/ubuntu/pool/universe/o/openjdk-8/openjdk-8-jre-headless_8u312-b07-0ubuntu1_amd64.deb -O openjdk-8.deb
 
 
     # extract the deb
     echo "Extracting rt.jar from the .deb file"
     echo "This might take a few moments... "
-    ar -x openjdk.deb
+    ar -x openjdk-8.deb
 
     # extract the rt.jar from the data.tar
-    xz -d data.tar.xz
-    tar -xf data.tar ./usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar
-    mv ./usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar ../rt-1.6.jar
+    zstd -d data.tar.zst
+    tar -xf data.tar ./usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar
+    mv ./usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar ../rt-1.8.jar
     cd ..
 
     rm -rf tmp-rt-jar
