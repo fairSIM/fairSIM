@@ -67,6 +67,7 @@ public class PlainImageDisplay {
     protected final JPanel mainPanel ;
     protected final ImageComponent ic ;
     protected JPanel channelsPanel;
+	protected JCheckBox displayInSRGB_checkbox = new JCheckBox("Display in sRGB", true);
 	
     List<HistogramDisplay> histList = new ArrayList<HistogramDisplay>();
 	    
@@ -130,17 +131,17 @@ public class PlainImageDisplay {
 	    float [] values = new float[3];
 	    // gray
 	    if (color==0) {
-                values[0] = .3f; // blue
-                values[1] = .3f; // green
-                values[2] = .3f; // red
+                values[0] = 1.f; // blue
+                values[1] = 1.f; // green
+                values[2] = 1.f; // red
              } else {
              // 1-6: blue, green, cyan, red, magenta, yellow
                  if ((color&4)!=0)
-                      values[2] = .3f; // red
+                      values[2] = 1.f; // red
                  if ((color&2)!=0)
-                      values[1] = .3f; // green
+                      values[1] = 1.f; // green
                  if ((color&1)!=0)
-                      values[0] = .3f; // blue
+                      values[0] = 1.f; // blue
              }
 	     return values;
 	}
@@ -448,6 +449,17 @@ public class PlainImageDisplay {
 	    }
 	});
 
+	JPanel rgbPanel = new JPanel();
+	rgbPanel.setLayout( new BoxLayout(rgbPanel, BoxLayout.LINE_AXIS));
+	rgbPanel.add(displayInSRGB_checkbox);
+	displayInSRGB_checkbox.addChangeListener(new ChangeListener() {
+	    @Override
+	    public void stateChanged(ChangeEvent e) {
+		boolean isSelected = displayInSRGB_checkbox.isSelected();
+		ic.displayInSRGB = isSelected;
+		refresh();
+	    }
+	});
 
 	// layout of the complete display
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.LINE_AXIS));
@@ -456,6 +468,7 @@ public class PlainImageDisplay {
 	JPanel tmpPanel = new JPanel();
 	tmpPanel.setLayout( new BoxLayout( tmpPanel, BoxLayout.PAGE_AXIS));
 	tmpPanel.add( labelPanel );
+	tmpPanel.add( rgbPanel );
 	tmpPanel.add( channelsPanel );
 	
 	mainPanel.add(tmpPanel);
@@ -482,8 +495,13 @@ public class PlainImageDisplay {
 	return mainPanel;
     }
 
-
-
+	public boolean isDisplayInSRGB() {
+		return ic.displayInSRGB;
+	}
+	public void setDisplayInSRGB(boolean displayInSRGB) {
+		displayInSRGB_checkbox.setSelected(displayInSRGB);
+		ic.displayInSRGB = displayInSRGB;
+	}
 
     static class HistogramDisplay extends JComponent {
          
@@ -680,9 +698,10 @@ public class PlainImageDisplay {
     /** Internal class for the actual image display */
     static class ImageComponent extends JComponent{
          
-        BufferedImage bufferedImage = null;
+    BufferedImage bufferedImage = null;
 	final int width, height;
 	final int nrChannels;
+	private boolean displayInSRGB = true;
    
 	IUpdate ourUpdateListener = null;
 	    
@@ -834,22 +853,25 @@ public class PlainImageDisplay {
 
 		// 1 - convert all channels pixels to linear CIE XYZ
 		for (int ch=0; ch<nrChannels; ch++) {
-                    if(show[ch]) {
-                        // find min / max (not needed here, but stored for histogram)
-			float val = imgBufferLinearChannels[ch][ x + y*width ];
-                        if (val> currentImgMax[ch]) currentImgMax[ch] = (int)val;
-                        if (val< currentImgMin[ch]) currentImgMin[ch] = (int)val;
-                        // scale to set min / max values
-			float out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
-			if (out<0) out=0;
-			if (out>=1) out=1-.5f/gammaLookupTableSize;
-			// apply channel-specific gamma
-			out = gammaLookupTable[ch][ (int)(out*gammaLookupTableSize) ];
-			// add to the linear RGB buffer
-			for (int col=0; col<3; col++) {
-			    cieXYZ[ col ] += colorCoeff[ch][col] * out;
+            if(show[ch]) {
+				// find min / max (not needed here, but stored for histogram)
+				float val = imgBufferLinearChannels[ch][ x + y*width ];
+				if (val> currentImgMax[ch]) currentImgMax[ch] = (int)val;
+				if (val< currentImgMin[ch]) currentImgMin[ch] = (int)val;
+				
+				// scale to set min / max values
+				float out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
+				if (out<0) out=0;
+				if (out>=1) out=1-.5f/gammaLookupTableSize;
+				// apply channel-specific gamma
+				out = gammaLookupTable[ch][ (int)(out*gammaLookupTableSize) ];
+				// add to the linear RGB buffer
+				for (int col=0; col<3; col++) {
+					// TODO: capping the color lookup table was a cheap trick to avoid color clipping in
+					// sRGB conversion, but it is not really correct. We can fix that at some point :-)
+					cieXYZ[ col ] += colorCoeff[ch][col] * out; // ;* (displayInSRGB ? .3f : 1.0f);
+				}
 			}
-                    }
 		}
 	
 		// 2 - clip the conversion input
@@ -858,24 +880,31 @@ public class PlainImageDisplay {
 		    if ((cieXYZ[col]) < 0.0f) cieXYZ[col]=0.0f;
 		}
 
-		// 3 - threat input as CIE XYZ
-		linRGB[0] = (float)(cieXYZ[0] * 3.2406 + cieXYZ[1] * -1.5372 + cieXYZ[2] * -0.4986);
-		linRGB[1] = (float)(cieXYZ[0] * -.9689 + cieXYZ[1] *  1.8758 + cieXYZ[2] *  0.0415);
-		linRGB[2] = (float)(cieXYZ[0] * 0.0557 + cieXYZ[1] * -0.2040 + cieXYZ[2] *  1.0570);
+		if (displayInSRGB) {
+			// 3 - threat input as CIE XYZ
+			linRGB[0] = (float)(cieXYZ[0] * 3.2406 + cieXYZ[1] * -1.5372 + cieXYZ[2] * -0.4986);
+			linRGB[1] = (float)(cieXYZ[0] * -.9689 + cieXYZ[1] *  1.8758 + cieXYZ[2] *  0.0415);
+			linRGB[2] = (float)(cieXYZ[0] * 0.0557 + cieXYZ[1] * -0.2040 + cieXYZ[2] *  1.0570);
 
-		// 4 - clip the conversion output
-		for (int col=0; col<3; col++) {
-		    if ((linRGB[col]) >= 1.0f) linRGB[col]=1-0.5f/gammaSRGB.length;
-		    if ((linRGB[col]) <  0.0f) linRGB[col]=0.0f;
+			// 4 - clip the conversion output
+			for (int col=0; col<3; col++) {
+				if ((linRGB[col]) >= 1.0f) linRGB[col]=1-0.5f/gammaSRGB.length;
+				if ((linRGB[col]) <  0.0f) linRGB[col]=0.0f;
+			}
+			
+			// 5- set to output bytes (through sRGBs gamma table)
+			for (int i=0; i<3; i++) {
+				imgDataBufferSRGB[3 * (y*width + x ) + i  ] = 
+				gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
+			}
+		} else {
+			// use the input directly as sRGB pixels
+			for (int i=0; i<3; i++) {
+				imgDataBufferSRGB[3 * (y*width + x ) + i  ] = 
+				(byte)(cieXYZ[i] * 255); // scale to 0-255
+			}
 		}
-		
-		// 5- set to output bytes (through sRGBs gamma table)
-		for (int i=0; i<3; i++) {
-		    imgDataBufferSRGB[3 * (y*width + x ) + i  ] = 
-			gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
 		}
-	    }
-	   
 
 	    // this handles 'zoom'
 	    if (zoomLevel==1) {
@@ -886,9 +915,9 @@ public class PlainImageDisplay {
 		for (int i=0; i<3;  i++)	
 		    imgDataOnScreen[3*(x + y*width)+i] = imgDataBufferSRGB[ 
 		     3*( (x/zoomLevel+zoomX) + width*(y/zoomLevel+zoomY))+i];
-	    }
-	    
-	    this.repaint();
+		}
+		
+		this.repaint();
 	}
 
 
