@@ -40,6 +40,7 @@ import javax.swing.BorderFactory;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.Font;
@@ -72,7 +73,6 @@ public class PlainImageDisplay {
 	
     List<HistogramDisplay> histList = new ArrayList<HistogramDisplay>();
 	
-	protected int viewportX=0, viewportY=0;
 	protected final int viewportWidth, viewportHeight;
 	protected int imageWidth=0, imageHeight=0, imageZoom=1;
 
@@ -710,6 +710,7 @@ public class PlainImageDisplay {
     static class ImageComponent extends JComponent{
          
     BufferedImage bufferedImage = null;
+	protected int viewportX=0, viewportY=0;
 	final int viewportWidth, viewportHeight;
 	final int nrChannels;
 	int imageWidth=0, imageHeight=0;
@@ -738,72 +739,112 @@ public class PlainImageDisplay {
 
         public ImageComponent(int ch, int w, int h) {
 	    
-		imageWidth = w; imageHeight = h;
-	    viewportWidth=w; viewportHeight=h; 
-		nrChannels = ch;
-	   
-	    setIgnoreRepaint(true);
-	    bufferedImage   = new BufferedImage(viewportWidth,viewportHeight, BufferedImage.TYPE_3BYTE_BGR);
-	    
-	    imgBufferLinearChannels = new float[nrChannels][imageWidth*imageHeight];
-	    imgDataBufferSRGB = new  byte[3*imageWidth*imageHeight];	    
-	    imgDataOnScreen   = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
+			imageWidth = w; imageHeight = h;
+			viewportWidth=w; viewportHeight=h; 
+			nrChannels = ch;
+		
+			setIgnoreRepaint(true);
+			bufferedImage   = new BufferedImage(viewportWidth,viewportHeight, BufferedImage.TYPE_3BYTE_BGR);
+			
+			imgBufferLinearChannels = new float[nrChannels][imageWidth*imageHeight];
+			imgDataBufferSRGB = new  byte[3*imageWidth*imageHeight];	    
+			imgDataOnScreen   = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
 
-	    colorCoeff = new float[nrChannels][3];
-	    gammaLookupTable = new float[nrChannels][ gammaLookupTableSize ];
+			colorCoeff = new float[nrChannels][3];
+			gammaLookupTable = new float[nrChannels][ gammaLookupTableSize ];
 
-	    // init values
-	    scalMax = new int[ch];
-	    scalMin = new int[ch];
-	    currentImgMin = new int[ch];
-	    currentImgMax = new int[ch];
-	    gamma = new double[ch];
-            show = new boolean[ch];
 
-	    for (int c=0; c<nrChannels; c++) {
-		scalMin[c]=0; scalMax[c]=1<<16;
-		currentImgMin[c]=0; currentImgMax[c]=1;
-		recalcGammaTable(c,1);
-                show[c] = true;
-	    }
+			// init values
+			scalMax = new int[ch];
+			scalMin = new int[ch];
+			currentImgMin = new int[ch];
+			currentImgMax = new int[ch];
+			gamma = new double[ch];
+				show = new boolean[ch];
 
-	    // init color lookup
-	    for (int c=0; c<nrChannels; c++) {
-		    setColorTable( c, LUT.values()[(c+1)%7] );
-	    }
-	
-	    /*
-	    this.addMouseListener( new MouseAdapter() {
-		@Override
-		public void mouseClicked(MouseEvent e) {
-		    int x = e.getX();
-		    int y = e.getY();
-		    System.out.println("mouse clicked: "+x+" "+y);
+			for (int c=0; c<nrChannels; c++) {
+			scalMin[c]=0; scalMax[c]=1<<16;
+			currentImgMin[c]=0; currentImgMax[c]=1;
+			recalcGammaTable(c,1);
+					show[c] = true;
+			}
+
+			// init color lookup
+			for (int c=0; c<nrChannels; c++) {
+				setColorTable( c, LUT.values()[(c+1)%7] );
+			}
+
+			// to get all updates on the mouse
+			MouseAdapter mouseAdapter = new MouseAdapter() {
+				
+				int dragStartX = 0, dragStartY = 0;
+				int lastViewportX = 0, lastViewportY = 0;
+				
+				@Override
+				public void mouseWheelMoved( MouseWheelEvent e ) {
+					int xPosMid = e.getX();
+					int yPosMid = e.getY();
+					//System.out.println("Scroller: "+e.getWheelRotation());
+					//System.out.println("mouse clicked: "+x+" "+y);
+				
+					int wSize =  viewportWidth/zoomLevel;
+					int hSize = viewportHeight/zoomLevel;
+				
+					// zoom out 
+					if (e.getWheelRotation()>0) {
+					setZoom(zoomLevel-1, zoomX+wSize/2, zoomY+hSize/2);
+					} else {
+					// zoom in
+					setZoom(zoomLevel+1, 
+						xPosMid/zoomLevel + zoomX, 
+						yPosMid/zoomLevel + zoomY);
+					}
+				}
+				
+				@Override
+				public void mousePressed(MouseEvent e) {
+					int x = e.getX();
+					int y = e.getY();
+					boolean leftButton = (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0;
+
+					// store the initial position for dragging
+					if (leftButton) {
+						dragStartX = x;
+						dragStartY = y;
+						lastViewportX = viewportX;
+						lastViewportY = viewportY;
+						//System.out.println("Mouse pressed: "+x+" "+y+" left button state "+leftButton);
+					}
+				}			
+				
+				@Override
+				public void mouseDragged(MouseEvent e) {
+					int x = e.getX();
+					int y = e.getY();
+				
+					boolean leftButton = (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0;
+					boolean rightButton = (e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) != 0;
+					boolean middleButton = (e.getModifiersEx() & MouseEvent.BUTTON2_DOWN_MASK) != 0;
+				
+					if (leftButton ) {
+						viewportX = (dragStartX - x) + lastViewportX;
+						viewportY = (dragStartY - y) + lastViewportY;
+						if (viewportX<0) viewportX=0;
+						if (viewportY<0) viewportY=0;
+						if (viewportX+viewportWidth > imageWidth) viewportX = imageWidth-viewportWidth;
+						if (viewportY+viewportHeight > imageHeight) viewportY = imageHeight-viewportHeight;
+				
+						//System.out.println("new viewport: "+viewportX+" "+viewportY);
+					}
+				
+					paintImage();
+				}
+			};
+
+			this.addMouseListener(mouseAdapter);
+			this.addMouseMotionListener(mouseAdapter);
+			this.addMouseWheelListener(mouseAdapter);
 		}
-	    }); */
-	    this.addMouseWheelListener( new MouseAdapter() {
-		@Override
-		public void mouseWheelMoved( MouseWheelEvent e ) {
-		    int xPosMid = e.getX();
-		    int yPosMid = e.getY();
-		    //System.out.println("Scroller: "+e.getWheelRotation());
-		    //System.out.println("mouse clicked: "+x+" "+y);
-	    
-		    int wSize =  viewportWidth/zoomLevel;
-		    int hSize = viewportHeight/zoomLevel;
-		   
-		    // zoom out 
-		    if (e.getWheelRotation()>0) {
-			setZoom(zoomLevel-1, zoomX+wSize/2, zoomY+hSize/2);
-		    } else {
-		    // zoom in
-			setZoom(zoomLevel+1, 
-			    xPosMid/zoomLevel + zoomX, 
-			    yPosMid/zoomLevel + zoomY);
-		    }
-		}
-	    });
-	}
 
 	public void resizeImageBuffer(int w, int h) {
 	    if (w==imageWidth && h==imageHeight) return;
@@ -934,8 +975,8 @@ public class PlainImageDisplay {
 			for (int y=0; y<viewportHeight; y++)	
 			for (int x=0; x<viewportWidth;  x++) {
 			
-				int xPos = x/zoomLevel + zoomX;
-				int yPos = y/zoomLevel + zoomY;
+				int xPos = x/zoomLevel + zoomX + viewportX;
+				int yPos = y/zoomLevel + zoomY + viewportY;
 			
 				for (int i=0; i<3;  i++) {
 					if (xPos<0 || xPos>=imageWidth || yPos<0 || yPos>=imageHeight) {
