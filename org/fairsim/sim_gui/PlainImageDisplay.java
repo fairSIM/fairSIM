@@ -956,13 +956,13 @@ public class PlainImageDisplay {
 			
 			// 5- set to output bytes (through sRGBs gamma table)
 			for (int i=0; i<3; i++) {
-				imgDataBufferSRGB[3 * (y*imageHeight + x ) + i  ] = 
+				imgDataBufferSRGB[3 * (y*imageWidth + x ) + i  ] = 
 				gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
 			}
 		} else {
 			// use the input directly as sRGB pixels
 			for (int i=0; i<3; i++) {
-				imgDataBufferSRGB[3 * (y*imageHeight + x ) + i  ] = 
+				imgDataBufferSRGB[3 * (y*imageWidth + x ) + i  ] = 
 				(byte)(cieXYZ[i] * 255); // scale to 0-255
 			}
 		}
