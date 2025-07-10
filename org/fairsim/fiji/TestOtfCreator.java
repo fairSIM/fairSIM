@@ -93,7 +93,7 @@ public class TestOtfCreator implements PlugIn {
 	ip.show();
 
 	// for now, assume 3 angles, 5 phases
-	final int nrAngles = 1;
+	final int nrAngles = 3;
 	final int nrPhases = 5;
 
 
@@ -111,7 +111,8 @@ public class TestOtfCreator implements PlugIn {
 		
 		for (int z=0; z< depth; z++) {
 	   
-		    int pos = p + z*nrPhases + a*nrPhases*depth + 1;
+		    //int pos = p + z*nrPhases + a*nrPhases*depth + 1;
+		    int pos = p + a*nrPhases + z*nrPhases*nrAngles + 1;
 
 		    ImageProcessor curimg = is.getProcessor(pos);
 		    ImageVector iv = ImageVector.copy( curimg );

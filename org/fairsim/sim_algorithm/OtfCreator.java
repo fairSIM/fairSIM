@@ -95,7 +95,7 @@ public class OtfCreator {
 	    // locate the bead in the pseudo-widefield 
 	    Tool.trace("--- Fitting bead position ---");
 	    double [] pos = getBeadPos( bands[0] );
-	    Tool.trace(String.format(" bead found at: %7.3f %7.3f %7.3f ", pos[0],pos[1],pos[2]));
+	    Tool.trace(String.format("angle %d: bead found at: %7.3f %7.3f %7.3f ", ang, pos[0],pos[1],pos[2]));
 		    
     
 	    // fft the otfs 
@@ -112,7 +112,9 @@ public class OtfCreator {
     
 	    // for debugging: output the centered bead
 	    {
-		ImageStackOutput isoOtf = new DisplayWrapper5D( width, height, depth, 2,3,"centered OTFs");
+		ImageStackOutput isoOtf = new DisplayWrapper5D( width, height, depth, 2,3,
+			String.format("angle %d centered OTFs", ang));
+		
 		for (int b=0; b<nrBands; b++) {
 		    
 		    Vec3d.Cplx cpyBands = bands[b].duplicate();
@@ -139,9 +141,11 @@ public class OtfCreator {
 	    if (false) {
 		// for x/y
 		ImageStackOutput isoMag = 
-		    new DisplayWrapper5D( width, height, depth, 10,30,"xy pha scan full OTFs - mag");
+		    new DisplayWrapper5D( width, height, depth, 10,30,
+				String.format("ang %d OTF MAG: xy pha scan full", ang));
 		ImageStackOutput isoPha = 
-		    new DisplayWrapper5D( width, height, depth, 10,30,"xy pha scan full OTFs - pha");
+		    new DisplayWrapper5D( width, height, depth, 10,30,
+				String.format("ang %d OTF PHA: xy pha scan full", ang));
 		
 		Tool.trace("computing phase scan, this might take a while...");
    
@@ -190,9 +194,11 @@ public class OtfCreator {
 	    if (false) {
 		// for z
 		ImageStackOutput isoMag = 
-		    new DisplayWrapper5D( width, height, depth, 10,3,"z pha scan full OTFs - mag");
+		    new DisplayWrapper5D( width, height, depth, 10,3,
+				String.format("ang %d OTF MAG: z pha scan full", ang));
 		ImageStackOutput isoPha = 
-		    new DisplayWrapper5D( width, height, depth, 10,3,"z pha full OTFs - pha");
+		    new DisplayWrapper5D( width, height, depth, 10,3,
+				String.format("ang %d OTF MAG: z pha scan full", ang));
 		
 		Tool.trace("computing phase scan, this might take a while...");
    
@@ -290,9 +296,11 @@ public class OtfCreator {
 	    }
 	
 	    ImageStackOutput isoMag = 
-		new DisplayWrapper5D( width, height, depth, 4,3,"full comp. OTFs - mag");
+		new DisplayWrapper5D( width, height, depth, 4,3,
+			String.format("ang %d: OTF MAG full comp.", ang));
 	    ImageStackOutput isoPha = 
-		new DisplayWrapper5D( width, height, depth, 4,3,"full comp. OTFs - pha");
+		new DisplayWrapper5D( width, height, depth, 4,3,
+			String.format("ang %d: OTF PHA full comp.", ang));
 	    
 	    // output results		
 	    {
