@@ -214,7 +214,7 @@ public class DefineMachineGui {
 
 	    Conf.Folder chFldr = cfg.r().mk(String.format("channel-%02d", ch));
 	    chFldr.newInt("excitation-wavelength").setVal(300);
-	    chFldr.newStr("channel-name").val("no name set yet");
+	    chFldr.newStr("channel-name").setVal("no name set yet");
 
 	    SimParam sp = SimParam.create3d( nrBands, nrAngles, nrPhases );
 	    sp.saveConfig( chFldr );
@@ -330,7 +330,7 @@ public class DefineMachineGui {
 	Conf.Folder fld = cfg.r();
 
 	fld.newInt("nr-channels").setVal( channels.size() );
-	fld.newStr("config-name").val( confName );
+	fld.newStr("config-name").setVal( confName );
 
 	// loop through all channels
 	int i=0;
@@ -659,7 +659,7 @@ public class DefineMachineGui {
 	void saveTo( Conf.Folder chFldr ) {
 	    
 	    // save our metadata
-	    chFldr.newStr("channel-name").val( simNameField.getText() );
+	    chFldr.newStr("channel-name").setVal( simNameField.getText() );
 	    chFldr.newInt("excitation-wavelength").setVal( (int)wavelengthSpinner.getVal() );
 	    
 	    // save the SIM parameters

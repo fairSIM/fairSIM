@@ -333,7 +333,7 @@ public class OtfProvider3D {
      *  file. 
      *	@param cfg The config to load from
      *  */
-    @Deprecated
+    //@Deprecated // TODO: re-add the deprecation once the rest of the code works
     public static OtfProvider3D loadFromConfig( Conf cfg ) 
 	throws Conf.EntryNotFoundException {
 
@@ -417,8 +417,8 @@ public class OtfProvider3D {
 	fld.newInt("emission").setVal( (int)lambda );
 	fld.newDbl("n-immersion").setVal( immersion_n );
 
-	fld.newStr("otf-name").val( otfName.trim() );
-	fld.newStr("otf-meta").val( otfMeta );
+	fld.newStr("otf-name").setVal( otfName.trim() );
+	fld.newStr("otf-meta").setVal( otfMeta );
 
 	// write out data
 	Conf.Folder data = fld.mk("data");
