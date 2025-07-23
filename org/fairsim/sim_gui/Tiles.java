@@ -145,6 +145,7 @@ public class Tiles {
 	/** 
 	 * @param label Label in front of box
 	 * @param opts  Selectable elements */
+	@SuppressWarnings("unchecked")
 	public LComboBox(String label, T ... opts ) {
 	    this( label, (java.awt.Component)null, false, opts );
 	}
@@ -153,6 +154,7 @@ public class Tiles {
 	 * @param label Label in front of box
 	 * @param addComp Additional component, added directly after the box
 	 * @param opts  Selectable elements */
+	@SuppressWarnings("unchecked")
 	public LComboBox(String label, java.awt.Component addComp, T ... opts ) {
 	    this( label, addComp, false, opts );
 	}
@@ -162,6 +164,7 @@ public class Tiles {
 	 * @param addComp Additional component, added directly after the box
 	 * @param showToolTip if true, display the full text for each entry as tooltip
 	 * @param opts  Selectable elements */
+	@SuppressWarnings("unchecked")
 	public LComboBox(String label, java.awt.Component addComp, 
 	    boolean showToolTip, T ... opts ) {
 	    
@@ -277,11 +280,13 @@ public class Tiles {
 	 *  If the currently selected element is contained in the new list,
 	 *  it will be selected again. Otherwise, the first element is selected,
 	 *  and an event is send.*/
+	@SuppressWarnings("unchecked")
 	public void newElements( T ... opts ) {
 	    newElements(-1, opts );
 	}
 
 	/** Fill the selector box with new elements, select the i'th element. */
+	@SuppressWarnings("unchecked")
 	public void newElements( int idx, T ... opts ) {
 	    
 	    suppressEvents=true;

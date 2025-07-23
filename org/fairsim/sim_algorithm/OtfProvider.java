@@ -306,7 +306,6 @@ public class OtfProvider {
      * @param strength Strength of attenuation, 0..1, usually 0.9 .. 0.99
      * @param fwhm     FWHM of the attenuation, in cycles / micron
      * */
-	@Deprecated
 	public void setAttenuation( double strength, double fwhm) {
 		for ( int b = 0; b<vals.length; b++)
 			addAttenuationPerBand( b, Tool.copy(strength), Tool.copy(fwhm));
