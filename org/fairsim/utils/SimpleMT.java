@@ -75,15 +75,27 @@ public final class SimpleMT {
     /** Helpfull class to run parallel loops */
     public static abstract class PFor {
 	private final int start, end, inc;
-	
+	private int maxThreads = -1;
+
 	/** Like for(int i=s; i<e; i++) */
 	protected PFor(int s, int e) {
 	    start=s; end=e; inc=1;
 	    SimpleMT.execute(this);
 	}
+	/** Like for(int i=s; i<e; i+=j) */
+	protected PFor(int s, int e, int j) {
+	    start=s; end=e; inc=j;
+	    SimpleMT.execute(this);
+	}
+	/** Like for(int i=s; i<e; i++) */
+	protected PFor(int s, int e,int j, int m) {
+	    start=s; end=e; inc=j; maxThreads=m;
+	    SimpleMT.execute(this);
+	}
 	/** Called for every index in loop **/
 	protected abstract void at(int pos) ;
-    }
+	
+	}
     
     /** Helpfull class to run parallel loops */
     public static abstract class StrPFor {
@@ -109,11 +121,16 @@ public final class SimpleMT {
 	if (doParallel&&(!parallelInProgress)) {
 	    // only run the outermost loop in parallel
 	    parallelInProgress=true;
-	    
+	   
+		int ourNumberOfThreads = nrThreads;
+		if (loop.maxThreads > 0 && loop.maxThreads < nrThreads) {
+			ourNumberOfThreads = loop.maxThreads;
+		}
+
 	    // split the loop into sub-loop
-	    final int [][] sp = split( nrThreads, loop.start, loop.end );
-	    List<Calls> cb = new ArrayList<Calls>(nrThreads);
-	    for (int i=0; i<nrThreads; i++) {
+	    final int [][] sp = split( ourNumberOfThreads, loop.start, loop.end );
+	    List<Calls> cb = new ArrayList<Calls>(ourNumberOfThreads);
+	    for (int i=0; i<ourNumberOfThreads; i++) {
 		final int j=i;
 		cb.add( new Calls() {
 		    final int s = sp[j][0], e = sp[j][1];

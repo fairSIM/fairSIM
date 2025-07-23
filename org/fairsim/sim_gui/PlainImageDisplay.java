@@ -40,6 +40,7 @@ import javax.swing.BorderFactory;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.Font;
@@ -60,6 +61,7 @@ import java.util.Random;
 
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.utils.Tool;
+import org.fairsim.utils.SimpleMT;
 
 
 public class PlainImageDisplay {
@@ -67,9 +69,13 @@ public class PlainImageDisplay {
     protected final JPanel mainPanel ;
     protected final ImageComponent ic ;
     protected JPanel channelsPanel;
+	protected JCheckBox displayInSRGB_checkbox = new JCheckBox("Display in sRGB", true);
 	
     List<HistogramDisplay> histList = new ArrayList<HistogramDisplay>();
-	    
+	
+	protected final int viewportWidth, viewportHeight;
+	protected int imageWidth=0, imageHeight=0, imageZoom=1;
+
     // absolute bit depth of channel
     final int [] bitDepth ;
 
@@ -130,17 +136,17 @@ public class PlainImageDisplay {
 	    float [] values = new float[3];
 	    // gray
 	    if (color==0) {
-                values[0] = .3f; // blue
-                values[1] = .3f; // green
-                values[2] = .3f; // red
+                values[0] = 1.f; // blue
+                values[1] = 1.f; // green
+                values[2] = 1.f; // red
              } else {
              // 1-6: blue, green, cyan, red, magenta, yellow
                  if ((color&4)!=0)
-                      values[2] = .3f; // red
+                      values[2] = 1.f; // red
                  if ((color&2)!=0)
-                      values[1] = .3f; // green
+                      values[1] = 1.f; // green
                  if ((color&1)!=0)
-                      values[0] = .3f; // blue
+                      values[0] = 1.f; // blue
              }
 	     return values;
 	}
@@ -186,6 +192,9 @@ public class PlainImageDisplay {
 
     public PlainImageDisplay(int nrChannels, int w, int h, boolean slidersOnTop,
 	String ... names) {
+
+	viewportWidth = w;
+	viewportHeight = h;
 
 	ic = new ImageComponent(nrChannels, w,h);
 	mainPanel = new JPanel();
@@ -448,6 +457,17 @@ public class PlainImageDisplay {
 	    }
 	});
 
+	JPanel rgbPanel = new JPanel();
+	rgbPanel.setLayout( new BoxLayout(rgbPanel, BoxLayout.LINE_AXIS));
+	rgbPanel.add(displayInSRGB_checkbox);
+	displayInSRGB_checkbox.addChangeListener(new ChangeListener() {
+	    @Override
+	    public void stateChanged(ChangeEvent e) {
+		boolean isSelected = displayInSRGB_checkbox.isSelected();
+		ic.displayInSRGB = isSelected;
+		refresh();
+	    }
+	});
 
 	// layout of the complete display
 	mainPanel.setLayout( new BoxLayout( mainPanel, BoxLayout.LINE_AXIS));
@@ -456,6 +476,7 @@ public class PlainImageDisplay {
 	JPanel tmpPanel = new JPanel();
 	tmpPanel.setLayout( new BoxLayout( tmpPanel, BoxLayout.PAGE_AXIS));
 	tmpPanel.add( labelPanel );
+	tmpPanel.add( rgbPanel );
 	tmpPanel.add( channelsPanel );
 	
 	mainPanel.add(tmpPanel);
@@ -476,14 +497,22 @@ public class PlainImageDisplay {
 	ic.setImage( ch, img);
     }
 
+	public void resizeImageBuffer(int w, int h) {	
+		ic.resizeImageBuffer(w,h);
+	}
 
     /** Return the GUI panel for the component */
     public JPanel getPanel() {
 	return mainPanel;
     }
 
-
-
+	public boolean isDisplayInSRGB() {
+		return ic.displayInSRGB;
+	}
+	public void setDisplayInSRGB(boolean displayInSRGB) {
+		displayInSRGB_checkbox.setSelected(displayInSRGB);
+		ic.displayInSRGB = displayInSRGB;
+	}
 
     static class HistogramDisplay extends JComponent {
          
@@ -680,9 +709,12 @@ public class PlainImageDisplay {
     /** Internal class for the actual image display */
     static class ImageComponent extends JComponent{
          
-        BufferedImage bufferedImage = null;
-	final int width, height;
+    BufferedImage bufferedImage = null;
+	protected int viewportX=0, viewportY=0;
+	final int viewportWidth, viewportHeight;
 	final int nrChannels;
+	int imageWidth=0, imageHeight=0;
+	private boolean displayInSRGB = true;
    
 	IUpdate ourUpdateListener = null;
 	    
@@ -696,8 +728,8 @@ public class PlainImageDisplay {
 	double [] gamma;
         final boolean[] show;
 
-	final float [][] imgBufferLinearChannels ;
-	final byte  [] imgDataBufferSRGB ;
+	float [][] imgBufferLinearChannels ;
+	byte  []   imgDataBufferSRGB ;
 	final byte  [] imgDataOnScreen   ;
 
 	float [][] colorCoeff;
@@ -707,93 +739,140 @@ public class PlainImageDisplay {
 
         public ImageComponent(int ch, int w, int h) {
 	    
-	    width=w; height=h; nrChannels = ch;
-	   
-	    setIgnoreRepaint(true);
-	    bufferedImage   = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
-	    
-	    imgBufferLinearChannels = new float[nrChannels][w*h];
-	    
-	    imgDataBufferSRGB = new  byte[3*w*h];
-	    
-	    imgDataOnScreen   = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
+			imageWidth = w; imageHeight = h;
+			viewportWidth=w; viewportHeight=h; 
+			nrChannels = ch;
+		
+			setIgnoreRepaint(true);
+			bufferedImage   = new BufferedImage(viewportWidth,viewportHeight, BufferedImage.TYPE_3BYTE_BGR);
+			
+			imgBufferLinearChannels = new float[nrChannels][imageWidth*imageHeight];
+			imgDataBufferSRGB = new  byte[3*imageWidth*imageHeight];	    
+			imgDataOnScreen   = ((DataBufferByte) bufferedImage.getRaster().getDataBuffer()).getData();
 
-	    colorCoeff = new float[nrChannels][3];
-	    gammaLookupTable = new float[nrChannels][ gammaLookupTableSize ];
+			colorCoeff = new float[nrChannels][3];
+			gammaLookupTable = new float[nrChannels][ gammaLookupTableSize ];
 
-	    // init values
-	    scalMax = new int[ch];
-	    scalMin = new int[ch];
-	    currentImgMin = new int[ch];
-	    currentImgMax = new int[ch];
-	    gamma = new double[ch];
-            show = new boolean[ch];
 
-	    for (int c=0; c<nrChannels; c++) {
-		scalMin[c]=0; scalMax[c]=1<<16;
-		currentImgMin[c]=0; currentImgMax[c]=1;
-		recalcGammaTable(c,1);
-                show[c] = true;
-	    }
+			// init values
+			scalMax = new int[ch];
+			scalMin = new int[ch];
+			currentImgMin = new int[ch];
+			currentImgMax = new int[ch];
+			gamma = new double[ch];
+				show = new boolean[ch];
 
-	    // init color lookup
-	    for (int c=0; c<nrChannels; c++) {
-		    setColorTable( c, LUT.values()[(c+1)%7] );
-	    }
-	
-	    /*
-	    this.addMouseListener( new MouseAdapter() {
-		@Override
-		public void mouseClicked(MouseEvent e) {
-		    int x = e.getX();
-		    int y = e.getY();
-		    System.out.println("mouse clicked: "+x+" "+y);
+			for (int c=0; c<nrChannels; c++) {
+			scalMin[c]=0; scalMax[c]=1<<16;
+			currentImgMin[c]=0; currentImgMax[c]=1;
+			recalcGammaTable(c,1);
+					show[c] = true;
+			}
+
+			// init color lookup
+			for (int c=0; c<nrChannels; c++) {
+				setColorTable( c, LUT.values()[(c+1)%7] );
+			}
+
+			// to get all updates on the mouse
+			MouseAdapter mouseAdapter = new MouseAdapter() {
+				
+				int dragStartX = 0, dragStartY = 0;
+				int lastViewportX = 0, lastViewportY = 0;
+				
+				@Override
+				public void mouseWheelMoved( MouseWheelEvent e ) {
+					int xPosMid = e.getX();
+					int yPosMid = e.getY();
+					//System.out.println("Scroller: "+e.getWheelRotation());
+					//System.out.println("mouse clicked: "+x+" "+y);
+				
+					int wSize =  viewportWidth/zoomLevel;
+					int hSize = viewportHeight/zoomLevel;
+				
+					// zoom out 
+					if (e.getWheelRotation()>0) {
+					setZoom(zoomLevel-1, zoomX+wSize/2, zoomY+hSize/2);
+					} else {
+					// zoom in
+					setZoom(zoomLevel+1, 
+						xPosMid/zoomLevel + zoomX, 
+						yPosMid/zoomLevel + zoomY);
+					}
+				}
+				
+				@Override
+				public void mousePressed(MouseEvent e) {
+					int x = e.getX();
+					int y = e.getY();
+					boolean leftButton = (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0;
+
+					// store the initial position for dragging
+					if (leftButton) {
+						dragStartX = x;
+						dragStartY = y;
+						lastViewportX = viewportX;
+						lastViewportY = viewportY;
+						//System.out.println("Mouse pressed: "+x+" "+y+" left button state "+leftButton);
+					}
+				}			
+				
+				@Override
+				public void mouseDragged(MouseEvent e) {
+					int x = e.getX();
+					int y = e.getY();
+				
+					boolean leftButton = (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0;
+					boolean rightButton = (e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) != 0;
+					boolean middleButton = (e.getModifiersEx() & MouseEvent.BUTTON2_DOWN_MASK) != 0;
+				
+					if (leftButton ) {
+						viewportX = (dragStartX - x) + lastViewportX;
+						viewportY = (dragStartY - y) + lastViewportY;
+						if (viewportX<0) viewportX=0;
+						if (viewportY<0) viewportY=0;
+						if (viewportX+viewportWidth > imageWidth) viewportX = imageWidth-viewportWidth;
+						if (viewportY+viewportHeight > imageHeight) viewportY = imageHeight-viewportHeight;
+				
+						//System.out.println("new viewport: "+viewportX+" "+viewportY);
+					}
+				
+					paintImage();
+				}
+			};
+
+			this.addMouseListener(mouseAdapter);
+			this.addMouseMotionListener(mouseAdapter);
+			this.addMouseWheelListener(mouseAdapter);
 		}
-	    }); */
-	    this.addMouseWheelListener( new MouseAdapter() {
-		@Override
-		public void mouseWheelMoved( MouseWheelEvent e ) {
-		    int xPosMid = e.getX();
-		    int yPosMid = e.getY();
-		    //System.out.println("Scroller: "+e.getWheelRotation());
-		    //System.out.println("mouse clicked: "+x+" "+y);
-	    
-		    int wSize =  width/zoomLevel;
-		    int hSize = height/zoomLevel;
-		   
-		    // zoom out 
-		    if (e.getWheelRotation()>0) {
-			setZoom(zoomLevel-1, zoomX+wSize/2, zoomY+hSize/2);
-		    } else {
-		    // zoom in
-			setZoom(zoomLevel+1, 
-			    xPosMid/zoomLevel + zoomX, 
-			    yPosMid/zoomLevel + zoomY);
-		    }
-		}
-	    });
+
+	public void resizeImageBuffer(int w, int h) {
+	    if (w==imageWidth && h==imageHeight) return;
+	    imageWidth = w; imageHeight = h;
+	    imgBufferLinearChannels = new float[nrChannels][imageWidth*imageHeight];
+	    imgDataBufferSRGB = new byte[3 * imageWidth*imageHeight];
 	}
 
 	public void setImage( int ch, float [] img ) {
-	    if (img.length != width*height )
-		throw new RuntimeException("Input array size does not match " + img.length + "/" + width + "/" + height);
-	    System.arraycopy( img, 0, imgBufferLinearChannels[ch], 0, width*height);
+	    if (img.length != imageWidth*imageHeight )
+		throw new RuntimeException("Input array size does not match " + img.length + "/" 
+			+ imageWidth + "/" + imageHeight);
+	    System.arraycopy( img, 0, imgBufferLinearChannels[ch], 0, img.length);
 	}
 	
 	public void setImage( int ch, Vec2d.Real img ) {
-	    if (img.vectorWidth() != width || img.vectorHeight()!=height)
-		throw new RuntimeException("Input vector size mismatch " + width + "/" + height);
+	    if (img.vectorWidth() != imageWidth || img.vectorHeight()!=imageHeight)
+		throw new RuntimeException("Input vector size mismatch " + imageWidth + "/" + imageHeight);
 	    setImage( ch, img.vectorData());
 	}
 		
 	public void setImage( int ch, short [] pxl ) {
-	    if (pxl.length != width*height) 
-		throw new RuntimeException("Input array size does not match: " + pxl.length + "/" + width + "/" + height);
+	    if (pxl.length != imageWidth*imageHeight ) 
+		throw new RuntimeException("Input array size does not match: " + pxl.length + "/" 
+			+ imageWidth + "/" + imageHeight);
 
-	    for (int i=0; i<width*height; i++) {
-		int val = (int)pxl[i];
-		if (val<0) val+=65535;
-		imgBufferLinearChannels[ch][i] = val;
+	    for (int i=0; i<pxl.length; i++) {
+			imgBufferLinearChannels[ch][i] = ((int)pxl[i]) & 0xFFFF; // make sure it is unsigned
 	    }
 	}
 
@@ -818,13 +897,15 @@ public class PlainImageDisplay {
 	// TOOD: move this to an "image processing" class, I guess
 	void paintImage() {
 
-
-	    float [] linRGB = new float[3];
-	    float [] cieXYZ = new float[3];
-
 	    // for all pixels
-	    for (int y=0; y<height; y++)
-	    for (int x=0; x<width; x++) {
+		new SimpleMT.PFor(0,imageHeight, 1,4) {
+		@Override 
+		public void at(int y) {
+	    
+		float [] linRGB = new float[3];
+	    float [] cieXYZ = new float[3];
+		//for (int y=0; y<imageHeight; y++)
+	    for (int x=0; x<imageWidth; x++) {
 	
 		// 0 - zero current pixel
 		for (int col=0; col<3; col++) {
@@ -834,22 +915,25 @@ public class PlainImageDisplay {
 
 		// 1 - convert all channels pixels to linear CIE XYZ
 		for (int ch=0; ch<nrChannels; ch++) {
-                    if(show[ch]) {
-                        // find min / max (not needed here, but stored for histogram)
-			float val = imgBufferLinearChannels[ch][ x + y*width ];
-                        if (val> currentImgMax[ch]) currentImgMax[ch] = (int)val;
-                        if (val< currentImgMin[ch]) currentImgMin[ch] = (int)val;
-                        // scale to set min / max values
-			float out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
-			if (out<0) out=0;
-			if (out>=1) out=1-.5f/gammaLookupTableSize;
-			// apply channel-specific gamma
-			out = gammaLookupTable[ch][ (int)(out*gammaLookupTableSize) ];
-			// add to the linear RGB buffer
-			for (int col=0; col<3; col++) {
-			    cieXYZ[ col ] += colorCoeff[ch][col] * out;
+            if(show[ch]) {
+				// find min / max (not needed here, but stored for histogram)
+				float val = imgBufferLinearChannels[ch][ x + y*imageWidth ];
+				if (val> currentImgMax[ch]) currentImgMax[ch] = (int)val;
+				if (val< currentImgMin[ch]) currentImgMin[ch] = (int)val;
+				
+				// scale to set min / max values
+				float out = 1.f*(val - scalMin[ch]) / (scalMax[ch]-scalMin[ch]) ;
+				if (out<0) out=0;
+				if (out>=1) out=1-.5f/gammaLookupTableSize;
+				// apply channel-specific gamma
+				out = gammaLookupTable[ch][ (int)(out*gammaLookupTableSize) ];
+				// add to the linear RGB buffer
+				for (int col=0; col<3; col++) {
+					// TODO: capping the color lookup table was a cheap trick to avoid color clipping in
+					// sRGB conversion, but it is not really correct. We can fix that at some point :-)
+					cieXYZ[ col ] += colorCoeff[ch][col] * out; // ;* (displayInSRGB ? .3f : 1.0f);
+				}
 			}
-                    }
 		}
 	
 		// 2 - clip the conversion input
@@ -858,37 +942,54 @@ public class PlainImageDisplay {
 		    if ((cieXYZ[col]) < 0.0f) cieXYZ[col]=0.0f;
 		}
 
-		// 3 - threat input as CIE XYZ
-		linRGB[0] = (float)(cieXYZ[0] * 3.2406 + cieXYZ[1] * -1.5372 + cieXYZ[2] * -0.4986);
-		linRGB[1] = (float)(cieXYZ[0] * -.9689 + cieXYZ[1] *  1.8758 + cieXYZ[2] *  0.0415);
-		linRGB[2] = (float)(cieXYZ[0] * 0.0557 + cieXYZ[1] * -0.2040 + cieXYZ[2] *  1.0570);
+		if (displayInSRGB) {
+			// 3 - threat input as CIE XYZ
+			linRGB[0] = (float)(cieXYZ[0] * 3.2406 + cieXYZ[1] * -1.5372 + cieXYZ[2] * -0.4986);
+			linRGB[1] = (float)(cieXYZ[0] * -.9689 + cieXYZ[1] *  1.8758 + cieXYZ[2] *  0.0415);
+			linRGB[2] = (float)(cieXYZ[0] * 0.0557 + cieXYZ[1] * -0.2040 + cieXYZ[2] *  1.0570);
 
-		// 4 - clip the conversion output
-		for (int col=0; col<3; col++) {
-		    if ((linRGB[col]) >= 1.0f) linRGB[col]=1-0.5f/gammaSRGB.length;
-		    if ((linRGB[col]) <  0.0f) linRGB[col]=0.0f;
+			// 4 - clip the conversion output
+			for (int col=0; col<3; col++) {
+				if ((linRGB[col]) >= 1.0f) linRGB[col]=1-0.5f/gammaSRGB.length;
+				if ((linRGB[col]) <  0.0f) linRGB[col]=0.0f;
+			}
+			
+			// 5- set to output bytes (through sRGBs gamma table)
+			for (int i=0; i<3; i++) {
+				imgDataBufferSRGB[3 * (y*imageWidth + x ) + i  ] = 
+				gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
+			}
+		} else {
+			// use the input directly as sRGB pixels
+			for (int i=0; i<3; i++) {
+				imgDataBufferSRGB[3 * (y*imageWidth + x ) + i  ] = 
+				(byte)(cieXYZ[i] * 255); // scale to 0-255
+			}
 		}
-		
-		// 5- set to output bytes (through sRGBs gamma table)
-		for (int i=0; i<3; i++) {
-		    imgDataBufferSRGB[3 * (y*width + x ) + i  ] = 
-			gammaSRGB[ (int)(linRGB[i] * gammaSRGB.length) ];
-		}
-	    }
-	   
+		};};};
 
-	    // this handles 'zoom'
-	    if (zoomLevel==1) {
-		System.arraycopy( imgDataBufferSRGB, 0 , imgDataOnScreen, 0, 3*width*height);
-	    } else {
-		for (int y=0; y<height; y++)	
-		for (int x=0; x<width;  x++)	
-		for (int i=0; i<3;  i++)	
-		    imgDataOnScreen[3*(x + y*width)+i] = imgDataBufferSRGB[ 
-		     3*( (x/zoomLevel+zoomX) + width*(y/zoomLevel+zoomY))+i];
-	    }
-	    
-	    this.repaint();
+	    // this handles 'zoom' and 'pan'
+	    if (zoomLevel==1 && viewportWidth==imageWidth && viewportHeight==imageHeight) {
+			System.arraycopy( imgDataBufferSRGB, 0 , imgDataOnScreen, 0, 3*viewportHeight*viewportWidth);
+		} else {
+			for (int y=0; y<viewportHeight; y++)	
+			for (int x=0; x<viewportWidth;  x++) {
+			
+				int xPos = x/zoomLevel + zoomX + viewportX;
+				int yPos = y/zoomLevel + zoomY + viewportY;
+			
+				for (int i=0; i<3;  i++) {
+					if (xPos<0 || xPos>=imageWidth || yPos<0 || yPos>=imageHeight) {
+						// out of bounds, set to black
+						imgDataOnScreen[3*(x + y*viewportWidth)+i] = (byte)0;
+					} else {
+						// copy the pixel from the buffer
+						imgDataOnScreen[3*(x + y*viewportWidth)+i] = imgDataBufferSRGB[3*(xPos + yPos*imageWidth)+i];
+					}
+				}
+			}
+		}	
+		this.repaint();
 	}
 
 
@@ -901,21 +1002,26 @@ public class PlainImageDisplay {
 	    if (crosshair>0) {
 		g.setColor( crosshairColor );
 		if ( crosshair%2 == 1 ) {
-		    Line2D line1 = new Line2D.Double(width/2.,height/10.,width/2.,height*9./10.);
-		    Line2D line2 = new Line2D.Double(width/10.,height/2.,width*9./10.,height/2.);
+		    Line2D line1 = new Line2D.Double(
+				viewportWidth/2.,viewportHeight/10.,viewportWidth/2.,viewportHeight*9./10.);
+		    Line2D line2 = new Line2D.Double(
+				viewportWidth/10.,viewportHeight/2.,viewportWidth*9./10.,viewportHeight/2.);
 		    ((Graphics2D)g).draw(line1);
 		    ((Graphics2D)g).draw(line2);
 		}
 		if ( crosshair%2 == 0 ) {
-		    Line2D line1 = new Line2D.Double(width/10. ,height/10. , width*9./10., height*9./10.);
-		    Line2D line2 = new Line2D.Double(width*9/10.,height/10.,width/10.,height*9./10.);
+		    Line2D line1 = new Line2D.Double(
+				viewportWidth/10. , viewportHeight/10. , viewportWidth*9./10., viewportHeight*9./10.);
+		    Line2D line2 = new Line2D.Double(
+				viewportWidth*9/10.,viewportHeight/10., viewportWidth/10., viewportHeight*9./10.);
 		    ((Graphics2D)g).draw(line1);
 		    ((Graphics2D)g).draw(line2);
 		}
 	    }
 	    if ( crosshair > 2 ) {
-		double size = (width+height)/4.;
-		Ellipse2D cir = new Ellipse2D.Double(width/2.-size/2, height/2.-size/2, size,size);
+		double size = (viewportWidth+viewportHeight)/4.;
+		Ellipse2D cir = new Ellipse2D.Double(
+			viewportWidth/2.-size/2, viewportHeight/2.-size/2, size,size);
 		((Graphics2D)g).draw(cir);
 	    }
 
@@ -937,14 +1043,14 @@ public class PlainImageDisplay {
 		return;
 	    }
 	    
-	    int wSize =  width/level;
-	    int hSize = height/level;
+	    int wSize =  viewportWidth/level;
+	    int hSize = viewportHeight/level;
 	    xPos-=wSize/2;
 	    yPos-=hSize/2;
 	    xPos = Math.max(xPos,0);
 	    yPos = Math.max(yPos,0);
-	    xPos = Math.min(xPos, width-wSize-1);
-	    yPos = Math.min(yPos,height-hSize-1);
+	    xPos = Math.min(xPos, viewportWidth-wSize-1);
+	    yPos = Math.min(yPos, viewportHeight-hSize-1);
 	    zoomLevel=level;
 	    zoomX=xPos;
 	    zoomY=yPos;
@@ -963,17 +1069,17 @@ public class PlainImageDisplay {
 	}
         @Override
         public Dimension getPreferredSize() {
-            return new Dimension(width, height);
+            return new Dimension(viewportWidth, viewportHeight);
         }
  
         @Override
         public Dimension getMaximumSize() {
-            return new Dimension(width, height);
+            return new Dimension(viewportWidth, viewportHeight);
         }
  
         @Override
         public Dimension getMinimumSize() {
-            return new Dimension(width, height);
+            return new Dimension(viewportWidth, viewportHeight);
         }
  
         @Override
@@ -991,17 +1097,28 @@ public class PlainImageDisplay {
     public static void main( String [] arg ) throws java.io.IOException, InterruptedException {
 	
 	if (arg.length<2) {
-	    System.out.println("Usage for test: image-size channels");
+	    System.out.println("Usage for test: image-size channels [viewport-size]");
 	    return;
 	}
 
 	final int size = Integer.parseInt( arg[0]);
 	final int nrCh = Integer.parseInt( arg[1]);
+
+	int viewportSize = size;
+	if (arg.length>2) {
+	    viewportSize = Integer.parseInt( arg[2]);
+	}
 	final int width=size, height=size;
 
-	// create an ImageDisplay sized 512x512
-	PlainImageDisplay pd = new PlainImageDisplay(nrCh, width,height);
+	System.out.println(String.format(" image size: %d, channels: %d, viewport size: %d", 
+	    size, nrCh, viewportSize));
 
+	// create an ImageDisplay sized 512x512
+	PlainImageDisplay pd = new PlainImageDisplay(nrCh, viewportSize,viewportSize);
+	if ( size != viewportSize ) {
+	    pd.resizeImageBuffer(width,height);
+	}
+	
 	// create a frame and add the display
 	JFrame mainFrame = new JFrame("Plain Image Receiver");
 	mainFrame.add( pd.getPanel() ); 
@@ -1013,36 +1130,43 @@ public class PlainImageDisplay {
 	float [][] pxl = new float[100][width*height];
 
 	Tool.Timer t1 = Tool.getTimer();
-	Random rnd = new Random(42);
+	Tool.Timer t2 = Tool.getTimer();
 
 	for (int ch = 0; ch < nrCh; ch++) 
-	for (int i=0;i<100;i++) {
-	    for (int y=0;y<height;y++)
-	    for (int x=0;x<width;x++) {
-		if ( (x>200 && x<250) || (y>150 && y<190) ) {
-		    pxl[i][x+y*width]=(float)(500 +rnd.nextGaussian()*Math.sqrt(500));
-		} else 
-		if ( (x>400 && x<450) || (y>250 && y<290) ) {
-		    pxl[i][x+y*width]=(float)(1400+rnd.nextGaussian()*Math.sqrt(1400));
-		} else {
-		    pxl[i][x+y*width]=(float)(2400+rnd.nextGaussian()*Math.sqrt(2400));
-		}
-	    }
-	}
+	new SimpleMT.PFor(0,100) {
+		public void at(int i) {
+			Random rnd = new Random(42*i);
+			for (int y=0;y<height;y++)
+			for (int x=0;x<width;x++) {
+				if ( (x>200 && x<250) || (y>150 && y<190) ) {
+					pxl[i][x+y*width]=(float)(500 +rnd.nextGaussian()*Math.sqrt(500));
+				} else 
+				if ( (x>400 && x<450) || (y>250 && y<290) ) {
+					pxl[i][x+y*width]=(float)(1400+rnd.nextGaussian()*Math.sqrt(1400));
+				} else {
+					pxl[i][x+y*width]=(float)(2400+rnd.nextGaussian()*Math.sqrt(2400));
+				}
+			}
+		};
+	};
 
 	while (true) {
 	    t1.start();
-	    for (int i=0;i<100;i++) {
+		long frametime=0;
+		for (int i=0;i<100;i++) {
+		t2.start();
 		for (int ch = 0; ch < nrCh; ch++) {
 		    float [] pxls = pxl[(int)(Math.random()*99)]; 
 		    pd.newImage(ch, pxls);
 		}
 		
 		pd.refresh();
+		t2.stop();
+		frametime += t2.msElapsed();
 		Thread.sleep(25);
 	    }
 	    t1.stop();
-	    System.out.println( "fps: "+((1000*100)/t1.msElapsed()) );
+	    System.out.println( "fps: "+((1000*100)/t1.msElapsed()+ " frametime "+frametime/100+" ms") );
 	}
 
 
