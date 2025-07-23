@@ -95,12 +95,13 @@ public class OtfProvider3D {
 	
 	
 	// out of support, return 0
-	if (( xycycl >= cutOffLateral )||(zcycl >= cutOffAxial ))
+	// TODO: this is a cheap hack, actually the cutoff should be specified seperately for each band
+	if (( xycycl >= cutOffLateral )||(Math.abs(zcycl) >= cutOffAxial*((band==1)?(1.4):(1)) ))
 	    return Cplx.Float.zero();
 	
 	final double xpos = xycycl / cyclesPerMicronLateral;
 	final double zpos = zcycl  / (cyclesPerMicronAxial) ;
-	//double zpos = Math.abs( zcycl  / cyclesPerMicronAxial );
+	//final double zpos = Math.abs( zcycl  / cyclesPerMicronAxial );
 	
 	if ( Math.ceil(xpos) >= samplesLateral || Math.ceil(zpos) >= samplesAxial )
 	    return Cplx.Float.zero();
@@ -169,8 +170,8 @@ public class OtfProvider3D {
 		    // wrap to coordinates: x in [-w/2,w/2], y in [-h/2, h/2]
 		    double xh = (x<w/2)?( x):(x-w);
 		    double yh = (y<h/2)?(-y):(h-y);
-		    //double zh = (z<d/2)?( z):(z-d);
-		    double zh = z;
+		    double zh = (z<d/2)?( z):(d-z);
+		    //double zh = z;
 		    
 		    // from these, calculate distance to kx,ky, convert to cycl/microns
 		    double rad = MTool.fhypot( xh-kx, yh-ky );
@@ -178,11 +179,15 @@ public class OtfProvider3D {
 		    double cyclax  = zh  * vecCyclesPerMicronAxial;
 		    
 		    // over cutoff? just set zero TODO: Math.hypot( lat, ax ) here?
-		    if ( cycllat > cutOffLateral || cyclax > cutOffAxial ) {
+			/* 
+			// TODO: this if statement should not be needed, as getOtfVal has already a cutoff build in
+			if ( cycllat > cutOffLateral || cyclax > cutOffAxial * (band==1)?(1.4):(1)) {
 			vec.set(x,y,z, Cplx.Float.zero());
 		    } 
 		    // within cutoff?
-		    else {
+		    else 
+			*/
+			{
 		    
 			// get the OTF value
 			Cplx.Float val = getOtfVal(band, cycllat, cyclax);
@@ -190,7 +195,6 @@ public class OtfProvider3D {
 			//boolean xyzconj = ((x>=w/2)^(y>=h/2))^(z>=d/2);
 			//boolean xyzconj = ((x>=w/2)^(y>=h/2));
 			boolean xyzconj = false;
-			    
     
 			// multiply to vector or write to vector
 			if (!write) {
@@ -275,12 +279,14 @@ public class OtfProvider3D {
 		    // from these, calculate distance to kx,ky, convert to cycl/microns
 		    double rad = MTool.fhypot( xh, yh );
 		    double cycllat = rad * vecCyclesPerMicronLateral;
-		    double cyclax  = zh  * vecCyclesPerMicronAxial;
+		    double cyclax  = Math.abs(zh  * vecCyclesPerMicronAxial);
 		    
 
 		    double distL = cycllat / cutOffLateral / multipleLateral;
 		    double distA = cyclax  / cutOffAxial / multipleAxial;
-		    double dist  = MTool.fhypot( distL, distA );
+		    //double dist  = MTool.fhypot( distL, distA );
+			double dist = Math.abs( 1-((1-distL)*(1-distA)) );
+
 
 		    if ( dist > 1.0 ) {
 			vec.set(x,y,z, Cplx.Float.zero());

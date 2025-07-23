@@ -74,10 +74,10 @@ public class WienerFilter3d {
 		    float otfVal2 = sp.otf3d().getOtfVal(b, rad2, zh ).absSq();
 		    
 		    // store for Wiener denominator
-		    if (b!=0)
+		    //if (b!=0)
 			vec.set( x,y,z, vec.get(x,y,z) + otfVal1 + otfVal2 );
-		    else
-			vec.set( x,y,z, vec.get(x,y,z) + otfVal1  );
+		    //else
+			//vec.set( x,y,z, vec.get(x,y,z) + otfVal1  );
 
 		}
 	    }

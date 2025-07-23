@@ -71,12 +71,10 @@ public class SimAlgorithm3D {
 	tAll.start();
 	
 	// Output displays to show the intermediate results
-	/*
 	ImageDisplay pwSt  = new DisplayWrapper(w,h, "Power Spectra" );
 	ImageDisplay spSt  = new DisplayWrapper(w,h, "Spatial images");
 	ImageDisplay pwSt2 = new DisplayWrapper(2*w,2*h, "Power Spectra" );
 	ImageDisplay spSt2 = new DisplayWrapper(2*w,2*h, "Spatial images");
-	*/
 
 
 	// Copy current stack into vectors, apotize borders, run fft 
@@ -432,9 +430,12 @@ public class SimAlgorithm3D {
 		//BandSeparation.separateBands( inFFT[angIdx] , separate , 
 		//	par.getPhases(), par.nrBand(), new double [] {1, 0.8, 0.8} );
 
-		if ( otfBeforeShift && !disableFiltering )
-		    for (int i=0; i<(par.nrBand()*2-1) ;i++)  
-			otfPr.applyOtf( separate[i], (i+1)/2);
+		if ( otfBeforeShift && !disableFiltering ) {
+		    for (int i=0; i<(par.nrBand()*2-1) ;i++) {  
+				Tool.trace("REC: Dir "+angIdx+" band: "+(i+1)/2+" OTF multiply");
+				otfPr.applyOtf( separate[i], (i+1)/2);
+		    }
+		}
 
 		// ------- Shifts to correct position ----------
 
@@ -471,6 +472,7 @@ public class SimAlgorithm3D {
 		    // multiply with shifted OTF
 		    for (int b=0; b<par.nrBand(); b++) {
 			int pos = b*2, neg = (b*2)-1;	// pos/neg contr. to band
+			Tool.trace("REC: Dir "+angIdx+" band: "+b+" OTF multiply");
 			otfPr.applyOtf( shifted[pos], b,  par.px(b),  par.py(b) );
 			if (b>0)
 			    otfPr.applyOtf( shifted[neg], b, -par.px(b), -par.py(b) );
@@ -494,48 +496,79 @@ public class SimAlgorithm3D {
 		
 		// ------ Output intermediate results ------
 
-		/*
 		if (visualFeedback>0) {
-	    
+	   
+		    // visualize the OTF
+			if (visualFeedback>=1) {	
+				Tool.trace("REC: Dir "+angIdx+" OTF visualization");
+				for (int i=0; i<par.nrBand(); i++) {
+					Vec3d.Cplx otf   = Vec3d.createCplx(2*w, 2*h, d);
+					otfPr.writeOtfVector( otf, i, par.px(i), par.py(i) );	
+					for (int z=0; z<d; z++) {
+						Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
+						tmp.slice( otf, z );
+						Transforms.swapQuadrant( tmp );
+						pwSt2.addImage( tmp, String.format(
+							"a%1d: OTF band %1d, slice %1d",angIdx,i,z ));
+					}
+				}
+			}	
+
+
+
 		    // per-direction results
 		    Vec3d.Cplx result = Vec3d.createCplx(2*w,2*h,d);
 		    for (int i=0;i<par.nrBand()*2-1;i++)  
-			result.add( shifted[i] ); 
+				result.add( shifted[i] ); 
 
 		    // loop bands in this direction
 		    for (int i=0;i<par.nrBand();i++) {     
 
-			// TODO: re-implement and re-enable this
-			// get wiener denominator for (direction, band), add to full denom for this band
-			Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
-		    
-			// add up +- shift for this band
-			Vec3d.Cplx thisband   = shifted[i*2];
-			if (i!=0)
-			    thisband.add( shifted[i*2-1] );
-	    
-			// output the wiener denominator
-			if (visualFeedback>1) {
-			    Vec3d.Real wd = denom.duplicate();
-			    wd.reciproc();
-			    wd.normalize();
+				// TODO: re-implement and re-enable this
+				// get wiener denominator for (direction, band), add to full denom for this band
+				Vec3d.Real denom = wFilter.getIntermediateDenominator( angIdx, i, wienParam);
+		  
+				Tool.trace("REC: Dir "+angIdx+" band: "+i+" Wiener denominator visualization wf: "+wienParam);
+				for (int z=0; z<d; z++) {
+					Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
+					tmp.slice( denom, z );
+					tmp.reciproc();
+					Transforms.swapQuadrant( tmp );
+					pwSt2.addImage( tmp, String.format(
+						"a%1d: Wiener filter band %1d, slice %1d",angIdx,i,z));
+				}
+
+				// add up +- shift for this band
+				Vec3d.Cplx thisband   = shifted[i*2];
+				if (i!=0)
+			 	   thisband.add( shifted[i*2-1] );
+	   
+				/* 
+				// output the wiener denominator
+				if (visualFeedback>1) {
+			 	   Vec3d.Real wd = denom.duplicate();
+			 	   wd.reciproc();
+			 	   wd.normalize();
 			    
-			    Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
-			    tmp.project(wd);
-			    Transforms.swapQuadrant( tmp );
-			    pwSt2.addImage( tmp, String.format(
-				"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
-			}  
+			  	  Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
+			  	  tmp.project(wd);
+			  	  Transforms.swapQuadrant( tmp );
+			  	  pwSt2.addImage( tmp, String.format(
+					"a%1d: OTF/Wiener band %1d",angIdx,(i/2) ));
+				}  
+				*/
 			
-			// apply filter and output result
-			if (!disableFiltering)
-			    thisband.times( denom );
+				// apply filter and output result
+				if (!disableFiltering)
+			    	thisband.times( denom );
 			
-			pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
-			    "a%1d: band %1d",angIdx,i));
+				pwSt2.addImage( SimUtils.pwSpec( thisband ) ,String.format(
+			    	"a%1d: band %1d",angIdx,i));
 			
-			spSt2.addImage( SimUtils.spatial( thisband,5 ) ,String.format(
-			    "a%1d: band %1d (slice 5)",angIdx,i));
+				for (int z=0; z<d; z++) {
+					spSt2.addImage( SimUtils.spatial( thisband,z ) ,String.format(
+			    		"a%1d: band %1d (slice %1d)",angIdx,i,z));
+				}
 		    }
 
 		    // per direction wiener denominator	
@@ -545,12 +578,16 @@ public class SimAlgorithm3D {
 			
 		    // output the wiener denominator
 		    if (visualFeedback>1) {
-			Vec2d.Real wd = fDenom.duplicate();
+			Vec3d.Real wd = fDenom.duplicate();
 			wd.reciproc();
 			wd.normalize();
 			Transforms.swapQuadrant( wd );
-			pwSt2.addImage( wd, String.format(
-			    "a%1d: OTF/Wiener all bands",angIdx ));
+			for (int z=0; z<d; z++) {
+			    Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
+			    tmp.slice( wd, z );
+			    Transforms.swapQuadrant( tmp );
+				pwSt2.addImage( tmp, String.format(
+			 	   "a%1d: OTF/Wiener all bands, z=%1d",angIdx, z ));
 		    } 
 
 		    pwSt2.addImage( SimUtils.pwSpec( result ) ,String.format(
@@ -566,9 +603,9 @@ public class SimAlgorithm3D {
 			pwSt.addImage( SimUtils.pwSpec( separate[i] ), String.format(
 			    "a%1d, sep%1d, seperated band", angIdx, i));
 		    }
+			}
 	       
 		}
-		*/
 
 
 	    }   
@@ -576,19 +613,18 @@ public class SimAlgorithm3D {
 	    // -- done loop all pattern directions, 'fullResult' now holds the image --
 	    
 	    
-	    /*if (visualFeedback>0) {
-		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO, WF)");
-		for (int i=0; i<7; i++)
-		    spSt2.addImage(  SimUtils.spatial(fullResult,i), "full (w/o APO, WF), pl: "+i);
-	    } */
-	    
 	    // multiply by wiener denominator
 	    Vec3d.Real denom = wFilter.getDenominator( wienParam );
 	    fullResult.times(denom);
 
-	    // apply apotization filter
+	    if (visualFeedback>0) {
+		pwSt2.addImage(  SimUtils.pwSpec( fullResult), "full (w/o APO, WF)");
+		for (int i=0; i<d; i++)
+		    spSt2.addImage(  SimUtils.spatial(fullResult,i), "full (w/o APO, WF), pl: "+i);
+	    }
 	    
-	    //otfPr.apotize( fullResult, 2.0, 2.0, true );
+		// apply apotization filter
+	    otfPr.apotize( fullResult, 2.0, 2.0, true );
 	    
 	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)
@@ -659,12 +695,10 @@ public class SimAlgorithm3D {
 	Tool.trace(" All:                         "+tAll);
 
 	// DONE, display all results
-	/*
 	pwSt.display();
 	pwSt2.display();
 	spSt.display();
 	spSt2.display();
-	*/
 
 	return fullResult;
 

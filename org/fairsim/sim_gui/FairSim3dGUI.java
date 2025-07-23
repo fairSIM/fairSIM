@@ -63,7 +63,7 @@ import java.util.ArrayList;
 public class FairSim3dGUI {
 
     // presets for the Wiener value spinner
-    final double wienerLowest = 0.001, wienerHighest = 0.2, wienerSteps = 0.00025;
+    final double wienerLowest = 0.0001, wienerHighest = 0.2, wienerSteps = 0.00025;
     
     final JFrame baseframe = new JFrame("fairSIM 3D GUI");
     final private JPanel mainPanel = new JPanel();
@@ -175,14 +175,18 @@ public class FairSim3dGUI {
 	posSelector.add( tStart );
 	posSelector.add( tEnd );
 
+	// amount of visual feedback
+	Tiles.LNSpinner vfbSpinner = new Tiles.LNSpinner("visual feedback level", 1, -2, 3, 1);
+	posSelector.add( vfbSpinner );
 
+	
 	JPanel buttonPanel = new JPanel();
 	JButton start3dReconButton = new JButton("run!");
 
 	start3dReconButton.addActionListener( new ActionListener () {
 	    @Override
 	    public void actionPerformed(ActionEvent e){
-		runReconstruction( false, null);
+		runReconstruction( false, null, (int)vfbSpinner.getVal() );
 	    }
 	});
 
@@ -219,7 +223,7 @@ public class FairSim3dGUI {
 	// TODO: check if this is o.k.
 	if (autostart) {
 	    start3dReconButton.setEnabled(false);
-	    runReconstruction(headless, resultImageFile);
+	    runReconstruction(headless, resultImageFile, -2); // Todo: propagate visual feedback level in autostart mode
 	    start3dReconButton.setEnabled(true);
 	}
 
@@ -481,7 +485,7 @@ public class FairSim3dGUI {
 
 
 
-    void runReconstruction(boolean headless, String saveFileName) {
+    void runReconstruction(boolean headless, String saveFileName, int visualFeedbackLevel) {
 	
 	// figure out how many channels to reconstruct
 	List<ChannelPanel> channelMap = new ArrayList<ChannelPanel>();
@@ -549,7 +553,7 @@ public class FairSim3dGUI {
 
 		// run the reconstruction
 		Vec3d.Cplx result = SimAlgorithm3D.runReconstruction(
-			inputImgs, sp, -2, ourFitLevel, doFastFit 
+			inputImgs, sp, visualFeedbackLevel, ourFitLevel, doFastFit 
 			);
 
 		result.fft3d(true);
