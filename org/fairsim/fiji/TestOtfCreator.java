@@ -79,10 +79,19 @@ public class TestOtfCreator implements PlugIn {
     public static void main( String [] arg ) {
 
 	if (arg.length<1) {
-	    System.out.println("TIFF-file");
+	    System.out.println("TIFF-file [feedback level]");
 	    return;
 	}
 	
+	int feedback = 1;
+	if (arg.length>1) {
+	    try {
+		feedback = Integer.parseInt(arg[1]);
+	    } catch (NumberFormatException e) {
+		System.out.println("Feedback level must be an integer, using default: 1");
+	    }
+	}
+
 	boolean set=false;
   
 	new ij.ImageJ( ij.ImageJ.EMBEDDED );
@@ -123,7 +132,7 @@ public class TestOtfCreator implements PlugIn {
 
 	// start the OtfCreation
 	OtfCreator otfCr = new OtfCreator();	
-	Vec2d.Cplx otf = otfCr.createOtf( imgs );
+	Vec2d.Cplx [] otf = otfCr.createOtf( imgs, feedback );
 	
 
 

@@ -29,7 +29,7 @@ public class OtfCreator {
 
 
     // the full OTF creation
-    public Vec2d.Cplx createOtf( Vec3d.Cplx [][] inputImgs ) {
+    public Vec2d.Cplx [] createOtf( Vec3d.Cplx [][] inputImgs, int visualFeedback ) {
 
 	final int nrBands = 3;
 
@@ -46,7 +46,7 @@ public class OtfCreator {
 	// TODO: move the DisplayWrapper to an interface, so the dependency to Fiji is not needed here
 	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, 1,nrBands,"band-sep input data");
 	//ImageStackOutput iso2 = new DisplayWrapper5D( width, height, depth, 2,nrBands*2,"full OTFs");
-	ImageStackOutput isoRad = new DisplayWrapper5D( radialBins, depth, 2, nrAngle, nrBands, "OTF radial averages");
+	ImageStackOutput isoRad = new DisplayWrapper5D( radialBins, depth, nrAngle, 3, nrBands, "OTF radial averages");
 
 	Tool.trace("--- running fit ---");
 
@@ -86,14 +86,16 @@ public class OtfCreator {
 
 
 	    // output the band-separated input data
-	    for (int z=0;z<depth;z++) {
-		for (int b=0;b<nrBands;b++) {
-		    Vec2d.Real res = Vec2d.createReal( width, height );
-		    res.slice( bands[b] , z);
-		    iso1.setImage( res , z, 0 ,b, "");
+	    if (visualFeedback>0) {  
+			for (int z=0;z<depth;z++) {
+				for (int b=0;b<nrBands;b++) {
+					Vec2d.Real res = Vec2d.createReal( width, height );
+					res.slice( bands[b] , z);
+					iso1.setImage( res , z, 0 ,b, "");
+				}
+			}
+			iso1.update();
 		}
-	    }
-	    iso1.update();
 
 	    // locate the bead in the pseudo-widefield 
 	    Tool.trace("--- Fitting bead position ---");
@@ -103,41 +105,41 @@ public class OtfCreator {
     
 	    // fft the otfs 
 	    for (int b=0; b<nrBands; b++) {
-		bands[b].fft3d(false);
+			bands[b].fft3d(false);
 	    } 
 
 	    for (int b=0; b<nrBands; b++) {
-		Cplx.Float x = bands[b].get(1,0,0);
-		Cplx.Float y = bands[b].get(0,1,0);
-		Cplx.Float z = bands[b].get(0,0,1);
-		bands[b].set(0,0,0, x.add(y.add(z)).mult( 1/3.) );
+			Cplx.Float x = bands[b].get(1,0,0);
+			Cplx.Float y = bands[b].get(0,1,0);
+			Cplx.Float z = bands[b].get(0,0,1);
+			bands[b].set(0,0,0, x.add(y.add(z)).mult( 1/3.) );
 	    }
     
 	    // for debugging: output the centered bead
-	    {
-		ImageStackOutput isoOtf = new DisplayWrapper5D( width, height, depth, 2,3,
-			String.format("angle %d centered OTFs", ang));
-		
-		for (int b=0; b<nrBands; b++) {
-		    
-		    Vec3d.Cplx cpyBands = bands[b].duplicate();
-		    Vec3d.Cplx tmp = bands[b].duplicate();
-		    cpyBands.fourierShift(pos[0],pos[1],pos[2]); 
-		    cpyBands.fft3d(true);
-		    Transforms.swapQuadrant(cpyBands, tmp);
-		    for (int z=0;z<depth;z++) {
-			Vec2d.Cplx res  = Vec2d.createCplx( width, height );
-			Vec2d.Real img1 = Vec2d.createReal( width, height );
-			Vec2d.Real img2 = Vec2d.createReal( width, height );
-			res.slice(tmp,z);
-			img1.copyMagnitude( res );
-			img2.copyPhase( res );
-			isoOtf.setImage(img1,z,0,b,"");
-			isoOtf.setImage(img2,z,1,b,"");
-		    }
-		
-		}	
-		isoOtf.update();
+	    if (visualFeedback>1) {
+			ImageStackOutput isoOtf = new DisplayWrapper5D( width, height, depth, 2,3,
+				String.format("angle %d centered OTFs", ang));
+			
+			for (int b=0; b<nrBands; b++) {
+				
+				Vec3d.Cplx cpyBands = bands[b].duplicate();
+				Vec3d.Cplx tmp = bands[b].duplicate();
+				cpyBands.fourierShift(pos[0],pos[1],pos[2]); 
+				cpyBands.fft3d(true);
+				Transforms.swapQuadrant(cpyBands, tmp);
+				for (int z=0;z<depth;z++) {
+				Vec2d.Cplx res  = Vec2d.createCplx( width, height );
+				Vec2d.Real img1 = Vec2d.createReal( width, height );
+				Vec2d.Real img2 = Vec2d.createReal( width, height );
+				res.slice(tmp,z);
+				img1.copyMagnitude( res );
+				img2.copyPhase( res );
+				isoOtf.setImage(img1,z,0,b,"");
+				isoOtf.setImage(img2,z,1,b,"");
+				}
+			
+			}	
+			isoOtf.update();
 	    }
 
 	    // for demonstration: scan the phase range
@@ -188,8 +190,6 @@ public class OtfCreator {
 		    }
 		}
 		
-
-
 		isoMag.update();
 		isoPha.update();
 	    }
@@ -297,45 +297,45 @@ public class OtfCreator {
 
 
 	    }
-	
-	    ImageStackOutput isoMag = 
+
+		ImageStackOutput isoMag = 
 		new DisplayWrapper5D( width, height, depth, 4,3,
 			String.format("ang %d: OTF MAG full comp.", ang));
-	    ImageStackOutput isoPha = 
+		ImageStackOutput isoPha = 
 		new DisplayWrapper5D( width, height, depth, 4,3,
 			String.format("ang %d: OTF PHA full comp.", ang));
-	    
-	    // output results		
-	    {
-	
-		for (int comp=0; comp<3; comp++) {
-		    for (int b=0;b<nrBands;b++) {
-			Vec3d.Cplx tmp = bands[b].duplicate();
 			
-			if (comp==1) {
-			    tmp.fourierShift( pos[0],pos[1],pos[2]);
-			} 
-			if (comp==2) {
-			    tmp.fourierShift( posComp[0],posComp[1], pos[2]); 
+	    // visualize results		
+	    if (visualFeedback>0) {
+		
+			for (int comp=0; comp<3; comp++) {
+				for (int b=0;b<nrBands;b++) {
+				Vec3d.Cplx tmp = bands[b].duplicate();
+				
+				if (comp==1) {
+					tmp.fourierShift( pos[0],pos[1],pos[2]);
+				} 
+				if (comp==2) {
+					tmp.fourierShift( posComp[0],posComp[1], pos[2]); 
+				}
+		
+
+				Vec3d.Cplx tmp2 = Vec3d.createCplx(tmp);
+				Transforms.swapQuadrant(tmp, tmp2);
+
+				for (int z=0;z<depth;z++) {
+					Vec2d.Cplx res  = Vec2d.createCplx( width, height );
+					Vec2d.Real img1 = Vec2d.createReal( width, height );
+					Vec2d.Real img2 = Vec2d.createReal( width, height );
+					res.slice( tmp2, z);
+					img1.copyMagnitude( res );
+					img2.copyPhase( res );
+
+					isoMag.setImage( img1 , z, comp, b,"mag");
+					isoPha.setImage( img2 , z, comp, b,"pha");
+				}
+				}
 			}
-    
-
-			Vec3d.Cplx tmp2 = Vec3d.createCplx(tmp);
-			Transforms.swapQuadrant(tmp, tmp2);
-
-			for (int z=0;z<depth;z++) {
-			    Vec2d.Cplx res  = Vec2d.createCplx( width, height );
-			    Vec2d.Real img1 = Vec2d.createReal( width, height );
-			    Vec2d.Real img2 = Vec2d.createReal( width, height );
-			    res.slice( tmp2, z);
-			    img1.copyMagnitude( res );
-			    img2.copyPhase( res );
-
-			    isoMag.setImage( img1 , z, comp, b,"mag");
-			    isoPha.setImage( img2 , z, comp, b,"pha");
-			}
-		    }
-		}
 	    }
 	
 	    // shift the original bead data to correct position
@@ -344,7 +344,6 @@ public class OtfCreator {
 		    bands[b].fourierShift( posComp[0],posComp[1], pos[2]); 
 		}
 	    }
-
 
 	    // interpolate out the DC lines (camera chip)
 	    {
@@ -372,23 +371,23 @@ public class OtfCreator {
 	    }
 
 	    // add final result to output
-	    {
-		for (int b=0;b<nrBands;b++) {
-		    Vec3d.Cplx tmp = bands[b].duplicate();
-		    Transforms.swapQuadrant(bands[b], tmp);
+	    if (visualFeedback>0) {
+			for (int b=0;b<nrBands;b++) {
+				Vec3d.Cplx tmp = bands[b].duplicate();
+				Transforms.swapQuadrant(bands[b], tmp);
 
-		    for (int z=0;z<depth;z++) {
-			Vec2d.Cplx res  = Vec2d.createCplx( width, height );
-			Vec2d.Real img1 = Vec2d.createReal( width, height );
-			Vec2d.Real img2 = Vec2d.createReal( width, height );
-			res.slice( tmp, z);
-			img1.copyMagnitude( res );
-			img2.copyPhase( res );
+				for (int z=0;z<depth;z++) {
+				Vec2d.Cplx res  = Vec2d.createCplx( width, height );
+				Vec2d.Real img1 = Vec2d.createReal( width, height );
+				Vec2d.Real img2 = Vec2d.createReal( width, height );
+				res.slice( tmp, z);
+				img1.copyMagnitude( res );
+				img2.copyPhase( res );
 
-			isoMag.setImage( img1 , z, 3, b,"mag");
-			isoPha.setImage( img2 , z, 3, b,"pha");
-		    }
-		}
+				isoMag.setImage( img1 , z, 3, b,"mag");
+				isoPha.setImage( img2 , z, 3, b,"pha");
+				}
+			}
 	    }
 
 		// compute the radial average
@@ -400,24 +399,79 @@ public class OtfCreator {
 				Vec2d.Cplx slice = Vec2d.createCplx( width, height );
 				slice.slice( bands[b], z );
 				// compute the radial average for this band and depth slice
-				Transforms.radialAveraging(slice, radAvrSlice, 0,0,.5);
+				Transforms.radialAveraging(slice, radAvrSlice, 0,0,1);
 				// store the result
 				radAvr[b].setLine( z, radAvrSlice );
 			}
 		};
 
+		// zero the DC line
+		for (int b=0; b<nrBands; b++) {
+			for (int z=1; z<depth; z++) {
+				radAvr[b].set(0,z, new Cplx.Float(0));
+			}
+		}
+
+		// normalize to DC component
+		float dc = (float)radAvr[0].get(0,0).abs();
+		Tool.trace("DC component for angle "+ang+" is "+dc);
+		for (int b=0; b<nrBands; b++) {
+			radAvr[b].scal(1/dc); // normalize to DC component
+		}
+
+
 		for (int b=0; b<nrBands; b++) {
 			Vec2d.Real img1 = Vec2d.createReal( radialBins, depth );
 			Vec2d.Real img2 = Vec2d.createReal( radialBins, depth );
+			Vec2d.Real img3 = Vec2d.createReal( radialBins, depth );
 			img1.copyMagnitude( radAvr[b] );
 			img2.copyPhase( radAvr[b] );
-			isoRad.setImage( img1, 0, ang, b, "mag band "+b+" angle "+ang);
-			isoRad.setImage( img2, 1, ang, b, "pha band "+b+" angle "+ang);
+			Transforms.computePowerSpectrum(radAvr[b], img3, true);
+			
+			// mask the phase images
+			float [] datPhase = img2.vectorData();
+			float [] datMag = img1.vectorData();
+			for (int i=0; i<datPhase.length; i++) {
+				if (datMag[i]<0.005) {
+					//datPhase[i] = 0.0f; // mask out low-magnitude values
+					datPhase[i] = -3.145f; // mask out low-magnitude values
+				}
+			}
+			
+			// for visualization, swap z
+			for (int z=0; z<depth/2; z++) {
+				for (int x=0; x<radialBins; x++) {
+					float tmp = datMag[x+z*radialBins];
+					datMag[x+z*radialBins] = datMag[x+(z+depth/2)*radialBins];
+					datMag[x+(z+depth/2)*radialBins] = tmp;
+					tmp = datPhase[x+z*radialBins];
+					datPhase[x+z*radialBins] = datPhase[x+(z+depth/2)*radialBins];
+					datPhase[x+(z+depth/2)*	radialBins] = tmp;
+				}
+			}
+			// shift the magnitude by half the vector size, mirror the phase data
+			for (int z=0; z<depth; z++) {
+				for (int x=0; x<radialBins/2; x++) {
+					datMag[x+z*radialBins+radialBins/2] = datMag[x+z*radialBins];
+					datMag[x+z*radialBins] = 0.0f;
+					datPhase[radialBins/2-x  + z*radialBins] = datPhase[x+z*radialBins];
+				}
+			}
+			
+			
+			img1.syncBuffer();
+			img2.syncBuffer();
+
+			isoRad.setImage( img1, ang, 0, b, "mag band "+b+" angle "+ang);
+			isoRad.setImage( img2, ang, 1, b, "pha band "+b+" angle "+ang);
+			isoRad.setImage( img3, ang, 2, b, "pwr band "+b+" angle "+ang);
 		};
 
 	    // display the result
-	    isoMag.update();
-	    isoPha.update();
+		if (visualFeedback>0) {
+			isoMag.update();
+	    	isoPha.update();
+		}
 		isoRad.update();
 	
 	}
