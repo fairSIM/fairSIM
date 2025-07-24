@@ -68,8 +68,10 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		FilterStyle.Wiener;		    // which filter to use
 
     private double wienerFilterParameter = 0.05;    // Wiener filter parameter
-    private double apoCutOff = 2;		    // Apo cutoff parameter
+    private double apoCutOff = 2;		    // Apo cutoff parameter lateral component (2D and 3D)
+	private double apoCutOffAxial = 2;	    // Apo cutoff parameter for axial component in 3D SIM
     private double apoBend   = 0.9;		    // Apo bend parameter
+	private int    apoType = 0;		    	// Apo type (currently: 0=linear, 1=cosine))
 
     private int rlIterations = 5;		    // number of Richardson-Lucy iterations
     
@@ -160,15 +162,18 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	SimParam ret = new SimParam(nrBands, nrDirs, nrPhases, this.is3D);
 
 	// copy the simple variables
-	ret.imgSize		    = this.imgSize;
+	ret.imgSize		    	= this.imgSize;
 	ret.micronsPerPixel	    = this.micronsPerPixel;
 	ret.cyclesPerMicron	    = this.cyclesPerMicron;
 	ret.stackSize		    = this.stackSize;
 	ret.micronsPerSlice	    = this.micronsPerSlice;
-	ret.cyclesPerMicronInZ	    = this.cyclesPerMicronInZ;
-	ret.imgSeq		    = this.imgSeq;
+	ret.cyclesPerMicronInZ	= this.cyclesPerMicronInZ;
+	ret.imgSeq		    	= this.imgSeq;
 	ret.wienerFilterParameter   = this.wienerFilterParameter;
 	ret.apoCutOff		    = this.apoCutOff;
+	ret.apoCutOffAxial	    = this.apoCutOffAxial;
+	ret.apoBend		    	= this.apoBend;
+	ret.apoType		    	= this.apoType;
 	ret.modLowLimit		    = this.modLowLimit;
 	ret.modHighLimit	    = this.modHighLimit;
 	ret.paramDate		    = this.paramDate;
@@ -359,7 +364,18 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	return this;
     }
    
+	/** Set he APO bend parameter for the axial direction */
+	public SimParam setApoCutoffAxial( double af ) {	
+	apoCutOffAxial = af;
+	return this;
+    }	
 
+	// TODO: this should be changed to be an enum type in the future
+	/** Set the APO type (0=linear, 1=cosine) */
+	public SimParam setApoType( int type ) {
+	apoType = type;
+	return this;
+    }	
 
     /** Get the APO cutoff factor */
     public double getApoCutoff() {
@@ -370,6 +386,16 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     public double getApoBend() {
 	return apoBend;
     }
+
+	/** Get the APO cutoff factor for the axial direction */
+	public double getApoCutoffAxial() {
+	return apoCutOffAxial;
+    }
+
+	/** Get the APO type */
+	public int getApoType() {
+	return apoType;
+	}
 
 
 

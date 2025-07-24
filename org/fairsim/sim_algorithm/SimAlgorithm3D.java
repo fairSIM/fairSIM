@@ -624,7 +624,8 @@ public class SimAlgorithm3D {
 	    }
 	    
 		// apply apotization filter
-	    otfPr.apotize( fullResult, 2.0, 2.0, true );
+	    otfPr.apotize( fullResult, param.getApoCutoff(), param.getApoCutoffAxial(), param.getApoBend(), 
+		 (param.getApoType()!=0) );
 	    
 	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)

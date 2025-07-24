@@ -257,6 +257,7 @@ public class OtfProvider3D {
     public void apotize( final Vec3d.Cplx vec, 
 	final double multipleLateral, 
 	final double multipleAxial, 
+	final double bend,
 	final boolean useCos ) {
 	
 	// parameters
@@ -296,6 +297,7 @@ public class OtfProvider3D {
 			// multiply by apo factor
 			Cplx.Float val = vec.get(x,y,z);
 			double factor = (useCos)?( MTool.fcos( dist * Math.PI /2)):(1-dist);
+			Math.pow(factor, bend);
 			vec.set(x, y, z, vec.get(x,y,z).mult( factor ) );
 		    }
 		}

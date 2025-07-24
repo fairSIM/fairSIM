@@ -31,12 +31,14 @@ import javax.swing.JList;
 import javax.swing.JComponent;
 import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
+import javax.swing.JFormattedTextField;
 
 
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import java.awt.Component;
 import java.awt.Color;
+import java.awt.FontMetrics;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -91,6 +93,18 @@ public class Tiles {
 	    super.add( Box.createRigidArea(new Dimension(5,0)));
 	}
 
+	/** Create a spinner with automatic sizing based on expected digits
+	 *  @param label Label text in front of spinner 
+	 *  @param start Initial value
+	 *  @param min	 Minmal value
+	 *  @param max	 Maximal value
+	 *  @param inc   Increment
+	 *  @param expectedDigits Expected number of digits for sizing */
+	public LNSpinner( String label, double start, double min, double max, double inc, int expectedDigits ) { 
+	    this(label, start, min, max, inc);
+	    setMinimumSizeForDigits(expectedDigits);
+	}
+
 	@Override
 	public void setEnabled(boolean onoff) {
 	    spr.setEnabled(onoff);
@@ -110,8 +124,68 @@ public class Tiles {
 	/** set how many digits are displayed */
 	public void setDigits(int d) {
 	    ((JSpinner.NumberEditor)spr.getEditor()).getFormat().setMinimumFractionDigits(d);
+		setMinimumSizeForDigits(d); // +3 for sign and decimal point
 	}
 
+	/** Set minimum size based on expected number of digits (including decimal point and sign) */
+	public void setMinimumSizeForDigits(int totalDigits) {
+	    // Create a sample string with the expected number of digits
+	    StringBuilder sample = new StringBuilder();
+	    sample.append("-"); // for potential negative sign
+	    for (int i = 0; i < totalDigits; i++) {
+		sample.append("0");
+	    }
+	    sample.append(".00"); // for decimal places
+	    
+	    // Get the text field from the spinner editor
+	    JSpinner.NumberEditor editor = (JSpinner.NumberEditor) spr.getEditor();
+	    JFormattedTextField textField = null;
+	    Component[] components = editor.getComponents();
+	    for (Component comp : components) {
+		if (comp instanceof JFormattedTextField) {
+		    textField = (JFormattedTextField) comp;
+		    break;
+		}
+	    }
+	    
+	    // Calculate width needed for the sample text
+	    FontMetrics fm = textField.getFontMetrics(textField.getFont());
+	    int textWidth = fm.stringWidth(sample.toString());
+	    int textHeight = fm.getHeight();
+	    
+	    // Add some padding for spinner buttons and borders
+	    int totalWidth = textWidth + 40; // 40px for spinner buttons and padding
+	    int totalHeight = Math.max(textHeight + 6, 20); // minimum height
+	    
+	    Dimension minSize = new Dimension(totalWidth, totalHeight);
+	    spr.setMinimumSize(minSize);
+	    spr.setPreferredSize(minSize);
+	}
+
+	/** Automatically set minimum size based on the value range */
+	public void autoSizeForRange() {
+	    SpinnerNumberModel model = (SpinnerNumberModel) spr.getModel();
+	    
+	    // Get the maximum absolute value to determine digit count
+	    double maxVal = Math.max(Math.abs((Double)model.getMinimum()), 
+	                            Math.abs((Double)model.getMaximum()));
+	    
+	    // Calculate integer digits needed
+	    int integerDigits = (maxVal == 0) ? 1 : (int) Math.floor(Math.log10(maxVal)) + 1;
+	    
+	    // Get decimal places from the step increment
+	    double step = ((Double)model.getStepSize()).doubleValue();
+	    int decimalPlaces = 0;
+	    if (step < 1.0) {
+		String stepStr = String.valueOf(step);
+		if (stepStr.contains(".")) {
+		    decimalPlaces = stepStr.length() - stepStr.indexOf(".") - 1;
+		}
+	    }
+	    
+	    int totalDigits = integerDigits + decimalPlaces + (decimalPlaces > 0 ? 1 : 0); // +1 for decimal point
+	    setMinimumSizeForDigits(totalDigits);
+	}
 
 	/** Add a NumberListener */
 	public void addNumberListener( NumberListener l ) {

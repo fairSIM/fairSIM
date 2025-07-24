@@ -62,9 +62,14 @@ import java.util.ArrayList;
  *  automated reconstruction */
 public class FairSim3dGUI {
 
-    // presets for the Wiener value spinner
+    // presets for the Wiener value spinner (only min/max, default values, see below!)
     final double wienerLowest = 0.0001, wienerHighest = 0.2, wienerSteps = 0.00025;
-    
+
+    // presets for the Apo filter spinners (only min/max, default values, see below!)
+    final double apoLateralLowest = 1.0, apoLateralHighest = 3.0, apoLateralSteps = 0.05;
+    final double apoAxialLowest = 1.0, apoAxialHighest = 3.0, apoAxialSteps = 0.05;
+    final double apoBendLowest = 0.1, apoBendHighest = 1.2, apoBendSteps = 0.05;
+
     final JFrame baseframe = new JFrame("fairSIM 3D GUI");
     final private JPanel mainPanel = new JPanel();
 
@@ -176,7 +181,7 @@ public class FairSim3dGUI {
 	posSelector.add( tEnd );
 
 	// amount of visual feedback
-	Tiles.LNSpinner vfbSpinner = new Tiles.LNSpinner("visual feedback level", 1, -2, 3, 1);
+	Tiles.LNSpinner vfbSpinner = new Tiles.LNSpinner("visual feedback level", 0, -2, 3, 1);
 	posSelector.add( vfbSpinner );
 
 	
@@ -245,7 +250,8 @@ public class FairSim3dGUI {
 	final Tiles.LComboBox< DefineMachineGui.ChannelTab > channelSelector;
 	final Tiles.LComboBox< OtfProvider3D > otfSelector;
 	final Tiles.LNSpinner wienerParam;
-
+	final Tiles.LNSpinner apoLateral, apoAxial, apoBend;
+	final Tiles.LComboBox<String> apoTypeSelector;
 
 	final int chNr ;
 
@@ -254,6 +260,10 @@ public class FairSim3dGUI {
 	    chNr = ch;
 	    
 	    double wienerPreset = 0.005;
+		double apoLateralPreset = 2.0;
+		double apoAxialPreset = 2.0;
+		double apoBendPreset = 0.8;
+
 	    int    chIdx  = chNr;
 	    int	   otfIdx = 0;
 	    int	   fitTypePreset = 1;
@@ -317,6 +327,54 @@ public class FairSim3dGUI {
 
 		    }
 
+			// apo filter parameters
+			if ( tok.startsWith("apoL") ) {
+				double apoPreset =0;
+				if (tok.charAt(4)=='=') {
+					apoPreset = Double.parseDouble( tok.substring(5));
+				} else {
+					apoPreset = Double.parseDouble( tok.substring(4));
+				}
+				if ( apoPreset >= apoLateralLowest && apoPreset <= apoLateralHighest ) {
+					Tool.trace("ch"+(chNr+1)+": preset Apo lateral to "+ apoPreset);
+					apoLateralPreset = apoPreset;
+				} else {
+					Tool.error("ch"+(chNr+1)+": Apo lateral preset out of range "+apoLateralPreset, false);
+				}
+			}	
+
+			if ( tok.startsWith("apoA") ) {
+				double apoPreset =0;
+				if (tok.charAt(4)=='=') {
+					apoPreset = Double.parseDouble( tok.substring(5));
+				} else {
+					apoPreset = Double.parseDouble( tok.substring(4));
+				}
+				if ( apoPreset >= apoAxialLowest && apoPreset <= apoAxialHighest ) {
+					Tool.trace("ch"+(chNr+1)+": preset Apo axial to "+ apoPreset);
+					apoAxialPreset = apoPreset;
+				} else {
+					Tool.error("ch"+(chNr+1)+": Apo axial preset out of range "+apoAxialPreset, false);
+				}
+			}	
+
+			if ( tok.startsWith("apoB") ) {
+				double apoPreset =0;
+				if (tok.charAt(4)=='=') {	
+					apoPreset = Double.parseDouble( tok.substring(5));
+				} else {
+					apoPreset = Double.parseDouble( tok.substring(4));
+				}
+				if ( apoPreset >= apoBendLowest && apoPreset <= apoBendHighest ) {
+					Tool.trace("ch"+(chNr+1)+": preset Apo bend to "+ apoPreset);
+					apoBendPreset = apoPreset;
+				} else {
+					Tool.error("ch"+(chNr+1)+": Apo bend preset out of range "+apoBendPreset, false);
+				}
+			}
+
+
+
 		    // turn off reconstruction of this channel completely
 		    if (tok.equals("disable")) {
 			useThisChannel = false;
@@ -374,12 +432,14 @@ public class FairSim3dGUI {
 		}
 	    });
 	    JPanel selectPanel = new JPanel();
-	    selectPanel.add( channelSelector );
+	    selectPanel.setBorder( BorderFactory.createTitledBorder("Channel settings") );   
+		selectPanel.add( channelSelector );
 	    selectPanel.add( otfSelector );
 
 	    // settings for the parameter fit
 	    JPanel fitPanel = new JPanel();
-	
+		fitPanel.setBorder( BorderFactory.createTitledBorder("Parameter fit options") );
+		
 	    fitTypeList = new Tiles.LComboBox<FITTYPES>("SIM param fit", 
 		FITTYPES.values());
 
@@ -392,16 +452,39 @@ public class FairSim3dGUI {
 	    fastFitCheckbox.setSelected(true);
 	    fitPanel.add( fastFitCheckbox );
 
-	    // wiener parameter
-	    wienerParam = new Tiles.LNSpinner("Wiener filter",
+	    // filter parameter
+		JPanel filterPanel = new JPanel();
+		filterPanel.setBorder( BorderFactory.createTitledBorder("Filter parameters") );
+	    
+		wienerParam = new Tiles.LNSpinner("Wiener filter",
 		wienerPreset, wienerLowest, wienerHighest, wienerSteps );
+	    wienerParam.setDigits(6);
 
-	    wienerParam.setDigits(5);
+		apoLateral = new Tiles.LNSpinner("Apo lateral",
+		 apoLateralPreset, apoLateralLowest, apoLateralHighest, apoLateralSteps);
+		apoAxial = new Tiles.LNSpinner("Apo axial", 
+		 apoAxialPreset, apoAxialLowest, apoAxialHighest, apoAxialSteps);
+		apoBend = new Tiles.LNSpinner("Apo bend", 
+		 apoBendPreset, apoBendLowest, apoBendHighest, apoBendSteps);
 
-	    fitPanel.add( wienerParam );
-		
+		apoTypeSelector = new Tiles.LComboBox<String>( "Apo type",
+		 new String[] { "linear", "cosine" } );
+		apoTypeSelector.setSelectedIndex(1); // linear by default	
+
+		apoLateral.setDigits(4);
+		apoAxial.setDigits(4);
+		apoBend.setDigits(4);
+
+		filterPanel.add( wienerParam );
+		filterPanel.add( apoLateral );
+		filterPanel.add( apoAxial );
+		filterPanel.add( apoBend );
+		filterPanel.add( apoTypeSelector );
+
+		// add the channel panel to the main panel
 	    ourPanel.add( selectPanel );
 	    ourPanel.add( fitPanel );
+	    ourPanel.add( filterPanel );
 
 	    // propagate changes to other channels
 	    if ( chNr == 0 && ourRawImages.nrChannels > 1 ) {
@@ -418,6 +501,10 @@ public class FairSim3dGUI {
 				c.fitTypeList.setEnabled( !state );
 				c.wienerParam.setEnabled( !state );
 				c.fastFitCheckbox.setEnabled( !state );
+				c.apoLateral.setEnabled( !state );
+				c.apoAxial.setEnabled( !state );
+				c.apoBend.setEnabled( !state );
+				c.apoTypeSelector.setEnabled( !state );
 			    }
 			}
 		    }
@@ -471,19 +558,71 @@ public class FairSim3dGUI {
 		    }
 		});
 
-	    
-	    }
+		// propagate change in apo lateral
+		apoLateral.addNumberListener( new Tiles.NumberListener() {
+		    @Override
+		    public void number( double nbr, Tiles.LNSpinner e) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.apoLateral.setVal( nbr );
+				}
+			    }
+			}
 
+		    }
+		});
+		// propagate change in apo axial
+		apoAxial.addNumberListener( new Tiles.NumberListener() {
+		    @Override
+		    public void number( double nbr, Tiles.LNSpinner e) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.apoAxial.setVal( nbr );
+				}
+			    }
+			}
 
+		    }
+		});
+		// propagate change in apo bend
+		apoBend.addNumberListener( new Tiles.NumberListener() {
+		    @Override
+		    public void number( double nbr, Tiles.LNSpinner e) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.apoBend.setVal( nbr );
+				}
+			    }
+			}
 
+		    }
+		});
+		// propagate change in apo type
+		apoTypeSelector.addSelectListener( new Tiles.SelectListener<String>() {
+		    @Override
+		    public void selected( String e, int i ) {
+			if ( propToOtherCh.isSelected() ) {
+			    for ( ChannelPanel c : channelPanelList ) {
+				if ( c != channelPanelList.get(0) ) {
+				   c.apoTypeSelector.setSelectedIndex( i );	
 
+				}
+			    }
+			}
+		}
+		});
+	    } // end of if first channel
+
+	    // add the channel panel to the main panel
+	    ourPanel.setMaximumSize( new Dimension( Integer.MAX_VALUE, 100));
+	    ourPanel.setMinimumSize( new Dimension( 200, 100));
+	    mainPanel.add( ourPanel );
 	}
-
 	
-
-    }
-
-
+	} // end of ChannelPanel class
 
     void runReconstruction(boolean headless, String saveFileName, int visualFeedbackLevel) {
 	
@@ -538,7 +677,15 @@ public class FairSim3dGUI {
 		    sp.otf3d().getLambda() ));
 
 	    sp.setWienerFilter( channel.wienerParam.getVal() ); 
-	    
+		sp.setApoCutoff( channel.apoLateral.getVal() );
+		sp.setApoCutoffAxial( channel.apoAxial.getVal() );
+		sp.setApoBend( channel.apoBend.getVal() );
+
+		Tool.trace(String.format(
+			"Using Wiener filter %7.5f, Apo lateral %7.3f, Apo axial %7.3f, Apo bend %7.3f",
+			sp.getWienerFilter(), 
+			sp.getApoCutoff(), sp.getApoCutoffAxial(), sp.getApoBend() ));	
+		
 	    int   ourFitLevel = channel.fitTypeList.getSelectedItem().getVal();
 	    boolean doFastFit  = channel.fastFitCheckbox.isSelected();
 
