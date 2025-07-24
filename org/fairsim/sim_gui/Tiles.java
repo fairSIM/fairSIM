@@ -404,16 +404,28 @@ public class Tiles {
 	    return ret;
 	}
 
-	/** Return all elements in the list as arrra */
+	/** Return all elements in the list as array */
+	@SuppressWarnings("unchecked")
 	public T [] getArray() {
-	    Object [] ret = new Object[ dlm.size() ];
-	    for ( int i=0 ; i<ret.length; i++)
-		ret[i] = this.get(i);
-
-	    @SuppressWarnings("unchecked")
-	    T [] ret2 = (T [])ret;
+	    if (dlm.size() == 0) {
+		return (T[]) new Object[0];
+	    }
 	    
-	    return ret2;
+	    // Get the runtime type from the first element
+	    T firstElement = get(0);
+	    if (firstElement == null) {
+		return (T[]) new Object[dlm.size()];
+	    }
+	    
+	    // Create array of the correct type using reflection
+	    T[] ret = (T[]) java.lang.reflect.Array.newInstance(
+		firstElement.getClass(), dlm.size());
+	    
+	    for (int i = 0; i < ret.length; i++) {
+		ret[i] = this.get(i);
+	    }
+	    
+	    return ret;
 	}
 
     }
