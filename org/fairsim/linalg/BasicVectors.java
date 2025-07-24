@@ -228,6 +228,18 @@ class BasicVector implements VectorFactory {
 	}
 
 	@Override
+	public void setLine (int l, Vec.Real in) {
+	    if (in.vectorSize() != this.vectorWidth())
+			throw new RuntimeException("Incompatible vector width");
+		if (l<0 || l>=height)
+			throw new RuntimeException("Line index out of bounds");
+			
+		float [] inputData = in.vectorData();
+		for (int x=0; x<width; x++)
+			data[x+l*width] = inputData[x];
+	}
+
+	@Override
 	public void setFrom16bitPixels( short [] in ){
 	    if ( width*height != in.length )
 		throw new RuntimeException("Short array to vector size mismatch");
@@ -406,11 +418,34 @@ class BasicVector implements VectorFactory {
 	public void slice(Vec3d.Cplx inV, int n) {
 	    project( inV, n, n );
 	}
-	
+
+	@Override
+	public void setLine (int l, Vec.Cplx in) {
+		if (in.vectorSize() != width)
+			throw new RuntimeException("Incompatible vector width");
+		if (l<0 || l>=height)
+			throw new RuntimeException("Line index out of bounds");
+		float [] inputData = in.vectorData();
+		for (int x=0; x<width; x++) {
+			data[2*(x+l*width)+0] = inputData[2*x+0];
+			data[2*(x+l*width)+1] = inputData[2*x+1];
+		}
+	}
+
+	@Override
+	public void setLine (int l, Vec.Real in) {
+		if (in.vectorSize() != width)
+			throw new RuntimeException("Incompatible vector width");
+		if (l<0 || l>=height)
+			throw new RuntimeException("Line index out of bounds");
+		float [] inputData = in.vectorData();
+		for (int x=0; x<width; x++) {
+			data[2*(x+l*width)+0] = inputData[x];
+			data[2*(x+l*width)+1] = 0f;
+		}
+	}
 
     }
-
-
 
     /** Minimal 2d vector implementation */
     class BReal3D extends BReal implements Vec3d.Real {
@@ -531,7 +566,6 @@ class BasicVector implements VectorFactory {
 		data[ 2*( x + width*y + z*width*height )+0 ] = in[ x + width*y ];
 		data[ 2*( x + width*y + z*width*height )+1 ] = 0;
 	    }
-	
 	}
 
 	/** Look into source code for usage */

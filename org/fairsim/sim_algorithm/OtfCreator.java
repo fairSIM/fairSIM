@@ -37,13 +37,16 @@ public class OtfCreator {
 	final int width =inputImgs[0][0].vectorWidth();
 	final int height =inputImgs[0][0].vectorHeight();
 	final int depth =inputImgs[0][0].vectorDepth();
+	final int radialBins = 128;
 
 
 
 	Tool.trace("OTF creating for "+nrAngle+" angles");
 
+	// TODO: move the DisplayWrapper to an interface, so the dependency to Fiji is not needed here
 	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, 1,nrBands,"band-sep input data");
 	//ImageStackOutput iso2 = new DisplayWrapper5D( width, height, depth, 2,nrBands*2,"full OTFs");
+	ImageStackOutput isoRad = new DisplayWrapper5D( radialBins, depth, 2, nrAngle, nrBands, "OTF radial averages");
 
 	Tool.trace("--- running fit ---");
 
@@ -388,11 +391,34 @@ public class OtfCreator {
 		}
 	    }
 
+		// compute the radial average
+		Vec2d.Cplx [] radAvr = Vec2d.createArrayCplx( nrBands, radialBins, depth );
+		for (int b=0; b<nrBands; b++) {
+			Tool.trace("computing radial average for band "+b+" angle "+ang);
+			for (int z=0; z<depth; z++) {
+				Vec.Cplx radAvrSlice = Vec.createCplx( radialBins );
+				Vec2d.Cplx slice = Vec2d.createCplx( width, height );
+				slice.slice( bands[b], z );
+				// compute the radial average for this band and depth slice
+				Transforms.radialAveraging(slice, radAvrSlice, 0,0,.5);
+				// store the result
+				radAvr[b].setLine( z, radAvrSlice );
+			}
+		};
+
+		for (int b=0; b<nrBands; b++) {
+			Vec2d.Real img1 = Vec2d.createReal( radialBins, depth );
+			Vec2d.Real img2 = Vec2d.createReal( radialBins, depth );
+			img1.copyMagnitude( radAvr[b] );
+			img2.copyPhase( radAvr[b] );
+			isoRad.setImage( img1, 0, ang, b, "mag band "+b+" angle "+ang);
+			isoRad.setImage( img2, 1, ang, b, "pha band "+b+" angle "+ang);
+		};
 
 	    // display the result
 	    isoMag.update();
 	    isoPha.update();
-
+		isoRad.update();
 	
 	}
 

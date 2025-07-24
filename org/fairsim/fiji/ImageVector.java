@@ -18,6 +18,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.fiji;
 
+import org.fairsim.linalg.Vec;
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Vec3d;
 import org.fairsim.linalg.AbstractVectorReal;
@@ -169,6 +170,19 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	public void slice(Vec3d.Cplx inV, int n) {
 	    project( inV, n, n );
 	}
+
+	@Override
+	public void setLine(int l, Vec.Real in) {
+	    if (in.vectorSize() != width)
+		throw new RuntimeException("Incompatible vector width");
+	    if (l<0 || l>=height)
+		throw new RuntimeException("Line index out of bounds");
+	    
+	    float [] inputData = in.vectorData();
+	    for (int x=0; x<width; x++)
+		data[x+l*width] = inputData[x];
+	}
+
 
 	public float minEntry() {
 	    float ret = Float.MAX_VALUE;

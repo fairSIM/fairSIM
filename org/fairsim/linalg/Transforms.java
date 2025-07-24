@@ -19,6 +19,7 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 package org.fairsim.linalg;
 
 import org.fairsim.utils.SimpleMT;
+import org.fairsim.utils.Tool;
 
 import java.util.Map;
 import java.util.TreeMap;
@@ -456,7 +457,63 @@ public abstract class Transforms {
 	timesShiftVector( vec, kx, ky, false );
     }
 
+	/** Compute the radial average around point x,y, with step size n.
+	 *  Every point in the input vector gets added to a bucket in the output vector.
+	 *  Position of the bucket is determined by the distance to x,y, divided by stepsize.
+	 *  The contribution is a weighted average, with the weight being the distance to the bucket center.
+	 */
+	public static void radialAveraging(Vec2d.Cplx in, Vec.Cplx out, 
+		double xPos, double yPos, double stepsize) {
+		
+		float [] inData = in.vectorData();
+		float [] outData = out.vectorData();
+		float [] weightData = new float[out.vectorSize()];
+		final int w = in.vectorWidth();
+		final int h = in.vectorHeight();
+		final int nBuckets = out.vectorSize();
+		final boolean normalize = true;
 
+		for (int y=0; y<h; y++) {
+			for (int x=0; x<w; x++) {
+				int idx = y*w+x;
+				float re = inData[idx*2+0];
+				float im = inData[idx*2+1];
+				double dist = Math.sqrt( Math.pow(x-xPos,2) + Math.pow(y-yPos,2) );
+				int bucketLow = (int)(dist/stepsize);
+				int bucketHigh = bucketLow+1;
+				double weightLow = bucketHigh*stepsize - dist;
+				double weightHigh = 1 - weightLow;
+				if (bucketLow < nBuckets && bucketLow >= 0) {
+					outData[bucketLow*2+0] += re * weightLow;
+					outData[bucketLow*2+1] += im * weightLow;
+					//Tool.trace(String.format("Adding to low bucket %d: %f + i%f", 
+						//bucketLow, re * weightLow, im * weightLow));
+				
+					weightData[bucketLow] += weightLow;
+				}
+				if (bucketHigh < nBuckets && bucketHigh >= 0) {
+					outData[bucketHigh*2+0] += re * weightHigh;
+					outData[bucketHigh*2+1] += im * weightHigh;
+					//Tool.trace(String.format("Adding to high bucket %d: %f + i%f", 
+						//bucketHigh, re * weightHigh, im * weightHigh));
 
+					weightData[bucketHigh] += weightHigh;
+				}
+			}
+		}
+		// normalize the output vector
+		if (normalize) {
+			for (int i=0; i<nBuckets; i++) {
+				if (weightData[i] > 0) {
+					outData[i*2+0] /= weightData[i];
+					outData[i*2+1] /= weightData[i];
+				} else {
+					outData[i*2+0] = 0;
+					outData[i*2+1] = 0;
+				}
+			}
+		}
+		out.syncBuffer();
+	}
 	
 }

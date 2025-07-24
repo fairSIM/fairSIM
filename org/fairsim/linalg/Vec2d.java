@@ -157,8 +157,10 @@ public final class Vec2d {
 	
 	/** project (sum along z) the real part of a Vec3d into this vector */
 	public void project( Vec3d.Cplx in );
-	
-	
+
+	/** set a specific line (values along x) in this vector */
+	public void setLine (int l, Vec.Real in);
+
 	/** copy slice nr n into this vector */
 	public void slice( Vec3d.Real in, int n );
     
@@ -186,6 +188,13 @@ public final class Vec2d {
 	public void set(int x, int y, org.fairsim.linalg.Cplx.Float v);
 	/** Set element x,y */
 	public void set(int x, int y, org.fairsim.linalg.Cplx.Double v);
+	
+	/** set a specific line (values along x) in this vector */
+	public void setLine (int l, Vec.Real in);
+	
+	/** set a specific line (values along x) in this vector */
+	public void setLine (int l, Vec.Cplx in);
+	
 	
 	/** Return a duplicate / clone of the input vector */
 	public abstract Cplx duplicate() ; 
