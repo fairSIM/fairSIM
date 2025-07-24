@@ -44,7 +44,7 @@ public class OtfCreator {
 	Tool.trace("OTF creating for "+nrAngle+" angles");
 
 	// TODO: move the DisplayWrapper to an interface, so the dependency to Fiji is not needed here
-	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, 1,nrBands,"band-sep input data");
+	ImageStackOutput iso1 = new DisplayWrapper5D( width, height, depth, nrAngle ,nrBands,"band-sep input data");
 	//ImageStackOutput iso2 = new DisplayWrapper5D( width, height, depth, 2,nrBands*2,"full OTFs");
 	ImageStackOutput isoRad = new DisplayWrapper5D( radialBins, depth, nrAngle, 3, nrBands, "OTF radial averages");
 
@@ -91,7 +91,7 @@ public class OtfCreator {
 				for (int b=0;b<nrBands;b++) {
 					Vec2d.Real res = Vec2d.createReal( width, height );
 					res.slice( bands[b] , z);
-					iso1.setImage( res , z, 0 ,b, "");
+					iso1.setImage( res , z, ang ,b, "");
 				}
 			}
 			iso1.update();
@@ -142,6 +142,7 @@ public class OtfCreator {
 			isoOtf.update();
 	    }
 
+		/* 
 	    // for demonstration: scan the phase range
 	    if (false) {
 		// for x/y
@@ -192,7 +193,9 @@ public class OtfCreator {
 		
 		isoMag.update();
 		isoPha.update();
-	    }
+	    } 
+		*/
+		/*
 	    
 	    if (false) {
 		// for z
@@ -240,7 +243,7 @@ public class OtfCreator {
 		isoMag.update();
 		isoPha.update();
 	    }
-	
+		*/
 	
 
 	    // run a phase optimization scan
@@ -248,7 +251,7 @@ public class OtfCreator {
 	    
 	    if (true) {
 		
-		Tool.trace("computing phase scan for Y:");
+		Tool.trace("computing phase scans:");
    
 		double min = 1<<24, minPos=0;
 		for (double phaShiftY=-.7; phaShiftY<=.7; phaShiftY+=0.01) {
@@ -281,7 +284,7 @@ public class OtfCreator {
 		Tool.trace("X Phase offset "+minPos+" as "+min);
 		
 		min = 1<<24; minPos=0;
-		for (double phaShiftZ=-1.5; phaShiftZ<=1.5; phaShiftZ+=0.025) {
+		for (double phaShiftZ=-.4; phaShiftZ<=.4; phaShiftZ+=0.001) {
 			// compensate bead position
 			Vec3d.Cplx cpyBands = bands[0].duplicate();
 			cpyBands.fourierShift(posComp[0],posComp[1],pos[2]+phaShiftZ); 
@@ -341,7 +344,7 @@ public class OtfCreator {
 	    // shift the original bead data to correct position
 	    {
 		for (int b=0;b<nrBands;b++) {
-		    bands[b].fourierShift( posComp[0],posComp[1], pos[2]); 
+		    bands[b].fourierShift( posComp[0],posComp[1], posComp[2]); 
 		}
 	    }
 
@@ -431,6 +434,8 @@ public class OtfCreator {
 			// mask the phase images
 			float [] datPhase = img2.vectorData();
 			float [] datMag = img1.vectorData();
+			float [] datPwr = img3.vectorData();
+
 			for (int i=0; i<datPhase.length; i++) {
 				if (datMag[i]<0.005) {
 					//datPhase[i] = 0.0f; // mask out low-magnitude values
@@ -454,6 +459,7 @@ public class OtfCreator {
 				for (int x=0; x<radialBins/2; x++) {
 					datMag[x+z*radialBins+radialBins/2] = datMag[x+z*radialBins];
 					datMag[x+z*radialBins] = 0.0f;
+					datPwr[x+z*radialBins] = 0.0f;
 					datPhase[radialBins/2-x  + z*radialBins] = datPhase[x+z*radialBins];
 				}
 			}
@@ -606,23 +612,23 @@ public class OtfCreator {
 	final int d = data.vectorDepth();
 
 	double xLeft=0, xRight=0; 
-	for (int z0=2; z0<4; z0++){
+	for (int z0=0; z0<4; z0++){
 	    for (int y0=4; y0<8; y0++) {
 		for (int x0=4;x0<20;x0++) {
 		    xLeft  += data.get(x0,y0,z0).phase();    
-		    xRight += data.get(x0,y0,d-z0).phase();    
+		    xRight += data.get(x0,y0,d-z0-1).phase();    
 	    
-		    data.set(x0,y0,z0,new Cplx.Float(-4));
-		    data.set(x0,y0,d-z0,new Cplx.Float(-4));
+		    //data.set(x0,y0,z0,new Cplx.Float(-4));
+		    //data.set(x0,y0,d-z0,new Cplx.Float(-4));
 		}
 	    }
 	    for (int y0=8; y0<20; y0++) {
 		for (int x0=4;x0<8;x0++) {
 		    xLeft  += data.get(x0,y0,z0).phase();    
-		    xRight += data.get(x0,y0,d-z0).phase();    
+		    xRight += data.get(x0,y0,d-z0-1).phase();    
 	    
-		    data.set(x0,y0,z0,new Cplx.Float(-4));
-		    data.set(x0,y0,d-z0,new Cplx.Float(-4));
+		    //data.set(x0,y0,z0,new Cplx.Float(-4));
+		    //data.set(x0,y0,d-z0,new Cplx.Float(-4));
 		}
 	    }
 	}
