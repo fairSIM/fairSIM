@@ -225,6 +225,15 @@ public class SimAlgorithm {
 		Tool.trace(
 		    String.format("Peak: (dir %1d): fitted --> x %7.3f y %7.3f p %7.3f (m %7.3f)", 
 		    angIdx, peak[0], peak[1], p1.phase(), p1.hypot() ));
+		
+		Tool.trace(String.format("--> Physical pattern: dir (%d) cycle/micron %6.4f angle(deg) %6.4f phase(deg) %6.4f [%s]",
+			angIdx, 
+		    Math.hypot(peak[0], peak[1]) * param.pxlSizeCyclesMicron(),
+		    Math.atan2(peak[1], peak[0]) * 180/Math.PI,
+			p1.phase() * 180/Math.PI,
+			contextForLogging
+			));
+
 	
 		// store the result
 		param.dir(angIdx).setPxPy(   -peak[0], -peak[1] );
