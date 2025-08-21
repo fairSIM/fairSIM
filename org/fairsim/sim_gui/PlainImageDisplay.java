@@ -499,14 +499,14 @@ public class PlainImageDisplay {
 
 	ic.setUpdateListener( new IUpdate() {
 	    @Override
-	    public void newZoomOrPosition( int zoomLevel, int zoomX, int zoomY, int viewportX, int viewportY, 
+	    public void newZoomOrPosition( int zoomLevel, int viewportX, int viewportY, 
 		    int viewportWidth, int viewportHeight) {
 		imageInfoLabel.setText(
 		    String.format("Zoom %2dx, ROI: %4d, %4d", zoomLevel,
-				viewportX+zoomX+(viewportWidth/2),
-				viewportY+zoomY+(viewportHeight/2)));
+				viewportX+(viewportWidth/2),
+				viewportY+(viewportHeight/2)));
 		miniMap.updateImageSize(imageWidth, imageHeight);
-		miniMap.updateViewport(viewportX, viewportY, viewportWidth, viewportHeight, zoomX, zoomY, zoomLevel);
+		miniMap.updateViewport(viewportX, viewportY, viewportWidth, viewportHeight, zoomLevel);
 			}
 	});
 
@@ -800,7 +800,7 @@ public class PlainImageDisplay {
 	float [][] colorCoeff;
 	final float [][] gammaLookupTable ;
 
-	int zoomLevel=1, zoomX=0, zoomY=0;
+	int zoomLevel=1;
 
         public ImageComponent(int ch, int w, int h) {
 	    
@@ -848,23 +848,50 @@ public class PlainImageDisplay {
 				
 				@Override
 				public void mouseWheelMoved( MouseWheelEvent e ) {
-					int xPosMid = e.getX();
-					int yPosMid = e.getY();
+					int xPosMid = viewportWidth/2 - e.getX();
+					int yPosMid = viewportHeight/2 - e.getY();
 					//System.out.println("Scroller: "+e.getWheelRotation());
 					//System.out.println("mouse clicked: "+x+" "+y);
-				
-					int wSize =  viewportWidth/zoomLevel;
-					int hSize = viewportHeight/zoomLevel;
-				
+
+					int viewportX_center = viewportX + (viewportWidth/zoomLevel)/2;
+					int viewportY_center = viewportY + (viewportHeight/zoomLevel)/2;
+					
 					// zoom out 
-					if (e.getWheelRotation()>0) {
-					setZoom(zoomLevel-1, zoomX+wSize/2, zoomY+hSize/2);
+					if (e.getWheelRotation()<0) {
+						if (zoomLevel<8) {
+							viewportX_center -= xPosMid/zoomLevel;
+							viewportY_center -= yPosMid/zoomLevel;							
+							zoomLevel++;
+							viewportX_center += xPosMid/zoomLevel;
+							viewportY_center += yPosMid/zoomLevel;							
+							
+							viewportX = (viewportX_center - (viewportWidth/zoomLevel)/2);
+							viewportY = (viewportY_center - (viewportHeight/zoomLevel)/2);
+							//System.out.println("new viewport: "+viewportX
+
+							if (viewportX + (viewportWidth/zoomLevel) > imageWidth) viewportX = imageWidth - (viewportWidth/zoomLevel);
+							if (viewportY + (viewportHeight/zoomLevel) > imageHeight) viewportY = imageHeight - (viewportHeight/zoomLevel);
+							if (viewportX < 0) viewportX = 0;
+							if (viewportY < 0) viewportY = 0;
+						}
 					} else {
-					// zoom in
-					setZoom(zoomLevel+1, 
-						xPosMid/zoomLevel + zoomX, 
-						yPosMid/zoomLevel + zoomY);
+						if (zoomLevel>1) {
+							viewportX_center -= xPosMid/zoomLevel;
+							viewportY_center -= yPosMid/zoomLevel;							
+							zoomLevel--;
+							viewportX_center += xPosMid/zoomLevel;
+							viewportY_center += yPosMid/zoomLevel;							
+							
+							viewportX = (viewportX_center - (viewportWidth/zoomLevel)/2);
+							viewportY = (viewportY_center - (viewportHeight/zoomLevel)/2);
+							if (viewportX < 0) viewportX = 0;
+							if (viewportY < 0) viewportY = 0;
+							if (viewportX + (viewportWidth/zoomLevel) > imageWidth) viewportX = imageWidth - (viewportWidth/zoomLevel);
+							if (viewportY + (viewportHeight/zoomLevel) > imageHeight) viewportY = imageHeight - (viewportHeight/zoomLevel);
+						}
 					}
+					ourUpdateListener.newZoomOrPosition( zoomLevel, viewportX, viewportY, viewportWidth, viewportHeight);
+					paintImage();
 				}
 				
 				@Override
@@ -879,8 +906,6 @@ public class PlainImageDisplay {
 						dragStartY = y;
 						lastViewportX = viewportX;
 						lastViewportY = viewportY;
-						lastZoomX = zoomX;
-						lastZoomY = zoomY;
 						//System.out.println("Mouse pressed: "+x+" "+y+" left button state "+leftButton);
 					}
 				}			
@@ -901,26 +926,18 @@ public class PlainImageDisplay {
 						viewportY = moveY + lastViewportY;
 						if (viewportX<0) {
 							viewportX=0;
-							if (zoomLevel>1) {
-								zoomX = moveX + lastZoomX;
-								if (zoomX<0) zoomX=0;
-							}
 						}
 						if (viewportY<0) { 
 							viewportY=0;
-							if (zoomLevel>1) {
-								zoomY = moveY + lastZoomY;
-								if (zoomY<0) zoomY=0;
-							}
 						}
-						if (viewportX+viewportWidth > imageWidth) viewportX = imageWidth-viewportWidth;
-						if (viewportY+viewportHeight > imageHeight) viewportY = imageHeight-viewportHeight;
+						if (viewportX+viewportWidth/zoomLevel > imageWidth) viewportX = imageWidth-viewportWidth/zoomLevel;
+						if (viewportY+viewportHeight/zoomLevel > imageHeight) viewportY = imageHeight-viewportHeight/zoomLevel;
 						//System.out.println("new viewport: "+viewportX+" "+viewportY);
 					}
 			
 					if (ourUpdateListener != null) {
 						// update the viewport
-						ourUpdateListener.newZoomOrPosition(zoomLevel, zoomX, zoomY, viewportX, viewportY, viewportWidth, viewportHeight);
+						ourUpdateListener.newZoomOrPosition(zoomLevel, viewportX, viewportY, viewportWidth, viewportHeight);
 					}
 					paintImage();
 				}
@@ -1010,16 +1027,16 @@ public class PlainImageDisplay {
 	public void setViewportPosition( int x, int y ) {
 		viewportX = x-(viewportWidth/2/zoomLevel);
 		viewportY = y-(viewportHeight/2/zoomLevel);
-		zoomX = 0;
-		zoomY = 0;
 		
 		if (viewportX<0) viewportX=0;
 		if (viewportY<0) viewportY=0;
-		if (viewportX+viewportWidth > imageWidth) viewportX = imageWidth-viewportWidth;
-		if (viewportY+viewportHeight > imageHeight) viewportY = imageHeight-viewportHeight;
+		if (viewportX+viewportWidth/zoomLevel >= imageWidth) {
+			viewportX = imageWidth-viewportWidth/zoomLevel;
+		};
+		if (viewportY+viewportHeight/zoomLevel >= imageHeight) viewportY = imageHeight-viewportHeight/zoomLevel;
 		if (ourUpdateListener != null) {
 			// update the viewport
-			ourUpdateListener.newZoomOrPosition(zoomLevel, zoomX, zoomY, viewportX, viewportY, viewportWidth, viewportHeight);
+			ourUpdateListener.newZoomOrPosition(zoomLevel, viewportX, viewportY, viewportWidth, viewportHeight);
 		}
 		paintImage();
 	}
@@ -1105,8 +1122,8 @@ public class PlainImageDisplay {
 			for (int y=0; y<viewportHeight; y++)	
 			for (int x=0; x<viewportWidth;  x++) {
 			
-				int xPos = x/zoomLevel + zoomX + viewportX;
-				int yPos = y/zoomLevel + zoomY + viewportY;
+				int xPos = x/zoomLevel + viewportX;
+				int yPos = y/zoomLevel + viewportY;
 			
 				for (int i=0; i<3;  i++) {
 					if (xPos<0 || xPos>=imageWidth || yPos<0 || yPos>=imageHeight) {
@@ -1165,10 +1182,9 @@ public class PlainImageDisplay {
 		return;
 	    if (level==1) {
 		zoomLevel=1;
-		zoomX=0; zoomY=0;
 		this.paintImage();	
 		if (ourUpdateListener!=null)
-		    ourUpdateListener.newZoomOrPosition( zoomLevel, zoomX, zoomY, 
+		    ourUpdateListener.newZoomOrPosition( zoomLevel, 
 			    viewportX, viewportY, viewportWidth, viewportHeight);
 	    
 		return;
@@ -1183,14 +1199,18 @@ public class PlainImageDisplay {
 	    xPos = Math.min(xPos, viewportWidth-wSize-1);
 	    yPos = Math.min(yPos, viewportHeight-hSize-1);
 	    zoomLevel=level;
-	    zoomX=xPos;
-	    zoomY=yPos;
-	
+		viewportX = xPos - (viewportWidth/2/zoomLevel);
+		viewportY = yPos - (viewportHeight/2/zoomLevel);
+		if (viewportX<0) viewportX=0;
+		if (viewportY<0) viewportY=0;
+		if (viewportX+viewportWidth/zoomLevel > imageWidth) viewportX = imageWidth - viewportWidth/zoomLevel;
+		if (viewportY+viewportHeight/zoomLevel > imageHeight) viewportY = imageHeight - viewportHeight/zoomLevel;
+
 	    this.paintImage();	
 
 	    //System.out.println("Updated ROI: "+xPos+" "+yPos+"/"+zoomX+" "+zoomY+" l:"+zoomLevel);
 	    if (ourUpdateListener!=null)
-		ourUpdateListener.newZoomOrPosition( zoomLevel, zoomX, zoomY, viewportX, viewportY, viewportWidth, viewportHeight);
+		ourUpdateListener.newZoomOrPosition( zoomLevel, viewportX, viewportY, viewportWidth, viewportHeight);
 	}
 
 	
@@ -1220,7 +1240,7 @@ public class PlainImageDisplay {
     }
     
     public interface IUpdate {
-	    public void newZoomOrPosition( int level, int xPos, int yPos, int viewportX, int viewportY, 
+	    public void newZoomOrPosition( int level, int viewportX, int viewportY, 
 		    int viewportWidth, int viewportHeight);
 	}
 
@@ -1228,7 +1248,8 @@ public class PlainImageDisplay {
 
 		final int our_width, our_height;
 		final BufferedImage bufferedImage;
-	 	int img_w, img_h, vp_x, vp_y, vp_w, vp_h, zoom_x, zoom_y, zoom_level;
+	 	int img_w, img_h, vp_x, vp_y, vp_w, vp_h, zoom_level;
+		final int zoom_x, zoom_y;
 
 		MiniMap(int w, int h) {
 			our_width = w;
@@ -1287,13 +1308,11 @@ public class PlainImageDisplay {
 			g2d.drawRect(vp_x_scaled, vp_y_scaled, vp_w_scaled, vp_h_scaled);
 		}
 	
-		public void updateViewport(int x, int y, int w, int h, int zoomX, int zoomY, int zoomLevel) {
+		public void updateViewport(int x, int y, int w, int h, int zoomLevel) {
 			this.vp_x = x;
 			this.vp_y = y;
 			this.vp_w = w;
 			this.vp_h = h;
-			this.zoom_x = zoomX;
-			this.zoom_y = zoomY;
 			this.zoom_level = zoomLevel;
 
 			// repaint the minimap
@@ -1354,7 +1373,7 @@ public class PlainImageDisplay {
 				if ( (x>200 && x<250) || (y>150 && y<190) ) {
 					pxl[i][x+y*width]=(float)(500 +rnd.nextGaussian()*Math.sqrt(500));
 				} else 
-				if ( (x>400 && x<450) || (y>250 && y<290) ) {
+				if ( (x>size-200 && x<size-150) || (y>size-300 && y<size-250) ) {
 					pxl[i][x+y*width]=(float)(1400+rnd.nextGaussian()*Math.sqrt(1400));
 				} else {
 					pxl[i][x+y*width]=(float)(2400+rnd.nextGaussian()*Math.sqrt(2400));
