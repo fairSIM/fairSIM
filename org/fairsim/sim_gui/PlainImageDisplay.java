@@ -374,7 +374,7 @@ public class PlainImageDisplay {
 	    lutSelector.addSelectListener( new Tiles.SelectListener<LUT>() {
 		@Override
 		public void selected( LUT l, int i ) {
-		    Tool.trace(l.toString());
+		    //Tool.trace(l.toString());
 		    ic.setColorTable(channel, l);
 		}
 	    });
@@ -744,7 +744,7 @@ public class PlainImageDisplay {
 	    gammaTable = new int[width];
 	    recalcGammaTable();
 	    
-	    System.out.println("img len: "+imgData.length);
+	    //System.out.println("img len: "+imgData.length);
 	}
 
         @Override
