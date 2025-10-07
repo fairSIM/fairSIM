@@ -6,4 +6,7 @@ test*.xml
 *.tar.bz2
 org/fairsim/git-version.txt
 target/*
+build/
+
+
 external/*.dmg

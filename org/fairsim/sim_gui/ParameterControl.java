@@ -194,7 +194,7 @@ public class ParameterControl {
 		    if (fitkVectorEstimate) {
 			SimAlgorithm.estimateParameters( 
 			    simParam, imgc.theFFTImages, bandToFit, fitExclude, 
-			    idpFactory, fitVerbosity, t1, fitKeepPhase);
+			    idpFactory, fitVerbosity, t1, fitKeepPhase, "standard parameter estimation" );
 		    }
 
 		    if (fitIndividualPhaseEstimate) {

@@ -1435,7 +1435,7 @@ public class ImageControl {
 			simParam, theFFTImages, 
 			fsGUI.parc.getFitBand(), 
 			fsGUI.parc.getFitExclude(), 
-			null, 0, null);
+			null, 0, null, false, "Batch mode, time slice "+timePos);
 		}
 
 		// update individual phase estimations

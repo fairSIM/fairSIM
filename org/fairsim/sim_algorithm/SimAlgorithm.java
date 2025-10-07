@@ -41,7 +41,7 @@ public class SimAlgorithm {
 	final ImageOutputFactory idf, 
 	int visualFeedback, Tool.Timer tEst ) {
 	estimateParameters(param, inFFT, fitBand, fitExclude, idf,
-	    visualFeedback, tEst, false);
+	    visualFeedback, tEst, false, null);
     }
 
     /** Run the SIM parameter estimation 
@@ -52,14 +52,20 @@ public class SimAlgorithm {
      * @param idf    ImageDisplayFactory for intermediate output (may be null)
      * @param visualFeedback Feedback Amount of visual feedback, 0..4
      * @param tEst   Runtime measurement (may be null) 
-     * @param keepPhases If true, phase information from SimParam will be used in band separation */
+     * @param keepPhases If true, phase information from SimParam will be used in band separation
+	 * @param contextForLogging Context information for log output only (e.g. which dataset is being processed), can be null
+	 *  */
     public static void estimateParameters( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
 	final ImageOutputFactory idf, 
-	int visualFeedback, Tool.Timer tEst, boolean keepPhases ) {
+	int visualFeedback, Tool.Timer tEst, boolean keepPhases, String contextForLogging ) {
 
 	final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
 	final OtfProvider otfPr = param.otf();
+
+	if (contextForLogging==null) {
+	    contextForLogging = "no context";
+	}
 
 	ImageDisplay pwSt=null,pwSt2=null, spSt=null, spSt2=null;
 	if ((visualFeedback>0)&&(idf!=null)) {
@@ -157,7 +163,7 @@ public class SimAlgorithm {
 		    angIdx, peak[0], peak[1]));
 	    }
 
-	    // fit the peak to sub-pixel precision by cross-correlation of
+		// fit the peak to sub-pixel precision by cross-correlation of
 	    // Fourier-shifted components
 	    Vec2d.Real cntrl    = Vec2d.createReal(30,10);
 	    peak = Correlation.fitPeak( separate[0], separate[fb], 0, fitBand, otfPr,
@@ -195,6 +201,15 @@ public class SimAlgorithm {
 		    String.format("Peak: (dir %1d): fitted --> x %7.3f y %7.3f p %7.3f (m %7.3f, %7.3f)", 
 		    angIdx, peak[0], peak[1], p1.phase(), p1.hypot(), p2.hypot() ));
 	
+		Tool.trace(String.format("--> Physical pattern: dir (%d) cycle/micron %6.4f angle(deg) %6.4f phase(deg) %6.4f [%s]",
+			angIdx, 
+		    Math.hypot(peak[0], peak[1]) * param.pxlSizeCyclesMicron(),
+		    Math.atan2(peak[1], peak[0]) * 180/Math.PI,
+			p1.phase() * 180/Math.PI,
+			contextForLogging
+			));
+
+
 		// store the result
 		param.dir(angIdx).setPxPy(   -peak[0], -peak[1] );
 		param.dir(angIdx).setPhaOff( p1.phase() );
@@ -211,6 +226,15 @@ public class SimAlgorithm {
 		Tool.trace(
 		    String.format("Peak: (dir %1d): fitted --> x %7.3f y %7.3f p %7.3f (m %7.3f)", 
 		    angIdx, peak[0], peak[1], p1.phase(), p1.hypot() ));
+		
+		Tool.trace(String.format("--> Physical pattern: dir (%d) cycle/micron %6.4f angle(deg) %6.4f phase(deg) %6.4f [%s]",
+			angIdx, 
+		    Math.hypot(peak[0], peak[1]) * param.pxlSizeCyclesMicron(),
+		    Math.atan2(peak[1], peak[0]) * 180/Math.PI,
+			p1.phase() * 180/Math.PI,
+			contextForLogging
+			));
+
 	
 		// store the result
 		param.dir(angIdx).setPxPy(   -peak[0], -peak[1] );
