@@ -330,7 +330,7 @@ public class Tiles {
    
    /** Provides a type-save combo-box, like in java7.
      *  Wrapper around JComboBox, to fix java-1.6 to java-1.7 issue */
-    public static class TComboBox<T> extends JComboBox {
+    public static class TComboBox<T> extends JComboBox<T> {
 	public TComboBox(T [] e) {
 	    super(e);
 	}

@@ -38,8 +38,50 @@ public class SimAlgorithm {
     public static void estimateParameters( final SimParam param, 
 	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
 	final ImageDisplay.Factory idf, 
-	int visualFeedback, Tool.Timer tEst ) {
+	int visualFeedback, Tool.Timer tEst) {
+	
 	estimateParameters(param, inFFT, fitBand, fitExclude, idf,
+	    visualFeedback, tEst, false, null);
+    }
+
+    /** Run the SIM parameter estimation.
+     * Default to override any phase information set in SimParam.
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitBand On which band to perform the kx,ky fit
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param idf    ImageDisplayFactory for intermediate output (may be null)
+     * @param visualFeedback Feedback Amount of visual feedback, 0..4
+     * @param tEst   Runtime measurement (may be null) */
+    public static void estimateParameters( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, final int fitBand, final double [] fitExclude,
+	final ImageDisplay.Factory idf, 
+	int visualFeedback, Tool.Timer tEst) {
+	
+	estimateParameters(param, inFFT, fitBand, fitExclude, idf,
+	    visualFeedback, tEst, false, null);
+    }
+
+    /** Run the SIM parameter estimation.
+     * Default to override any phase information set in SimParam.
+     * @param param  The SIM parameter instance to work on
+     * @param inFFT  The input images (in Fourier space)
+     * @param fitBand On which band to perform the kx,ky fit
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param idf    ImageDisplayFactory for intermediate output (may be null)
+     * @param visualFeedback Feedback Amount of visual feedback, 0..4
+     * @param tEst   Runtime measurement (may be null) */
+    public static void estimateParameters( final SimParam param, 
+	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
+	final ImageDisplay.Factory idf, 
+	int visualFeedback, Tool.Timer tEst, boolean keepPhases, String contextForLogging) {
+	
+	double [] fitExcludeArr = new double[ param.nrDir() ];
+	for (int i=0; i< param.nrDir(); i++ ) {
+	    fitExcludeArr[i] = fitExclude;
+	}
+	
+	estimateParameters(param, inFFT, fitBand, fitExcludeArr, idf,
 	    visualFeedback, tEst, false, null);
     }
 
@@ -47,7 +89,7 @@ public class SimAlgorithm {
      * @param param  The SIM parameter instance to work on
      * @param inFFT  The input images (in Fourier space)
      * @param fitBand On which band to perform the kx,ky fit
-     * @param fitExclude How much (in fraction of OTF support) to exclude from fit
+     * @param fitExclude How much (in fraction of OTF support) to exclude from fit, for each orientation
      * @param idf    ImageDisplayFactory for intermediate output (may be null)
      * @param visualFeedback Feedback Amount of visual feedback, 0..4
      * @param tEst   Runtime measurement (may be null) 
@@ -55,7 +97,7 @@ public class SimAlgorithm {
 	 * @param contextForLogging Context information for log output only (e.g. which dataset is being processed), can be null
 	 *  */
     public static void estimateParameters( final SimParam param, 
-	Vec2d.Cplx [][] inFFT, final int fitBand, final double fitExclude,
+	Vec2d.Cplx [][] inFFT, final int fitBand, final double [] fitExclude,
 	final ImageDisplay.Factory idf, 
 	int visualFeedback, Tool.Timer tEst, boolean keepPhases, String contextForLogging ) {
 
@@ -81,6 +123,9 @@ public class SimAlgorithm {
 
 	if (fitBand!=1 && fitBand!=2 ) throw new RuntimeException(
 	    "Fitband neither 1 nor 2");
+
+	if (fitExclude.length != param.nrDir() ) throw new RuntimeException(
+	    "Fit exclude array length does not match number of directions");
 
 	if (tEst!=null) tEst.start();
     
@@ -147,10 +192,10 @@ public class SimAlgorithm {
 	    double [] peak ;
 	    double minDist =2;
 	   
-	    if (fitExclude>0) {
+	    if (fitExclude[angIdx]>0) {
 		// find the highest peak in corr of band0 to highest band 
 		// with minDist of otfCutoff from origin, store in 'param'
-		minDist = fitExclude * otfPr.getCutoff() / param.pxlSizeCyclesMicron();
+		minDist = fitExclude[angIdx] * otfPr.getCutoff() / param.pxlSizeCyclesMicron();
 		peak = Correlation.locatePeak(  (fitBand==1)?(c1):(c2) , minDist );
 		
 		Tool.trace(String.format("Peak: (dir %1d) located (min %4.0f) at x %5.0f y %5.0f",
