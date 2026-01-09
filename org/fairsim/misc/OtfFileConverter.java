@@ -87,7 +87,7 @@ public class OtfFileConverter {
 
 	// std header is 1024 bytes, offset that plus ext header size
 	final int startPxl = extHeader + 1024;
-	otfImg.position( startPxl );
+	otfImg.position( startPxl ); // TODO: this fails when mixing java source/target/JDK versions!
 
 	// loop images (should be 3  bands with w*h [real,cplx] each)
 	bandsData = new float[3][ width*height*2 ];
