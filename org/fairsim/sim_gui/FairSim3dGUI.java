@@ -43,6 +43,7 @@ import javax.swing.JDialog;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
+import javax.swing.SwingWorker;
 
 import java.net.URL;
 
@@ -72,6 +73,9 @@ public class FairSim3dGUI {
 
     final JFrame baseframe = new JFrame("fairSIM 3D GUI");
     final private JPanel mainPanel = new JPanel();
+	
+	final JButton start3dReconButton = new JButton("run!");
+	//final JButton cancel3dReconButton = new JButton("cancel");
 
     final DefineMachineGui dmg;
 
@@ -186,15 +190,16 @@ public class FairSim3dGUI {
 
 	
 	JPanel buttonPanel = new JPanel();
-	JButton start3dReconButton = new JButton("run!");
 
 	start3dReconButton.addActionListener( new ActionListener () {
 	    @Override
 	    public void actionPerformed(ActionEvent e){
-		runReconstruction( false, null, (int)vfbSpinner.getVal() );
+		startReconstructionThread( false, null, (int)vfbSpinner.getVal() );
 	    }
 	});
 
+	//cancel3dReconButton.setEnabled( false );
+	//buttonPanel.add( cancel3dReconButton );
 	buttonPanel.add( start3dReconButton );
 
 	recon3dPanel.add( posSelector );
@@ -228,7 +233,7 @@ public class FairSim3dGUI {
 	// TODO: check if this is o.k.
 	if (autostart) {
 	    start3dReconButton.setEnabled(false);
-	    runReconstruction(headless, resultImageFile, -2); // Todo: propagate visual feedback level in autostart mode
+	    startReconstructionThread(headless, resultImageFile, -2); // Todo: propagate visual feedback level in autostart mode
 	    start3dReconButton.setEnabled(true);
 	}
 
@@ -623,6 +628,62 @@ public class FairSim3dGUI {
 	}
 	
 	} // end of ChannelPanel class
+
+
+	void startReconstructionThread(boolean headless, String saveFileName, int visualFeedbackLevel) {
+
+		// in headless mode, just run directly
+		if (headless) {
+		    runReconstruction( headless, saveFileName, visualFeedbackLevel );
+		    return;
+		}
+
+		// otherwise, in the GUI, start a Swing worker thread
+		SwingWorker<Void,Void> worker = new SwingWorker<Void,Void>() {
+		    @Override
+		    protected Void doInBackground() throws Exception {
+			runReconstruction( headless, saveFileName, visualFeedbackLevel );
+			return null;
+		    }
+
+		    @Override
+		    protected void done() {
+				if (isCancelled()) {
+				    Tool.trace("Reconstruction thread cancelled");
+				} else {
+				    Tool.trace("Reconstruction thread completed");
+				}
+		
+				
+				//cancel3dReconButton.setEnabled( false );
+				//start3dReconButton.setEnabled( true );	
+		    }
+		};		
+
+
+		// TODO: implement cancel. This can't be easily done via exception right now,
+		// have to actually build it into the reconstruction code
+		/*
+		// set and enable the cancel button
+		cancel3dReconButton.setEnabled( true );
+		start3dReconButton.setEnabled( false );
+		for (ActionListener al : cancel3dReconButton.getActionListeners() ) {
+		    cancel3dReconButton.removeActionListener( al );
+		}
+		cancel3dReconButton.addActionListener( new ActionListener() {
+		    @Override
+		    public void actionPerformed( ActionEvent e ) {
+			worker.cancel( true );
+			Tool.trace("Reconstruction cancelled by user");
+		    }
+		});
+		*/
+
+		worker.execute();
+
+	}
+
+
 
     void runReconstruction(boolean headless, String saveFileName, int visualFeedbackLevel) {
 	
