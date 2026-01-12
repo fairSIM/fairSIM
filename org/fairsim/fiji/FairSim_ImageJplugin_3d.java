@@ -35,10 +35,36 @@ import ij.Prefs;
 
 public class FairSim_ImageJplugin_3d implements PlugIn {
     
-    final static String keyLastMachineFile = "org.fairsim.config.lastMachineFile";
+    final static String keyLastMachineFile  = "org.fairsim.config.lastMachineFile";
+    final static String keyFairSimLogOutput = "org.fairsim.config.logOutput";
 
     /** Called by Fiji to start the plugin */
     public void run(String inputarg) {
+
+
+	// Switch log output on/off:
+
+	if ( inputarg.equals("turn-log-on")) {
+	    Prefs.set( keyFairSimLogOutput, "true");
+		Tool.tell("fairSIM 3D log output turned ON");
+		return;
+	}
+
+	if ( inputarg.equals("turn-log-off")) {
+	    Prefs.set( keyFairSimLogOutput, "false");
+		Tool.tell("fairSIM 3D log output turned OFF");
+		return;
+	}
+
+	// set log output
+	String logOutput = Prefs.get( keyFairSimLogOutput ,"true");
+	if ( logOutput.equals("true")) { 
+	    FairSim_ImageJplugin.setLog(true);
+		Tool.trace("--- fairSIM 3D ---");
+	} else {
+	    FairSim_ImageJplugin.setLog(false);
+	}
+
 
 	// create a new machine definition file
 	if (inputarg.equals("define-machine-new")) {
