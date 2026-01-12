@@ -71,7 +71,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     private double apoCutOff = 2;		    // Apo cutoff parameter lateral component (2D and 3D)
 	private double apoCutOffAxial = 2;	    // Apo cutoff parameter for axial component in 3D SIM
     private double apoBend   = 0.9;		    // Apo bend parameter
-	private int    apoType = 0;		    	// Apo type (currently: 0=linear, 1=cosine))
+	private int    apoType = 0;		    	// Apo type (currently: 0=linear, 1=cosine, 2=off))
 
     private int rlIterations = 5;		    // number of Richardson-Lucy iterations
     
@@ -371,8 +371,11 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
     }	
 
 	// TODO: this should be changed to be an enum type in the future
-	/** Set the APO type (0=linear, 1=cosine) */
+	/** Set the APO type (0=linear, 1=cosine, 2=off) */
 	public SimParam setApoType( int type ) {
+	if (type<0 || type>2)
+		throw new RuntimeException("Invalid Apo type");
+	
 	apoType = type;
 	return this;
     }	
@@ -395,6 +398,16 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	/** Get the APO type */
 	public int getApoType() {
 	return apoType;
+	}
+
+	/** Get the APO type as string */
+	public String getApoTypeSting() {
+		switch (apoType) {
+			case 0: return "linear";
+			case 1: return "cosine";
+			case 2: return "off";
+			default: return "unknown";
+		}
 	}
 
 
@@ -742,6 +755,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );
 	fd.newDbl("apodization-cutoff").setVal( apoCutOff );
 	fd.newDbl("apodization-bend").setVal( apoBend );
+	fd.newInt("apodization-type").setVal( apoType );
 	fd.newTDE("timestamp").set( paramDate );
     
 	for ( int d=0; d < nrDirs; d++ ) {
@@ -790,7 +804,11 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	
 	// optional parameters that might have been stored
 	if ( fd.contains("apodization-bend")) {
-	    ret.setApoBend( fd.getDbl("apodization-cutoff").val());
+	    ret.setApoBend( fd.getDbl("apodization-bend").val());
+	};
+
+	if ( fd.contains("apodization-type")) {
+	    ret.setApoType( fd.getInt("apodization-type").val());
 	};
 
 

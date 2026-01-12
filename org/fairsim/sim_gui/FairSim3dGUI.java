@@ -268,6 +268,7 @@ public class FairSim3dGUI {
 		double apoLateralPreset = 2.0;
 		double apoAxialPreset = 2.0;
 		double apoBendPreset = 0.8;
+		int apoTypePreset = 1; // cosine by default
 
 	    int    chIdx  = chNr;
 	    int	   otfIdx = 0;
@@ -335,7 +336,7 @@ public class FairSim3dGUI {
 			// apo filter parameters
 			if ( tok.startsWith("apoL") ) {
 				double apoPreset =0;
-				if (tok.charAt(4)=='=') {
+				if (tok.length()>4 && tok.charAt(4)=='=') {
 					apoPreset = Double.parseDouble( tok.substring(5));
 				} else {
 					apoPreset = Double.parseDouble( tok.substring(4));
@@ -350,7 +351,7 @@ public class FairSim3dGUI {
 
 			if ( tok.startsWith("apoA") ) {
 				double apoPreset =0;
-				if (tok.charAt(4)=='=') {
+				if (tok.length()>4 && tok.charAt(4)=='=') {
 					apoPreset = Double.parseDouble( tok.substring(5));
 				} else {
 					apoPreset = Double.parseDouble( tok.substring(4));
@@ -365,7 +366,7 @@ public class FairSim3dGUI {
 
 			if ( tok.startsWith("apoB") ) {
 				double apoPreset =0;
-				if (tok.charAt(4)=='=') {	
+				if (tok.length()>4 && tok.charAt(4)=='=') {	
 					apoPreset = Double.parseDouble( tok.substring(5));
 				} else {
 					apoPreset = Double.parseDouble( tok.substring(4));
@@ -378,7 +379,25 @@ public class FairSim3dGUI {
 				}
 			}
 
-
+			if ( tok.startsWith("apoType") ) {
+				if (tok.length()>7 && tok.charAt(7)=='=') {
+					String atype = tok.substring(8).toLowerCase();
+					if (atype.equals("linear")) {
+						apoTypePreset = 0;
+						Tool.trace("ch"+(chNr+1)+": preset Apo type to linear");
+					} else if (atype.equals("cosine")) {
+						apoTypePreset = 1;
+						Tool.trace("ch"+(chNr+1)+": preset Apo type to cosine");
+					} else if (atype.equals("off")) {
+						apoTypePreset = 2;
+						Tool.trace("ch"+(chNr+1)+": preset Apo type to off");
+					} else {
+						Tool.error("ch"+(chNr+1)+": No match for Apo type preset: linear, cosine, off" , false);
+					}
+				} else {
+					Tool.error("ch"+(chNr+1)+": Specify Apo type preset: apoType=[linear, cosine, off]" , false);
+				}
+			}
 
 		    // turn off reconstruction of this channel completely
 		    if (tok.equals("disable")) {
@@ -473,8 +492,8 @@ public class FairSim3dGUI {
 		 apoBendPreset, apoBendLowest, apoBendHighest, apoBendSteps);
 
 		apoTypeSelector = new Tiles.LComboBox<String>( "Apo type",
-		 new String[] { "linear", "cosine" } );
-		apoTypeSelector.setSelectedIndex(1); // linear by default	
+		 new String[] { "linear", "cosine", "off" } );
+		apoTypeSelector.setSelectedIndex(apoTypePreset); // linear by default	
 
 		apoLateral.setDigits(4);
 		apoAxial.setDigits(4);
@@ -741,11 +760,13 @@ public class FairSim3dGUI {
 		sp.setApoCutoff( channel.apoLateral.getVal() );
 		sp.setApoCutoffAxial( channel.apoAxial.getVal() );
 		sp.setApoBend( channel.apoBend.getVal() );
+		sp.setApoType( channel.apoTypeSelector.getSelectedIndex() );
 
 		Tool.trace(String.format(
-			"Using Wiener filter %7.5f, Apo lateral %7.3f, Apo axial %7.3f, Apo bend %7.3f",
+			"Using Wiener filter %7.5f, Apo lateral %7.3f, Apo axial %7.3f, Apo bend %7.3f Apo type %s",
 			sp.getWienerFilter(), 
-			sp.getApoCutoff(), sp.getApoCutoffAxial(), sp.getApoBend() ));	
+			sp.getApoCutoff(), sp.getApoCutoffAxial(), sp.getApoBend(), 
+			sp.getApoTypeSting() ));	
 		
 	    int   ourFitLevel = channel.fitTypeList.getSelectedItem().getVal();
 	    boolean doFastFit  = channel.fastFitCheckbox.isSelected();

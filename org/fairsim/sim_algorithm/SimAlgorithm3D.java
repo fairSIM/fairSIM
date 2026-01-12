@@ -624,8 +624,13 @@ public class SimAlgorithm3D {
 	    }
 	    
 		// apply apotization filter
-	    otfPr.apotize( fullResult, param.getApoCutoff(), param.getApoCutoffAxial(), param.getApoBend(), 
-		 (param.getApoType()!=0) );
+		if (param.getApoType()!=2) {
+	    	otfPr.apotize( fullResult, param.getApoCutoff(), param.getApoCutoffAxial(), param.getApoBend(), 
+		 		(param.getApoType()!=0) );
+		} else {
+			Tool.trace("Apotization type 2 ('off') selected: skipping apotization.");
+		}
+
 	    
 	    /*
 	    for (int z=0; z<fullResult.vectorDepth(); z++)

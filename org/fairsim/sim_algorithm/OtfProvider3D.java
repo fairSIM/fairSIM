@@ -265,7 +265,8 @@ public class OtfProvider3D {
 	    throw new IllegalStateException("Vector pixel size not initialized");
 	final int w = vec.vectorWidth(), h = vec.vectorHeight(), d = vec.vectorDepth();
 
-	Tool.trace(String.format("cutoff lat %7.5f, axial %7.5f", cutOffLateral, cutOffAxial));
+	Tool.trace(String.format("Apotization type '%s', cutoff lat %7.5f, axial %7.5f", 
+		(useCos)?("cosine"):("linear"),cutOffLateral, cutOffAxial));
 
 	// loop output vector
 	new SimpleMT.StrPFor(0,d) {
