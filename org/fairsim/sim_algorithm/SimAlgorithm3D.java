@@ -581,7 +581,7 @@ public class SimAlgorithm3D {
 			Vec3d.Real wd = fDenom.duplicate();
 			wd.reciproc();
 			wd.normalize();
-			Transforms.swapQuadrant( wd );
+			//Transforms.swapQuadrant( wd );
 			for (int z=0; z<d; z++) {
 			    Vec2d.Real tmp = Vec2d.createReal( 2*w, 2*h);
 			    tmp.slice( wd, z );

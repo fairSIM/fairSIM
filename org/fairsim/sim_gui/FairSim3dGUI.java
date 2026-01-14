@@ -667,16 +667,19 @@ public class FairSim3dGUI {
 
 		    @Override
 		    protected void done() {
-				if (isCancelled()) {
-				    Tool.trace("Reconstruction thread cancelled");
-				} else {
-				    Tool.trace("Reconstruction thread completed");
-				}
-		
-				
-				//cancel3dReconButton.setEnabled( false );
-				//start3dReconButton.setEnabled( true );	
-		    }
+			try {
+				get(); // This will throw any exception from doInBackground()
+				Tool.trace("Reconstruction thread completed");
+			} catch (java.util.concurrent.CancellationException ex) {
+				Tool.trace("Reconstruction thread cancelled");
+			} catch (Exception ex) {
+				// Forward the exception to your logging system
+				Tool.error("Exception in reconstruction thread: " + ex.getCause(), false);
+				ex.printStackTrace();
+			}
+			//cancel3dReconButton.setEnabled( false );
+			//start3dReconButton.setEnabled( true );	
+			}
 		};		
 
 
