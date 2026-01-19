@@ -25,6 +25,9 @@ public class CoinFlipImage implements PlugIn {
      */
     private static void xorshift_star(XorShiftState state) {
         long x = state.seed;
+        if (x==0) {
+            x = 0xdeadbeefcafebabeL; // default seed if zero
+        }
         x ^= (x >> 12);
         x ^= (x << 25);
         x ^= (x >> 27);
@@ -71,7 +74,8 @@ public class CoinFlipImage implements PlugIn {
         new SimpleMT.PFor(0, width * height) {
             @Override
             public void at(int i) {
-                for (int j = 0; j < pixels[i]; j++) {
+                int count = pixels[i] & 0xFFFF; // interpret as unsigned short
+                for (int j = 0; j < count; j++) {
                     xorshift_star(prngState[i]);
                     if (prngState[i].value < 0) {
                         imgs[0][i]++;
@@ -81,6 +85,7 @@ public class CoinFlipImage implements PlugIn {
                 }
             }
         };
+        
         end = System.nanoTime();
         IJ.log(String.format("Coin flip processing time (ms): %.2f", (end - start) / 1_000_000.0));
 
@@ -100,6 +105,14 @@ public class CoinFlipImage implements PlugIn {
 
     }
 
+    public static void main(String[] arg) {
+        new ij.ImageJ(ij.ImageJ.EMBEDDED);
+        ImagePlus ip = IJ.openImage(arg[0]);
+        ip.show();
+
+        CoinFlipImage plugin = new CoinFlipImage();
+        plugin.run("");
+    }
 
     
 
