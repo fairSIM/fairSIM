@@ -414,7 +414,7 @@ public class Tiles {
    
    /** Provides a type-save combo-box, like in java7.
      *  Wrapper around JComboBox, to fix java-1.6 to java-1.7 issue */
-    public static class TComboBox<T> extends JComboBox {
+    public static class TComboBox<T> extends JComboBox<T> {
 	public TComboBox(T [] e) {
 	    super(e);
 	}
@@ -436,9 +436,9 @@ public class Tiles {
 
  
     /** Provides a type-save JList, like in java7 */
-    public static class TGuiList<T> extends JList {
+    public static class TGuiList<T> extends JList<T> {
 	
-	DefaultListModel dlm = new DefaultListModel();
+	DefaultListModel<T> dlm = new DefaultListModel<T>();
 
 	/** Creates a List */
 	public TGuiList() {

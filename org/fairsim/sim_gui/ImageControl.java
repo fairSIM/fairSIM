@@ -180,8 +180,11 @@ public class ImageControl {
 	zSliceVideoSpinner = 	
 	    new Tiles.LNSpinner( "zSlices" , 1, 1, 200, 1 ); 
 
-	imgBox.box.setPrototypeDisplayValue("some really long image filename"+
-	    "as these will often be used");
+	ImageSelector.ImageInfo prototypeImage =  new 
+		ImageSelector.ImageInfo(512, 512, 15, 1, 1, 0.082, 0.125,
+	    "some really long image filename as these will often be used", -1);
+
+	imgBox.box.setPrototypeDisplayValue(prototypeImage);
 
 	maxTimePointsLabel = new JLabel("t-max: n/a");
 	batchButton = new JButton("batch");
@@ -839,7 +842,7 @@ public class ImageControl {
 	p1.setBorder(BorderFactory.createTitledBorder("Slice") );
 
 	sliceBox = new Tiles.LComboBox<Integer>("#",1);
-	sliceBox.box.setPrototypeDisplayValue("123");
+	sliceBox.box.setPrototypeDisplayValue(123);
 	
 	if (img.nrSlices > simParam.getImgPerZ() ) {
 	    // only enable the box if there is more than one slice

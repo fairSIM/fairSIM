@@ -76,7 +76,7 @@ public class ParameterControl {
 
     private int fitVerbosity = 1;   // verbosity of fit output
     private int fitBand	=2;	    // which band to use for fitting
-    private double fitExclude=0.6;  // Portion of OTF support to exclude
+    private double [] fitExclude;  // Portion of OTF support to exclude
     private boolean fitKeepPhase = false; // if to override the relative phase when fitting new parameters
     private boolean fitkVectorEstimate = true; // if to run the k-vector estimate
     private boolean fitIndividualPhaseEstimate = false; // if to run individual (absolute) phase estimates for each raw frame
@@ -101,6 +101,12 @@ public class ParameterControl {
 	this.imgc	= imgc;
 	this.simp	= simp;
 	this.recc	= recc;
+
+	// default exclude region
+	fitExclude = new double [simParam.nrDir()];
+	for ( int d=0; d<fitExclude.length; d++ )
+		fitExclude[d] = 0.6;	
+
 
 	// create our pnael
 	ourContent.setLayout(new BoxLayout(ourContent, BoxLayout.PAGE_AXIS));
@@ -348,31 +354,68 @@ public class ParameterControl {
 	p1.add( fitBandBox);
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
 
-	// setup how much to exclude
+	// setup how much to exclude, separate for each direction
 	Double [] excludes = new Double [] { .1,.2,.3,.4,.5,.6,.7,.8,.9,1.,1.1,1.2 };
-	final Tiles.LComboBox<Double> fitExclBox
-	     = new Tiles.LComboBox<Double>("Region to exclude from fit",excludes);
-	fitExclBox.setToolTipText("<html>In fraction of OTF support, how much<br>"
-	    +"of low frequency region not to search for peak<br>"
-	    +"(marked by circle in the output)");
+    
+    final List<Tiles.LComboBox<Double>> fitExclBoxes = new ArrayList<>();
+    for ( int d=0; d< simParam.nrDir(); d++ ) {
+    
+        Tiles.LComboBox<Double> box = new Tiles.LComboBox<Double>(String.format("Freq. exclude from fit, angle %d", d),excludes);
+        box.setToolTipText("<html>In fraction of OTF support, how much<br>"
+        	+"of low frequency region not to search for peak<br>"
+        	+"(marked by circle in the output)");
 
-	
-	// check for the entry in exlcudes[] array that is closest to the current  fitExclude value 
-	int closestIndex=5;
-	{
-	    double diff = Double.MAX_VALUE;
-	    for (int i=0; i<excludes.length; i++) {
-		double  p = Math.abs( excludes[i] - fitExclude );
-		if (p<diff) {
-		closestIndex=i;
-		diff=p;
-		}
-	    }
-	}
+    
+        // check for the entry in exlcudes[] array that is closest to the current  fitExclude value 
+        int closestIndex=5;
+        {
+            double diff = Double.MAX_VALUE;
+            for (int i=0; i<excludes.length; i++) {
+            double  p = Math.abs( excludes[i] - fitExclude[d] );
+                if (p<diff) {
+                    closestIndex=i;
+                    diff=p;
+                }
+            }
+        }
 
-	fitExclBox.box.setSelectedIndex( closestIndex );
-	p1.add( fitExclBox );
+        box.box.setSelectedIndex( closestIndex );
+        p1.add( box );
+        p1.add(Box.createRigidArea(new Dimension(0,5)));
+        fitExclBoxes.add(box);
+    }
+
+	JCheckBox separateExclBox = new JCheckBox("separate exclude per direction");
+	separateExclBox.setToolTipText("<html>If enabled, each direction can have<br />"
+	    +"its own exclude region.<br />"
+	    +"If disabled, the first direction's<br />"
+	    +"exclude region is used for all directions.</html>");
+	separateExclBox.setSelected( fitExclude.length == simParam.nrDir() );
+	p1.add( separateExclBox );
 	p1.add(Box.createRigidArea(new Dimension(0,5)));
+
+	// Action listener on first box, that updates all others if separateExclBox is not selected
+    fitExclBoxes.get(0).box.addActionListener( new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if ( !separateExclBox.isSelected() ) {
+                Double val = fitExclBoxes.get(0).getSelectedItem();
+                for ( int d=1; d< simParam.nrDir(); d++ ) {
+                    fitExclBoxes.get(d).box.setSelectedItem( val );
+                }
+            }
+        }
+    } );
+
+    // Action listener the disables other boxes when separateExclBox is unchecked
+    separateExclBox.addActionListener( new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            for (int d=1; d< simParam.nrDir(); d++ ) {
+                fitExclBoxes.get(d).box.setEnabled( separateExclBox.isSelected() );
+            }
+        }
+    } );
 
 
 
@@ -448,7 +491,11 @@ public class ParameterControl {
 		
 		fitVerbosity = verbosityBox.getSelectedIndex();
 		fitBand	     = fitBandBox.getSelectedItem();
-		fitExclude   = fitExclBox.getSelectedItem();
+		
+		for ( int d=0; d< simParam.nrDir(); d++ ) {
+			fitExclude[d] = fitExclBoxes.get(d).getSelectedItem();
+		}
+		
 		fitKeepPhase = phaseStepKeepBox.isSelected();
 		fitkVectorEstimate = fitkVectorEstimateBox.isSelected();
 		fitIndividualPhaseEstimate = fitIndividualPhaseEstimateBox.isSelected();
@@ -486,8 +533,10 @@ public class ParameterControl {
 	return fitBand;
     }
 
-    public double getFitExclude() {
-	return fitExclude;
+    public double [] getFitExclude() {
+		double [] fitExcludeCopy = new double [fitExclude.length];
+		System.arraycopy(fitExclude, 0, fitExcludeCopy, 0, fitExclude.length);
+		return fitExcludeCopy;
     }
 
 

@@ -95,6 +95,10 @@ public final class SimpleMT {
 	/** Called for every index in loop **/
 	protected abstract void at(int pos) ;
 	
+	/** Called for every index in loop, providing additional information about the thread **/
+	protected void at(int pos, int threadID) {
+		at(pos);
+	};
 	}
     
     /** Helpfull class to run parallel loops */
@@ -108,6 +112,10 @@ public final class SimpleMT {
 	}
 	/** Called for every index in loop **/
 	protected abstract void at(int pos) ;
+	/** Called for every index in loop, providing additional information about the thread **/
+	protected void at(int pos, int threadID) {
+		at(pos);
+	};
     }
     
     // -----------------------------------------------------
@@ -166,7 +174,7 @@ public final class SimpleMT {
 		cb.add( new Calls() {
 		    public Object call() {
 			for(int i=loop.start+j; i<loop.end; i+=nr)
-			    loop.at(i);
+			    loop.at(i,j);
 			return null;
 		    }
 		} );
@@ -177,7 +185,7 @@ public final class SimpleMT {
 	} else {
 	    // run in serial if already in parallel loop, or parallel is turned off
 	    for (int i=loop.start; i<loop.end; i++)
-		loop.at(i);
+		loop.at(i, 0);
 	}
     }
 
