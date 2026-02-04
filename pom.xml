@@ -11,7 +11,7 @@
 
   <groupId>org.fairsim</groupId>
   <artifactId>fairSIM</artifactId>
-  <version>1.4.1</version>
+  <version>1.5.1</version>
   <packaging>jar</packaging>
 
   <name>fairSIM</name>
@@ -91,29 +91,38 @@
     <!-- ImageJ plugins need an underscore on the filename of the jar. -->
     <finalName>${project.artifactId}_plugin_mvn-${buildNumber}</finalName>
 
-    <sourceDirectory>./</sourceDirectory>
-
     <resources>
-	<resource>
-	    <directory>./</directory>
-	    <filtering>true</filtering>
-	    <includes>
-		<include>org/fairsim/git-version-maven.txt</include>
-	    </includes>
-	</resource>
-	<resource>
-	    <directory>./</directory>
-	    <filtering>false</filtering>
-	    <includes>
-		<include>org/fairsim/resources/*</include>
-		<include>plugins.config</include>
-	    </includes>
-	</resource>
+      <resource>
+          <directory>src/main/resources</directory>
+          <filtering>true</filtering>
+          <includes>
+            <include>git-version-maven.txt</include>
+          </includes>
+          <targetPath>org/fairsim</targetPath>
+      </resource>
+      <resource>
+          <directory>src/main/resources</directory>
+          <filtering>false</filtering>
+          <targetPath>org/fairsim/resources</targetPath>
+          <includes>
+            <include>*.svg</include>
+            <include>*.png</include>
+            <include>*.html</include>
+          </includes>
+      </resource>
+      <resource>
+        <directory>./</directory>
+        <filtering>false</filtering>
+        <includes>
+          <include>plugins.config</include>
+        </includes>
+        <targetPath>./</targetPath>
+      </resource>
     </resources>
 
     <plugins>
       <plugin>
-         <groupId>org.apache.maven.plugins</groupId>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <!--
           Since Maven 3, we really need to specify a version number for
@@ -123,12 +132,12 @@
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
-	  <!-- this keeps the forked/internal version of JTransform from being build
-	       with maven dependencies, we can just rely on the original being there instead -->
-	  <excludes>
-	    <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
-	  </excludes>
-	</configuration>
+	        <!-- this keeps the forked/internal version of JTransform from being build
+	        with maven dependencies, we can just rely on the original being there instead -->
+	        <excludes>
+	          <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
+	        </excludes>
+	      </configuration>
       </plugin>
 
 
@@ -146,27 +155,27 @@
         </executions>
         <configuration>
         	<doCheck>false</doCheck>
-		<doUpdate>false</doUpdate>
-		<shortRevisionLength>10</shortRevisionLength>
-	</configuration>
+		      <doUpdate>false</doUpdate>
+		      <shortRevisionLength>10</shortRevisionLength>
+	      </configuration>
       </plugin>
 
-     <!-- Javadoc and Sources attachments are OSSRH requirements -->
+      <!-- Javadoc and Sources attachments are OSSRH requirements -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <version>2.2.1</version>
-	<configuration>
-	    <excludeResources>true</excludeResources>
-	    <includes>
-		<include>org/fairsim/**/*.java</include>
-		<include>org/fairsim/resources/*</include>
-	    </includes>
-	    <excludes>
-		<exclude>target</exclude>
-		<exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
-	    </excludes>
-	</configuration>
+	      <configuration>
+	        <excludeResources>true</excludeResources>
+	        <includes>
+		        <include>org/fairsim/**/*.java</include>
+		        <include>org/fairsim/resources/*</include>
+	        </includes>
+	        <excludes>
+		        <exclude>target</exclude>
+		        <exclude>org/fairsim/linalg/JTransformsForkConnector.java</exclude>
+	        </excludes>
+	      </configuration>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -181,19 +190,17 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>2.10.2</version>
-	<configuration>
-	    <additionalparam>-Xdoclint:none</additionalparam>
-	    <quiet>true</quiet>
-	    <source>8</source>
-	    <sourcepath>${basedir}</sourcepath>
-	    <excludePackageNames>
-		org.fairsim.extern.jtransforms
-	    </excludePackageNames>
-	    <sourceFileExcludes>
-		<exclude>org/fairsim/linalg/*.java</exclude>
-	    </sourceFileExcludes> 
-	</configuration>
-	<executions>
+	      <configuration>
+	        <additionalparam>-Xdoclint:none</additionalparam>
+	        <quiet>true</quiet>
+	        <source>8</source>
+	        <!-- <sourcepath>${basedir}</sourcepath> -->
+	        <excludePackageNames>org.fairsim.extern.jtransforms</excludePackageNames>
+	        <sourceFileExcludes>
+		        <exclude>org/fairsim/linalg/*.java</exclude>
+	        </sourceFileExcludes> 
+	      </configuration>
+	      <executions>
           <execution>
             <id>attach-javadocs</id>
             <goals>

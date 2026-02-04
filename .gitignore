@@ -7,7 +7,5 @@ test*.xml
 org/fairsim/git-version.txt
 target/*
 build/
-
-
 external/*.dmg
 .vscode/
