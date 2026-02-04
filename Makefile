@@ -11,6 +11,9 @@ JAR = jar
 # Options for the java compiler
 EXTDIR="./external"
 BUILDDIR="./build"
+SOURCEDIR="./src/main/java"
+RESOURCEDIR="./src/main/resources"
+
 
 JFLAGS = -g -Xlint:unchecked -Xlint:deprecation -extdirs ./external -d $(BUILDDIR)
 JFLAGS+= -target 1.8 -source 1.8 -bootclasspath ./external/rt-1.8.jar 
@@ -21,25 +24,25 @@ RM = rm -vf
 .PHONY:	all build-dir copy-resources org/fairsim/git-version.txt
 
 all:	build-dir copy-resources
-	$(JC) $(JFLAGS) org/fairsim/*/*.java
+	$(JC) $(JFLAGS) src/main/java/org/fairsim/*/*.java
 
 build-dir:
 	mkdir -p $(BUILDDIR)
 
 copy-resources: build-dir
 	mkdir -p $(BUILDDIR)/org/fairsim/resources
-	cp -r org/fairsim/resources/* $(BUILDDIR)/org/fairsim/resources/
+	cp -r $(RESOURCEDIR)/* $(BUILDDIR)/org/fairsim/resources/
 
-linalg: build-dir
-	$(JC) $(JFLAGS) org/fairsim/linalg/*.java
-utils: build-dir
-	$(JC) $(JFLAGS) org/fairsim/utils/*.java
-fiji: build-dir
-	$(JC) $(JFLAGS) org/fairsim/fiji/*.java
-sim_algorithm: build-dir
-	$(JC) $(JFLAGS) org/fairsim/sim_algorithm/*.java
-sim_gui: build-dir
-	$(JC) $(JFLAGS) org/fairsim/sim_gui/*.java
+#linalg: build-dir
+#	$(JC) $(JFLAGS) org/fairsim/linalg/*.java
+#utils: build-dir
+#	$(JC) $(JFLAGS) org/fairsim/utils/*.java
+#fiji: build-dir
+#	$(JC) $(JFLAGS) org/fairsim/fiji/*.java
+#sim_algorithm: build-dir
+#	$(JC) $(JFLAGS) org/fairsim/sim_algorithm/*.java
+#sim_gui: build-dir
+#	$(JC) $(JFLAGS) org/fairsim/sim_gui/*.java
 
 
 # misc rules
@@ -81,7 +84,7 @@ clean-jtransforms:
 doc:	doc/index.html
 
 doc/index.html : $(wildcard org/fairsim/*/*.java) 
-	javadoc -d doc/ -classpath ./ -extdirs ${EXTDIR} \
+	javadoc -d doc/ -classpath $(SOURCEDIR)/. -extdirs ${EXTDIR} \
 	-subpackages org.fairsim -exclude org.fairsim.extern.jtransforms 
 
 clean : clean-jtransforms

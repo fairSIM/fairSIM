@@ -8,3 +8,4 @@ org/fairsim/git-version.txt
 target/*
 
 build/
+.vscode/
