@@ -17,87 +17,86 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 */
 
 package org.fairsim.linalg;
+
 import org.fairsim.utils.Tool;
 
-import org.fairsim.extern.jtransforms.*; 
+import org.fairsim.extern.jtransforms.*;
 
 class JTransformsForkConnector extends FftProvider {
 
 	/** Add us a as an FFT implementation */
 	JTransformsForkConnector() throws ClassNotFoundException {
-	    
-	    // check if our required dependencies exist
-	    try {
-		Class.forName("org.fairsim.extern.jtransforms.FloatFFT_2D");
-	    } catch ( ClassNotFoundException e ) {
-		Tool.trace("Implementing classes for 'forked/internal JTransforms' not found");
-		throw e;
-	    }
-		    
-	    FftProvider.setFftFactory( this );
+
+		// check if our required dependencies exist
+		try {
+			Class.forName("org.fairsim.extern.jtransforms.FloatFFT_2D");
+		} catch (ClassNotFoundException e) {
+			Tool.trace("Implementing classes for 'forked/internal JTransforms' not found");
+			throw e;
+		}
+
+		FftProvider.setFftFactory(this);
 	}
 
 	/** return a 1D instance of JTransforms */
 	public FftProvider.Instance create1Dfft(final int n) {
-	    
-	    FftProvider.Instance  ret  = new FftProvider.Instance() {
 
-		FloatFFT_1D fft1ds = new FloatFFT_1D(n);
-		
-		public void fftTransform( float [] v, boolean inverse ) {
-		    if (!inverse) {
-			fft1ds.complexForward( v );
-		    } else {
-			fft1ds.complexInverse( v , true );
-		    }
-		}
-	    };
-	
-	    return ret;
+		FftProvider.Instance ret = new FftProvider.Instance() {
+
+			FloatFFT_1D fft1ds = new FloatFFT_1D(n);
+
+			public void fftTransform(float[] v, boolean inverse) {
+				if (!inverse) {
+					fft1ds.complexForward(v);
+				} else {
+					fft1ds.complexInverse(v, true);
+				}
+			}
+		};
+
+		return ret;
 	}
-	
 
 	/** return a 1D instance of JTransforms */
 	public FftProvider.Instance create2Dfft(final int x, final int y) {
-	    
-	    FftProvider.Instance  ret  = new FftProvider.Instance() {
 
-		FloatFFT_2D fft2ds = new FloatFFT_2D(y,x);
-		
-		public void fftTransform( float [] v, boolean inverse ) {
-		    if (!inverse) {
-			fft2ds.complexForward( v );
-		    } else {
-			fft2ds.complexInverse( v , true );
-		    }
-		}
-	    };
-	
-	    return ret;
+		FftProvider.Instance ret = new FftProvider.Instance() {
+
+			FloatFFT_2D fft2ds = new FloatFFT_2D(y, x);
+
+			public void fftTransform(float[] v, boolean inverse) {
+				if (!inverse) {
+					fft2ds.complexForward(v);
+				} else {
+					fft2ds.complexInverse(v, true);
+				}
+			}
+		};
+
+		return ret;
 	}
-	
+
 	/** return a 1D instance of JTransforms */
 	public FftProvider.Instance create3Dfft(final int x, final int y, final int z) {
-	    
-	    FftProvider.Instance  ret  = new FftProvider.Instance() {
 
-		FloatFFT_3D fft3ds = new FloatFFT_3D(z,y,x);
-		
-		public void fftTransform( float [] v, boolean inverse ) {
-		    if (!inverse) {
-			fft3ds.complexForward( v );
-		    } else {
-			fft3ds.complexInverse( v , true );
-		    }
-		}
-	    };
-	
-	    return ret;
+		FftProvider.Instance ret = new FftProvider.Instance() {
+
+			FloatFFT_3D fft3ds = new FloatFFT_3D(z, y, x);
+
+			public void fftTransform(float[] v, boolean inverse) {
+				if (!inverse) {
+					fft3ds.complexForward(v);
+				} else {
+					fft3ds.complexInverse(v, true);
+				}
+			}
+		};
+
+		return ret;
 	}
 
 	public String getImplementationName() {
-	    return "fairSIM forked JTransforms connector";
+		return "fairSIM forked JTransforms connector";
 	}
-
 
 }

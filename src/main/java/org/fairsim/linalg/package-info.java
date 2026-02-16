@@ -26,11 +26,13 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
  * vectors through methods in {@link org.fairsim.linalg.Transforms}.
  *
  * <p>
- * Complex numbers in {@link org.fairsim.linalg.Cplx} (based on floati and double),
+ * Complex numbers in {@link org.fairsim.linalg.Cplx} (based on floati and
+ * double),
  * Complex-valued matrix in {@link org.fairsim.linalg.MatrixComplex}.
  *
  * <p>
- * Some (re-)implementations of mathematical functions in {@link org.fairsim.linalg.MTool}
+ * Some (re-)implementations of mathematical functions in
+ * {@link org.fairsim.linalg.MTool}
  * 
  */
 package org.fairsim.linalg;

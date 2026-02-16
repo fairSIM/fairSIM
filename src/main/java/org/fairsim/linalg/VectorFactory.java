@@ -18,7 +18,8 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 
 package org.fairsim.linalg;
 
-/** Classes implementing this interface provide means of creating 
+/**
+ * Classes implementing this interface provide means of creating
  * vector objects.
  * By calling the corresponting methods, a vector of a given
  * size and dimensionality is created by the factory. This
@@ -29,28 +30,26 @@ public interface VectorFactory {
 
     /** Return a one-dimensional, real-valued vector, with n elements. */
     public Vec.Real createReal(int n);
-    
+
     /** Return a one-dimensional, complex-valued vector, with n elements. */
     public Vec.Cplx createCplx(int n);
-   
-    
+
     /** Return a two-dimensional, real-valued vector, sized w x h. */
     public Vec2d.Real createReal2D(int w, int h);
-    
+
     /** Return a two-dimensional, complex-valued vector, sized w x h. */
     public Vec2d.Cplx createCplx2D(int w, int h);
-    
+
     /** Return a two-dimensional, real-valued vector, sized w x h x d. */
     public Vec3d.Real createReal3D(int w, int h, int d);
-    
+
     /** Return a two-dimensional, complex-valued vector, sized w x h x d. */
     public Vec3d.Cplx createCplx3D(int w, int h, int d);
 
-
-    
-    /** Finish whatever parallel / concurrent process is running (for timing CUDA, etc.) */
+    /**
+     * Finish whatever parallel / concurrent process is running (for timing CUDA,
+     * etc.)
+     */
     public void syncConcurrent();
 
 }
-
-

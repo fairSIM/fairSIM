@@ -35,118 +35,125 @@ public class ImageVector extends AbstractVectorReal implements Vec2d.Real {
 	private final int width, height;
 
 	@Override
-	public void syncBuffer() {};
+	public void syncBuffer() {
+	};
+
 	@Override
-	public void readyBuffer() {};
+	public void readyBuffer() {
+	};
+
 	@Override
-	public void makeCoherent() {};
-	
-	
+	public void makeCoherent() {
+	};
+
 	@Override
 	public ImageVector duplicate() {
-	    ImageVector ret  = ImageVector.create(width, height);
-	    ret.copy(this);
-	    return ret;
-	
+		ImageVector ret = ImageVector.create(width, height);
+		ret.copy(this);
+		return ret;
+
 	}
 
 	@Override
-	public int vectorWidth() { return width; }
-	@Override
-	public int vectorHeight() { return height; }
+	public int vectorWidth() {
+		return width;
+	}
 
 	@Override
-	public void  paste( Vec2d.Real in , int x, int y, boolean zero) {
-	    Vec2d.paste( in, this, 0, 0, in.vectorWidth(), in.vectorHeight(), x,y, zero);
+	public int vectorHeight() {
+		return height;
+	}
+
+	@Override
+	public void paste(Vec2d.Real in, int x, int y, boolean zero) {
+		Vec2d.paste(in, this, 0, 0, in.vectorWidth(), in.vectorHeight(), x, y, zero);
 	}
 
 	@Override
 	public void set(int x, int y, float a) {
-	    data[x+y*width] = a;
+		data[x + y * width] = a;
 	}
 
 	@Override
 	public float get(int x, int y) {
-	    return data[x+y*width];
+		return data[x + y * width];
 	}
 
 	/** Internal constructor, use factory methods instead */
-	private ImageVector( int w, int h, FloatProcessor f ) {
-	    super( (float [])f.getPixels() ); 
-	    fp=f; width=w;  height=h;
+	private ImageVector(int w, int h, FloatProcessor f) {
+		super((float[]) f.getPixels());
+		fp = f;
+		width = w;
+		height = h;
 	}
 
 	/** Create a new ImageVector size w x h */
 	public static ImageVector create(int w, int h) {
-	    FloatProcessor fp = new FloatProcessor( w,h );
-	    return new ImageVector( w, h, fp);
+		FloatProcessor fp = new FloatProcessor(w, h);
+		return new ImageVector(w, h, fp);
 	}
 
 	/** Wrap an existing FloatProcessor into a vector object */
-	public static ImageVector wrap( FloatProcessor in ) {
-	    return new ImageVector( in.getWidth(), in.getHeight(), in); 
+	public static ImageVector wrap(FloatProcessor in) {
+		return new ImageVector(in.getWidth(), in.getHeight(), in);
 	}
 
-
 	/** Create an ImageVector, initialized to size and image in 'in' */
-	public static ImageVector copy( ImageProcessor in ) {
-	    int w = in.getWidth(), h = in.getHeight();
-	    ImageVector ret = create(w,h);
-	    for (int y=0; y<h; y++)
-		for (int x=0; x<w; x++)
-		    ret.set( x, y, in.getf(x,y));
-	    return ret;
+	public static ImageVector copy(ImageProcessor in) {
+		int w = in.getWidth(), h = in.getHeight();
+		ImageVector ret = create(w, h);
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++)
+				ret.set(x, y, in.getf(x, y));
+		return ret;
 	}
 
 	/** Return the FloatProcessor linked to this vector */
 	public FloatProcessor img() {
-	    return fp;
+		return fp;
 	}
 
 	@Override
 	public void project(Vec3d.Real inV, int start, int end) {
-	    
-	    final float [] out = this.vectorData();
-	    final float [] in  =  inV.vectorData();
-	    
-	    if (inV.vectorWidth() != width || inV.vectorHeight() != height)
-		throw new RuntimeException("Wrong vector size when projecting");
-	    
-	    if (start<0 || end >= inV.vectorDepth() || start > end )
-		throw new RuntimeException("z-index out of vector depth bounds");
 
+		final float[] out = this.vectorData();
+		final float[] in = inV.vectorData();
 
-	    // TODO: This could be more efficient in the loop??
-	    this.zero();
+		if (inV.vectorWidth() != width || inV.vectorHeight() != height)
+			throw new RuntimeException("Wrong vector size when projecting");
 
-	    for (int z=start; z<=end; z++)
-	    for (int y=0; y<height; y++)
-	    for (int x=0; x<width; x++) {
-		out[y * width + x ] += in[z*width*height + y*width + x];
-	    }
-	
+		if (start < 0 || end >= inV.vectorDepth() || start > end)
+			throw new RuntimeException("z-index out of vector depth bounds");
+
+		// TODO: This could be more efficient in the loop??
+		this.zero();
+
+		for (int z = start; z <= end; z++)
+			for (int y = 0; y < height; y++)
+				for (int x = 0; x < width; x++) {
+					out[y * width + x] += in[z * width * height + y * width + x];
+				}
+
 	}
-	
+
 	@Override
 	public void project(Vec3d.Real inV) {
-	    project( inV, 0, inV.vectorDepth()-1);
+		project(inV, 0, inV.vectorDepth() - 1);
 	}
 
 	@Override
 	public void slice(Vec3d.Real inV, int n) {
-	    project( inV, n, n );
+		project(inV, n, n);
 	}
-
 
 	@Override
-	public void setFrom16bitPixels( short [] in ){
-	    if ( width*height != in.length )
-		throw new RuntimeException("Short array to vector size mismatch");
-	    final float [] out = this.vectorData();
-	    for (int y=0; y<height; y++) 
-	    for (int x=0; x<width; x++) 
-		out[x+y*width] = in[x+y*width]&0xFFFF;
+	public void setFrom16bitPixels(short[] in) {
+		if (width * height != in.length)
+			throw new RuntimeException("Short array to vector size mismatch");
+		final float[] out = this.vectorData();
+		for (int y = 0; y < height; y++)
+			for (int x = 0; x < width; x++)
+				out[x + y * width] = in[x + y * width] & 0xFFFF;
 	}
-
 
 }

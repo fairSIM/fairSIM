@@ -26,68 +26,73 @@ import javax.swing.JOptionPane;
 
 /**
  * Logging and Timers
- * */
+ */
 public final class Tool {
 
     /** Forbit the construction of this class */
-    private Tool() {}
-    /** The tool implementation in use*/
+    private Tool() {
+    }
+
+    /** The tool implementation in use */
     static private Tool.Logger currentLogger;
     static private Tool.KeyValueStore currentKeyValueStore;
     static private boolean errorShown = false;
 
     /** Simple logger */
     public interface Logger {
-	public void writeTrace(String message); 
-	public void writeError(String message, boolean fatal);
-	public void writeShortMessage(String message);
+        public void writeTrace(String message);
+
+        public void writeError(String message, boolean fatal);
+
+        public void writeShortMessage(String message);
     }
 
     /** Inits a standard tool */
     static {
-	// basic logger goes to System.out
-	currentLogger = new Tool.Logger() {
-	    public void writeTrace(String message) {
-		System.out.println( "[fairSIM] "+message);
-		System.out.flush();
-	    }
-	    
-	    public void writeError(String message, boolean fatal) {
-		String prefix = (fatal)?("[fsFATAL]"):("[fsERROR]");
-		System.err.println( prefix+" "+message);
-		System.err.flush();
-	    }
-    
-	    public void writeShortMessage(String message) {
-		System.out.println( "-fairSIM- "+message);
-		System.out.flush();
-	    }
-	};
-	// want to catch exceptions
-	/*
-	Thread.setDefaultUncaughtExceptionHandler( new Thread.UncaughtExceptionHandler () {
-	    public void uncaughtException(Thread t, Throwable e) {
-		Tool.trace("Problem, caugt exception: "+e);
-		e.printStackTrace();
-	    }
-	});
-	*/
+        // basic logger goes to System.out
+        currentLogger = new Tool.Logger() {
+            public void writeTrace(String message) {
+                System.out.println("[fairSIM] " + message);
+                System.out.flush();
+            }
+
+            public void writeError(String message, boolean fatal) {
+                String prefix = (fatal) ? ("[fsFATAL]") : ("[fsERROR]");
+                System.err.println(prefix + " " + message);
+                System.err.flush();
+            }
+
+            public void writeShortMessage(String message) {
+                System.out.println("-fairSIM- " + message);
+                System.out.flush();
+            }
+        };
+        // want to catch exceptions
+        /*
+         * Thread.setDefaultUncaughtExceptionHandler( new
+         * Thread.UncaughtExceptionHandler () {
+         * public void uncaughtException(Thread t, Throwable e) {
+         * Tool.trace("Problem, caugt exception: "+e);
+         * e.printStackTrace();
+         * }
+         * });
+         */
     }
 
     /** Write a trace message */
     static public final void trace(String message) {
-	if (currentLogger!=null)
-	    currentLogger.writeTrace( message );
+        if (currentLogger != null)
+            currentLogger.writeTrace(message);
     }
-    
+
     /** Output a short status / info message */
     static public final void tell(String message) {
-	if (currentLogger!=null)
-	    currentLogger.writeShortMessage( message);
+        if (currentLogger != null)
+            currentLogger.writeShortMessage(message);
     }
-   
+
     /** Write an error message */
-    static public final void error(final String message, boolean fatal ) {
+    static public final void error(final String message, boolean fatal) {
         new Thread(new Runnable() {
             public void run() {
                 if (!errorShown) {
@@ -102,56 +107,73 @@ public final class Tool {
                 }
             }
         }).start();
-	if (currentLogger!=null)
-	    currentLogger.writeError( message, fatal );
+        if (currentLogger != null)
+            currentLogger.writeError(message, fatal);
     }
 
-    /** Creates an absolute file from path provided a string.
-     *  This especially takes care of "~" to set the users home */
+    /**
+     * Creates an absolute file from path provided a string.
+     * This especially takes care of "~" to set the users home
+     */
     static public File getFile(String path) {
-	if (path.startsWith("~"+File.separator)){
-	    path=System.getProperty("user.home")+path.substring(1);
-	}
-	return new File(path).getAbsoluteFile();
+        if (path.startsWith("~" + File.separator)) {
+            path = System.getProperty("user.home") + path.substring(1);
+        }
+        return new File(path).getAbsoluteFile();
     }
 
-    /** Public interface to provide acces to a key/value store, e.g. for persistant config values */
+    /**
+     * Public interface to provide acces to a key/value store, e.g. for persistant
+     * config values
+     */
     public interface KeyValueStore {
-        /** Retrieve a value from the key/value store. should return null if key does not exists */
+        /**
+         * Retrieve a value from the key/value store. should return null if key does not
+         * exists
+         */
         public String retrieveString(String key);
-        /** Enter a key a key/value pair into the key/value store.
+
+        /**
+         * Enter a key a key/value pair into the key/value store.
+         * 
          * @return Return true if key/value pair was successfully saved
-        */
+         */
         public boolean storeString(String key, String value);
     }
 
     /** set the key/value store used by the Tool */
     public static void setKeyValueStore(KeyValueStore store) {
         currentKeyValueStore = store;
-        Tool.trace("using key/value store provided by: "+currentKeyValueStore.toString());
+        Tool.trace("using key/value store provided by: " + currentKeyValueStore.toString());
     }
 
-    /** Retrive a string from the key-value store.
+    /**
+     * Retrive a string from the key-value store.
      * 
      * @param key The key to retrieve
      * @return The value for key, or null if key does not exist
      */
     public static String getString(String key) {
-        if (currentKeyValueStore == null) return null;
+        if (currentKeyValueStore == null)
+            return null;
         return currentKeyValueStore.retrieveString(key);
     }
 
-    /** Enter a string into the key/value store.
-     * @param key The key to enter
+    /**
+     * Enter a string into the key/value store.
+     * 
+     * @param key   The key to enter
      * @param value The value to eneter
      * @return True if the key/value pair was saved
      */
     public static boolean setString(String key, String value) {
-        if (currentKeyValueStore == null) return false;
+        if (currentKeyValueStore == null)
+            return false;
         return currentKeyValueStore.storeString(key, value);
     }
 
-    /** Opens and returns the a default config file.
+    /**
+     * Opens and returns the a default config file.
      * This queries the 'default-config-file' key
      * and if the key exists in the current key/value store,
      * opens the config file. May return null
@@ -169,8 +191,9 @@ public final class Tool {
             return null;
         }
     }
-  
-    /** Opens and saves to the default config file.
+
+    /**
+     * Opens and saves to the default config file.
      * This queries the 'default-config-file' key
      * and if the key exists in the current key/value store,
      * opens and saves the config file. Returns true if successful.
@@ -190,158 +213,174 @@ public final class Tool {
         }
     }
 
-    /** Create a mock key/value store that is not writable and only
+    /**
+     * Create a mock key/value store that is not writable and only
      * returns one key/value pair, 'default-values-file'.
      * This is mainly for testing the config file feature
      */
     public static void setMockKeyValueForDefaultConfig(final String fname) {
-      setKeyValueStore( new KeyValueStore() {
+        setKeyValueStore(new KeyValueStore() {
             @Override
-            public boolean storeString( String k, String v) {
+            public boolean storeString(String k, String v) {
                 return false;
             }
+
             @Override
-            public String retrieveString( String k) {
+            public String retrieveString(String k) {
                 if (k.equals("default-values-file")) {
                     return fname;
                 } else {
                     return null;
                 }
             }
+
             @Override
             public String toString() {
-                return "Mock key/value store, default file: "+fname;
+                return "Mock key/value store, default file: " + fname;
             }
         });
     }
 
+    /**
+     * Decode a BCD timestamp (as used by PCO)
+     * 
+     * @param stamp input, typically image acquired by camera (first 16 entries
+     *              used)
+     * @return The timestamp, in microseconds since epoch
+     */
+    static public long decodeBcdTimestamp(short[] stamp) {
+        long stampNr = bcdDecode(stamp, 0, 4);
 
-    /** Decode a BCD timestamp (as used by PCO) 
-     *	@param stamp input, typically image acquired by camera (first 16 entries used)
-     *	@return The timestamp, in microseconds since epoch
-     * */
-    static public long decodeBcdTimestamp( short [] stamp ) {
-	long stampNr= bcdDecode(stamp, 0, 4);
+        int year = bcdDecode(stamp, 4, 6);
+        int month = bcdDecode(stamp, 6, 7);
+        int day = bcdDecode(stamp, 7, 8);
 
-	int year = bcdDecode(stamp, 4, 6);
-	int month= bcdDecode(stamp, 6, 7);
-	int day  = bcdDecode(stamp, 7, 8);
+        int h = bcdDecode(stamp, 8, 9);
+        int min = bcdDecode(stamp, 9, 10);
+        int sec = bcdDecode(stamp, 10, 11);
+        int us = bcdDecode(stamp, 11, 14);
 
-	int h	  = bcdDecode(stamp,  8, 9);
-	int min  = bcdDecode(stamp,  9,10);
-	int sec  = bcdDecode(stamp, 10,11);
-	int  us  = bcdDecode(stamp, 11,14);
+        Calendar cld = Calendar.getInstance();
+        cld.set(year, month - 1, day, h, min, sec);
 
-	Calendar cld = Calendar.getInstance();
-	cld.set( year, month-1, day, h, min, sec );
+        long ret = cld.getTimeInMillis() / 1000;
+        // TODO: for some reason, 'getTimeInMillis' is not a multiple of 1000
 
-	long ret = cld.getTimeInMillis()/1000; 
-	// TODO: for some reason, 'getTimeInMillis' is not a multiple of 1000
-	
-	ret = (ret*1000000) +us;
+        ret = (ret * 1000000) + us;
 
-	return ret;
+        return ret;
     }
 
-    /** Decode double-packed (2 digit per byte) BCD-encoded values.
-     *  Beware of overflows, even with long
-     *  @param arr The input array to decode from 
-     *	@param start start of range to decode
-     *	@param end end of range to decode
-     *	@return the decoded number 
-     *  */
-    public static int bcdDecode( short [] arr, int start, int end) {
-	int ret=0;
-	int count=0;
-	
-	for (int j=end-1; j>=start; j--) {
-	    int val1 =  arr[j] & 0x000F ;
-	    int val2 = (arr[j] & 0x00F0)>>4 ;
-	    int mult = (int)Math.pow(10, count*2);
-	    //IJ.log(""+mult);
-	    ret += (val1+val2*10)*mult;
-	    count++;
-	}
+    /**
+     * Decode double-packed (2 digit per byte) BCD-encoded values.
+     * Beware of overflows, even with long
+     * 
+     * @param arr   The input array to decode from
+     * @param start start of range to decode
+     * @param end   end of range to decode
+     * @return the decoded number
+     */
+    public static int bcdDecode(short[] arr, int start, int end) {
+        int ret = 0;
+        int count = 0;
 
-	return ret;
+        for (int j = end - 1; j >= start; j--) {
+            int val1 = arr[j] & 0x000F;
+            int val2 = (arr[j] & 0x00F0) >> 4;
+            int mult = (int) Math.pow(10, count * 2);
+            // IJ.log(""+mult);
+            ret += (val1 + val2 * 10) * mult;
+            count++;
+        }
+
+        return ret;
     }
 
+    /** Format a 'milliseconds since 1 Jan 1970' timestamp in ISO */
+    static public String readableTimeStampMillis(long ms, boolean spaces) {
+        java.text.DateFormat df;
+        if (!spaces) {
+            df = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
+            df.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        } else {
+            df = new java.text.SimpleDateFormat("yyyy-MM-dd' T 'HH:mm:ss '('Z')'");
+        }
 
-
-
-    /** Format a 'milliseconds since 1 Jan 1970' timestamp in ISO */ 
-    static public String readableTimeStampMillis( long ms , boolean spaces ) {
-	java.text.DateFormat df;
-	if (!spaces) {
-	    df = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-	    df.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-	} else {
-	    df = new java.text.SimpleDateFormat("yyyy-MM-dd' T 'HH:mm:ss '('Z')'");
-	}
-
-	String nowAsISO = df.format(new java.util.Date(ms));
-	return nowAsISO;
+        String nowAsISO = df.format(new java.util.Date(ms));
+        return nowAsISO;
     }
 
-    /** Format a 'seconds since 1 Jan 1970' timestamp in ISO */ 
-    static public String readableTimeStampSeconds( double seconds , boolean spaces) {
-	long val = (long)(seconds*1000);
-	return readableTimeStampMillis(val, spaces);
+    /** Format a 'seconds since 1 Jan 1970' timestamp in ISO */
+    static public String readableTimeStampSeconds(double seconds, boolean spaces) {
+        long val = (long) (seconds * 1000);
+        return readableTimeStampMillis(val, spaces);
     }
 
-    /** Implement and pass Tool.Logger to redirect log output,
-     *  or set null to disable output completely */
-    public static void setLogger( Tool.Logger t ) {
-	currentLogger = t;
+    /**
+     * Implement and pass Tool.Logger to redirect log output,
+     * or set null to disable output completely
+     */
+    public static void setLogger(Tool.Logger t) {
+        currentLogger = t;
     }
 
     /** Shuts down all multi-threading pools */
     public static void shutdown() {
-	SimpleMT.shutdown();
-    }	
+        SimpleMT.shutdown();
+    }
 
     /** Return a Tool.Timer, which is automatically started. */
-    static public Timer getTimer() { return new Timer(); };
-    
-    /** A simple timer. TODO: The meaning of stop, pause, ... could
-     *  be much clearer */
-    public static class Timer {
-	long start, stop, runtime, outtime;
-	Timer() { 
-	    start();
-	}
-	/** start the timer */
-	public void start() { 
-	    //start = System.currentTimeMillis(); 
-	    start =  System.nanoTime(); 
-	};
-	/** stop the timer (next start resets it) */
-	public void stop() { 
-	    //stop = System.currentTimeMillis(); 
-	    stop = System.nanoTime(); 
-	    runtime += stop-start;
-	    outtime=runtime;
-	    runtime=0;
-	    }
-	/** pause the timer (next start continues) */
-	public void hold(){
-	    //stop = System.currentTimeMillis();
-	    stop = System.nanoTime(); 
-	    runtime += stop-start;
-	    outtime  = runtime;
-	    start =stop;
-	}
-	/** get the milliseconds on this timer */
-	public double msElapsed() {
-	    return outtime/1000000.;
-	}
+    static public Timer getTimer() {
+        return new Timer();
+    };
 
-	/** output the amount of milliseconds counted */
-	@Override public String toString(){ 
-	    return String.format("%10.3f ms",(outtime/1000000.));
-	}
+    /**
+     * A simple timer. TODO: The meaning of stop, pause, ... could
+     * be much clearer
+     */
+    public static class Timer {
+        long start, stop, runtime, outtime;
+
+        Timer() {
+            start();
+        }
+
+        /** start the timer */
+        public void start() {
+            // start = System.currentTimeMillis();
+            start = System.nanoTime();
+        };
+
+        /** stop the timer (next start resets it) */
+        public void stop() {
+            // stop = System.currentTimeMillis();
+            stop = System.nanoTime();
+            runtime += stop - start;
+            outtime = runtime;
+            runtime = 0;
+        }
+
+        /** pause the timer (next start continues) */
+        public void hold() {
+            // stop = System.currentTimeMillis();
+            stop = System.nanoTime();
+            runtime += stop - start;
+            outtime = runtime;
+            start = stop;
+        }
+
+        /** get the milliseconds on this timer */
+        public double msElapsed() {
+            return outtime / 1000000.;
+        }
+
+        /** output the amount of milliseconds counted */
+        @Override
+        public String toString() {
+            return String.format("%10.3f ms", (outtime / 1000000.));
+        }
     }
-    
+
     public static String[] decodeArray(String encodedArray) {
         String[] split = encodedArray.split(";");
         String[] data = new String[split.length - 1];
@@ -350,7 +389,7 @@ public final class Tool {
         }
         return data;
     }
-    
+
     public static int[] decodeIntArray(String encodedArray) {
         String[] stringArray = decodeArray(encodedArray);
         int len = stringArray.length;
@@ -373,7 +412,7 @@ public final class Tool {
             return output;
         }
     }
-    
+
     public static String encodeArray(String prefix, int[] array) {
         int len = array.length;
         String[] sArray = new String[len];
@@ -382,10 +421,10 @@ public final class Tool {
         }
         return encodeArray(prefix, sArray);
     }
-    
+
     public static <T> String encodeArray(String prefix, T[] array) {
         if (array instanceof String[]) {
-            return encodeArray(prefix, (String[])array);
+            return encodeArray(prefix, (String[]) array);
         } else {
             int len = array.length;
             String[] sArray = new String[len];
@@ -398,55 +437,56 @@ public final class Tool {
 
     /** A generic callback interface */
     public static interface Callback<T> {
-	public void callback(T a);
+        public void callback(T a);
     }
 
     /** A generic tuple */
-    public static class Tuple<F,S> {
-	public final F first;
-	public final S second;
+    public static class Tuple<F, S> {
+        public final F first;
+        public final S second;
 
-	public Tuple (F first, S second) {
-	    this.first  = first;
-	    this.second = second;
-	}
+        public Tuple(F first, S second) {
+            this.first = first;
+            this.second = second;
+        }
     }
 
-
-    /** Return a copy of an array (or a list of doubles)
-     *  @param A list of doubles or an array of doubles
-     *  @return The copy of the array consisting of the doubles passed to the function
-    */
-    public static double [] copy(double ... a) {
+    /**
+     * Return a copy of an array (or a list of doubles)
+     * 
+     * @param A list of doubles or an array of doubles
+     * @return The copy of the array consisting of the doubles passed to the
+     *         function
+     */
+    public static double[] copy(double... a) {
         return Arrays.copyOf(a, a.length);
     }
 
-    /**  Return a copy of an array (or a list of ints)
-     *  @param A list of ints or an array of ints
-     *  @return The copy of the array consisting of the ints passed to the function
-    */
-    public static int [] copy(int ... i) {
+    /**
+     * Return a copy of an array (or a list of ints)
+     * 
+     * @param A list of ints or an array of ints
+     * @return The copy of the array consisting of the ints passed to the function
+     */
+    public static int[] copy(int... i) {
         return Arrays.copyOf(i, i.length);
     }
 
-    
-    /* TODO: compare this to utils.Future and such, and maybe finish it
-    public static class Errant<D, Tool.Callback<R>> {
-	
-	final D val;
-	final Tool.Callback<R> iface;
-
-	protected Errant( D val, Tool.Callback<R> iface) {
-
-	}
-
-
-	public returnResult(R) {
-
-    } */
-     
+    /*
+     * TODO: compare this to utils.Future and such, and maybe finish it
+     * public static class Errant<D, Tool.Callback<R>> {
+     * 
+     * final D val;
+     * final Tool.Callback<R> iface;
+     * 
+     * protected Errant( D val, Tool.Callback<R> iface) {
+     * 
+     * }
+     * 
+     * 
+     * public returnResult(R) {
+     * 
+     * }
+     */
 
 }
-
-
-
