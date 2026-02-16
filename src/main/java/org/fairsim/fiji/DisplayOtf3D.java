@@ -24,37 +24,36 @@ import org.fairsim.linalg.Vec3d;
 import org.fairsim.linalg.Transforms;
 
 public class DisplayOtf3D {
-    
-    public static void main( String[] args ) 
-        throws Conf.SomeIOException, Conf.EntryNotFoundException {
-        
-        if ( args.length < 1 ) {
-            System.out.println( "Usage: DisplayOtf3D <config file>" );
+
+    public static void main(String[] args)
+            throws Conf.SomeIOException, Conf.EntryNotFoundException {
+
+        if (args.length < 1) {
+            System.out.println("Usage: DisplayOtf3D <config file>");
             return;
         }
-        
+
         // Load the OTF from the config file
         // and display it in a new window
-    
-        Conf cfg = Conf.loadFile( args[0] );
-        OtfProvider3D otf = OtfProvider3D.loadFromConfig( cfg ); 
-        otf.setPixelSize(1./(512*0.08), 1./(16*0.125));
-        
 
-        Vec3d.Cplx otfVec[] = Vec3d.createArrayCplx( 3,512,512,16);
-        Vec3d.Real otfAbsVec[] = Vec3d.createArrayReal( 3,512,512,16);
+        Conf cfg = Conf.loadFile(args[0]);
+        OtfProvider3D otf = OtfProvider3D.loadFromConfig(cfg);
+        otf.setPixelSize(1. / (512 * 0.08), 1. / (16 * 0.125));
 
-	    new ij.ImageJ( ij.ImageJ.EMBEDDED );
-        DisplayWrapper5D display = new DisplayWrapper5D( 512,512,16,1,3, "OTF test");
+        Vec3d.Cplx otfVec[] = Vec3d.createArrayCplx(3, 512, 512, 16);
+        Vec3d.Real otfAbsVec[] = Vec3d.createArrayReal(3, 512, 512, 16);
 
-        for (int i=0; i<3; i++) {
-            if (i<2)
-            otf.writeOtfVector( otfVec[i],i, 0,0);
+        new ij.ImageJ(ij.ImageJ.EMBEDDED);
+        DisplayWrapper5D display = new DisplayWrapper5D(512, 512, 16, 1, 3, "OTF test");
+
+        for (int i = 0; i < 3; i++) {
+            if (i < 2)
+                otf.writeOtfVector(otfVec[i], i, 0, 0);
             else
-            otf.writeOtfVector( otfVec[i],i, 140,140);
+                otf.writeOtfVector(otfVec[i], i, 140, 140);
             otfAbsVec[i].copyMagnitude(otfVec[i]);
             Transforms.swapQuadrant(otfAbsVec[i]);
-            display.setImage( otfAbsVec[i],  0, i, "Band "+i);
+            display.setImage(otfAbsVec[i], 0, i, "Band " + i);
         }
 
         display.update();

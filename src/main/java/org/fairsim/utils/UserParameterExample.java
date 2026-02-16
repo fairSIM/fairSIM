@@ -16,38 +16,37 @@ You should have received a copy of the GNU General Public License
 along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 */
 
-
 package org.fairsim.utils;
 
 import org.fairsim.utils.UserParameter;
 import org.fairsim.utils.UserParameterParser;
 
 public class UserParameterExample {
-   
-    @UserParameter public static int imageSize = 256;
+
+    @UserParameter
+    public static int imageSize = 256;
 
     @UserParameter("Pixel size in um")
     public static double pxlSize = 0.08;
-    
-    @UserParameter(desc="really needs to be set by the user", mandatory=true)
+
+    @UserParameter(desc = "really needs to be set by the user", mandatory = true)
     public static String outputFileName;
 
-    @UserParameter(desc="scientific notation", scientific=true)
-    public static double science = 0.000049233; 
+    @UserParameter(desc = "scientific notation", scientific = true)
+    public static double science = 0.000049233;
 
-    @UserParameter(desc="more decimal places", decimals=6)
-    public static double precision = 1.234567; 
-    
+    @UserParameter(desc = "more decimal places", decimals = 6)
+    public static double precision = 1.234567;
 
     // command line
-    public static void main(String [] args) {
-	
-	UserParameterParser.defaultParserStatic( args, UserParameterExample.class, true);
+    public static void main(String[] args) {
 
-	// from here on, all fields annotated 'UserParameter' have been updated if
-	// the user has provided new parameter, mandatory ones have been checked,
-	// a summary is printed, and the program will only reached this point if 
-	// no errors have occurred 
+        UserParameterParser.defaultParserStatic(args, UserParameterExample.class, true);
+
+        // from here on, all fields annotated 'UserParameter' have been updated if
+        // the user has provided new parameter, mandatory ones have been checked,
+        // a summary is printed, and the program will only reached this point if
+        // no errors have occurred
 
     }
 

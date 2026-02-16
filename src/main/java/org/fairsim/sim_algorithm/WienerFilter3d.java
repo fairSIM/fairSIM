@@ -25,193 +25,201 @@ import org.fairsim.utils.SimpleMT;
 /** Wiener filter implementation */
 public class WienerFilter3d {
 
-    // our sim parameters and otf
-    private final SimParam sp;
+	// our sim parameters and otf
+	private final SimParam sp;
 
-    /** Create a Wiener filter for the parameters and OTF in 'sp' */
-    public WienerFilter3d( SimParam sp )  {
-	this.sp = sp;
-	if (sp.otf3d()==null)
-	    throw new IllegalArgumentException("No OTF set in SimParam");
-	updateCache();
-    }
-
-    // cache for denominator values
-    private Vec3d.Real wDenom = null;
-
-    /** Add OTF^2, for band and direction, to a vector.
-     * @param d Direction
-     * @param b Band
-     * @param useAtt Include attenuation */
-    public void addWienerDenominator( final Vec3d.Real vec, 
-    	final int d, final int b ) {
-	
-	// parameters
-	final int w=vec.vectorWidth(), h=vec.vectorHeight(),  dt=vec.vectorDepth();
-	final SimParam.Dir dir = sp.dir(d);  
-	final double cyclMicron = sp.pxlSizeCyclesMicron();
-	final double cyclMicronInZ = sp.pxlSizeCyclesMicronInZ();
-
-	// loop the vector x,y
-	new SimpleMT.PFor(0, dt) {
-	    public void at(int z) {
-		for (int y=0; y<h; y++) 
-		for (int x=0; x<w; x++) {
-		    
-		    // wrap to coordinates: x in [-w,w], y in [-h, h]
-		    double xh = (x<w/2)?( x):(x-w);
-		    double yh = (y<h/2)?(-y):(h-y);
-		    double zh = (z<dt/2)?( z):(dt-z);
-		    //double zh = z;
-		    zh *= cyclMicronInZ;
-
-		    // from these, calculate distance to +-(kx,ky), convert to cycl/microns
-		    double rad1 = MTool.fhypot( xh-dir.px(b), yh-dir.py(b) ) * cyclMicron;
-		    double rad2 = MTool.fhypot( xh+dir.px(b), yh+dir.py(b) ) * cyclMicron;
-		    
-		    // get OTF, at that distance, for that band, un-attenuated
-		    float otfVal1 = sp.otf3d().getOtfVal(b, rad1, zh ).absSq();
-		    float otfVal2 = sp.otf3d().getOtfVal(b, rad2, zh ).absSq();
-		    
-		    // store for Wiener denominator
-		    //if (b!=0)
-			vec.set( x,y,z, vec.get(x,y,z) + otfVal1 + otfVal2 );
-		    //else
-			//vec.set( x,y,z, vec.get(x,y,z) + otfVal1  );
-
-		}
-	    }
-	};
-    }
-
-
-    /** Setup the Wiener filter. This (re)initiates the cached
-     *  filter values. Has to be called if the OTF or the shift parameters change.*/
-    public void updateCache() {
-
-	Tool.Timer t1 = Tool.getTimer();
-	final int w = sp.vectorWidth(), h = sp.vectorHeight(), dt = sp.vectorDepth();
-
-	t1.start();
-	wDenom   = Vec3d.createReal(2*w, 2*h, dt); 
-
-	// loop directions, bands
-	for (int d=0; d<sp.nrDir(); d++) { 
-	    for (int b=0; b< sp.dir(d).nrBand(); b++) {
-		addWienerDenominator(wDenom, d,b );
-	    }
+	/** Create a Wiener filter for the parameters and OTF in 'sp' */
+	public WienerFilter3d(SimParam sp) {
+		this.sp = sp;
+		if (sp.otf3d() == null)
+			throw new IllegalArgumentException("No OTF set in SimParam");
+		updateCache();
 	}
-	t1.stop();
 
-	Tool.trace("Wiener filter setup complete, took "+t1);
-    }
-    
-    
-    // ------ Convenience functions to obtain denominators ------
+	// cache for denominator values
+	private Vec3d.Real wDenom = null;
 
-    /** Returns reciproc Wiener denominator.
-     *  'Reciproc' means the vector can directly be multiplied to spectrum. 
-     *	@param wParam Wiener filter parameter
-     *  */
-    public Vec3d.Real getDenominator(double wParam) {
-	Vec3d.Real ret = wDenom.duplicate();
-	final int w = ret.vectorWidth(), h = ret.vectorHeight(), d= ret.vectorDepth();
-	for (int z=0; z<d; z++)
-	for (int y=0; y<h; y++)
-	for (int x=0; x<w; x++)
-	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
-	return ret;
-    }
-    
-    
-    /** Returns a denominator for filtering the wide-field,
-     *  OTF band 0 with no attenuation.
-     *	@param wParam Wiener filter parameter
-     *  */
-    public Vec3d.Real getWidefieldDenominator(double wParam) {
+	/**
+	 * Add OTF^2, for band and direction, to a vector.
+	 * 
+	 * @param d      Direction
+	 * @param b      Band
+	 * @param useAtt Include attenuation
+	 */
+	public void addWienerDenominator(final Vec3d.Real vec,
+			final int d, final int b) {
 
-	Vec3d.Real ret = Vec3d.createReal( 
-	    sp.vectorWidth()*2, sp.vectorHeight()*2, sp.vectorDepth());
-	addWienerDenominator( ret, 0,0 );
-	
-	for (int z=0; z<ret.vectorDepth();  z++)
-	for (int y=0; y<ret.vectorHeight(); y++)
-	for (int x=0; x<ret.vectorWidth();  x++)
-	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
-	return ret; 
-    }
- 
-    /** Returns a copy of a per-direction Wiener denominator, with all bands. 
-     *  This is used mostly for filtering intermediate results. 
-     *	@param d Direction
-     *	@param wParam Wiener filter parameter
-     *  */
-    public Vec3d.Real getIntermediateDenominator(int d, double wParam) {
+		// parameters
+		final int w = vec.vectorWidth(), h = vec.vectorHeight(), dt = vec.vectorDepth();
+		final SimParam.Dir dir = sp.dir(d);
+		final double cyclMicron = sp.pxlSizeCyclesMicron();
+		final double cyclMicronInZ = sp.pxlSizeCyclesMicronInZ();
 
-	// get the otf
-	Vec3d.Real ret = Vec3d.createReal( 
-	    sp.vectorWidth()*2, sp.vectorHeight()*2, sp.vectorDepth());
-	for (int b=0; b<sp.dir(d).nrBand(); b++)
-	    addWienerDenominator( ret, d, b );
+		// loop the vector x,y
+		new SimpleMT.PFor(0, dt) {
+			public void at(int z) {
+				for (int y = 0; y < h; y++)
+					for (int x = 0; x < w; x++) {
 
-	// add the wiener parameter
-	for (int z=0; z<ret.vectorDepth();  z++)
-	for (int y=0; y<ret.vectorHeight(); y++)
-	for (int x=0; x<ret.vectorWidth();  x++)
-	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
-	return ret;
-    }
-    
-    /** Returns a copy of a per-band, per-direction Wiener denominator.
-     *  This is used mostly for filtering intermediate results. 
-     *	@param d Direction
-     *	@param b Band
-     *	@param wParam Wiener filter parameter
-     *  */
-    public Vec3d.Real getIntermediateDenominator(int d, int b, double wParam) {
+						// wrap to coordinates: x in [-w,w], y in [-h, h]
+						double xh = (x < w / 2) ? (x) : (x - w);
+						double yh = (y < h / 2) ? (-y) : (h - y);
+						double zh = (z < dt / 2) ? (z) : (dt - z);
+						// double zh = z;
+						zh *= cyclMicronInZ;
 
-	// get the otf
-	Vec3d.Real ret = Vec3d.createReal( 
-	    sp.vectorWidth()*2, sp.vectorHeight()*2, sp.vectorDepth());
-	addWienerDenominator( ret, d, b );
+						// from these, calculate distance to +-(kx,ky), convert to cycl/microns
+						double rad1 = MTool.fhypot(xh - dir.px(b), yh - dir.py(b)) * cyclMicron;
+						double rad2 = MTool.fhypot(xh + dir.px(b), yh + dir.py(b)) * cyclMicron;
 
-	// add the wiener parameter
-	for (int z=0; z<ret.vectorDepth();  z++)
-	for (int y=0; y<ret.vectorHeight(); y++)
-	for (int x=0; x<ret.vectorWidth();  x++)
-	    ret.set(x, y, z, 1/( ret.get(x,y,z) + (float)(wParam*wParam) ) );
-	return ret;
-    }
+						// get OTF, at that distance, for that band, un-attenuated
+						float otfVal1 = sp.otf3d().getOtfVal(b, rad1, zh).absSq();
+						float otfVal2 = sp.otf3d().getOtfVal(b, rad2, zh).absSq();
 
-    /** For testing */
-    /*
-    public static void main( String [] args ) {
+						// store for Wiener denominator
+						// if (b!=0)
+						vec.set(x, y, z, vec.get(x, y, z) + otfVal1 + otfVal2);
+						// else
+						// vec.set( x,y,z, vec.get(x,y,z) + otfVal1 );
 
-	OtfProvider otf = OtfProvider.fromEstimate(1.4, 515, 0.35);
-	SimParam param   = SimParam.create(3, 3, 5, 512, 0.086, otf);
-	SimParam param2  = SimParam.create(3, 5, 5, 1024, 0.086, otf);
+					}
+			}
+		};
+	}
 
-	WienerFilter wf = new WienerFilter( param );
-	
-	Tool.trace("Setup w/o attenuation");
-	wf.updateCache();
+	/**
+	 * Setup the Wiener filter. This (re)initiates the cached
+	 * filter values. Has to be called if the OTF or the shift parameters change.
+	 */
+	public void updateCache() {
 
-	Tool.trace("Setup with attenuation");
-	otf.setAttenuation( .99, 1.5);
-	otf.switchAttenuation(true);
-	wf.updateCache();
-	
-	WienerFilter wf2 = new WienerFilter( param2 );
-	Tool.trace("Setup big Zeiss (3x5x5 @ 1024x1024)");
-	wf2.updateCache();
-	    
-	    
-	Tool.shutdown();
-    
-    
-    }
-     */
+		Tool.Timer t1 = Tool.getTimer();
+		final int w = sp.vectorWidth(), h = sp.vectorHeight(), dt = sp.vectorDepth();
 
+		t1.start();
+		wDenom = Vec3d.createReal(2 * w, 2 * h, dt);
 
+		// loop directions, bands
+		for (int d = 0; d < sp.nrDir(); d++) {
+			for (int b = 0; b < sp.dir(d).nrBand(); b++) {
+				addWienerDenominator(wDenom, d, b);
+			}
+		}
+		t1.stop();
+
+		Tool.trace("Wiener filter setup complete, took " + t1);
+	}
+
+	// ------ Convenience functions to obtain denominators ------
+
+	/**
+	 * Returns reciproc Wiener denominator.
+	 * 'Reciproc' means the vector can directly be multiplied to spectrum.
+	 * 
+	 * @param wParam Wiener filter parameter
+	 */
+	public Vec3d.Real getDenominator(double wParam) {
+		Vec3d.Real ret = wDenom.duplicate();
+		final int w = ret.vectorWidth(), h = ret.vectorHeight(), d = ret.vectorDepth();
+		for (int z = 0; z < d; z++)
+			for (int y = 0; y < h; y++)
+				for (int x = 0; x < w; x++)
+					ret.set(x, y, z, 1 / (ret.get(x, y, z) + (float) (wParam * wParam)));
+		return ret;
+	}
+
+	/**
+	 * Returns a denominator for filtering the wide-field,
+	 * OTF band 0 with no attenuation.
+	 * 
+	 * @param wParam Wiener filter parameter
+	 */
+	public Vec3d.Real getWidefieldDenominator(double wParam) {
+
+		Vec3d.Real ret = Vec3d.createReal(
+				sp.vectorWidth() * 2, sp.vectorHeight() * 2, sp.vectorDepth());
+		addWienerDenominator(ret, 0, 0);
+
+		for (int z = 0; z < ret.vectorDepth(); z++)
+			for (int y = 0; y < ret.vectorHeight(); y++)
+				for (int x = 0; x < ret.vectorWidth(); x++)
+					ret.set(x, y, z, 1 / (ret.get(x, y, z) + (float) (wParam * wParam)));
+		return ret;
+	}
+
+	/**
+	 * Returns a copy of a per-direction Wiener denominator, with all bands.
+	 * This is used mostly for filtering intermediate results.
+	 * 
+	 * @param d      Direction
+	 * @param wParam Wiener filter parameter
+	 */
+	public Vec3d.Real getIntermediateDenominator(int d, double wParam) {
+
+		// get the otf
+		Vec3d.Real ret = Vec3d.createReal(
+				sp.vectorWidth() * 2, sp.vectorHeight() * 2, sp.vectorDepth());
+		for (int b = 0; b < sp.dir(d).nrBand(); b++)
+			addWienerDenominator(ret, d, b);
+
+		// add the wiener parameter
+		for (int z = 0; z < ret.vectorDepth(); z++)
+			for (int y = 0; y < ret.vectorHeight(); y++)
+				for (int x = 0; x < ret.vectorWidth(); x++)
+					ret.set(x, y, z, 1 / (ret.get(x, y, z) + (float) (wParam * wParam)));
+		return ret;
+	}
+
+	/**
+	 * Returns a copy of a per-band, per-direction Wiener denominator.
+	 * This is used mostly for filtering intermediate results.
+	 * 
+	 * @param d      Direction
+	 * @param b      Band
+	 * @param wParam Wiener filter parameter
+	 */
+	public Vec3d.Real getIntermediateDenominator(int d, int b, double wParam) {
+
+		// get the otf
+		Vec3d.Real ret = Vec3d.createReal(
+				sp.vectorWidth() * 2, sp.vectorHeight() * 2, sp.vectorDepth());
+		addWienerDenominator(ret, d, b);
+
+		// add the wiener parameter
+		for (int z = 0; z < ret.vectorDepth(); z++)
+			for (int y = 0; y < ret.vectorHeight(); y++)
+				for (int x = 0; x < ret.vectorWidth(); x++)
+					ret.set(x, y, z, 1 / (ret.get(x, y, z) + (float) (wParam * wParam)));
+		return ret;
+	}
+
+	/** For testing */
+	/*
+	 * public static void main( String [] args ) {
+	 * 
+	 * OtfProvider otf = OtfProvider.fromEstimate(1.4, 515, 0.35);
+	 * SimParam param = SimParam.create(3, 3, 5, 512, 0.086, otf);
+	 * SimParam param2 = SimParam.create(3, 5, 5, 1024, 0.086, otf);
+	 * 
+	 * WienerFilter wf = new WienerFilter( param );
+	 * 
+	 * Tool.trace("Setup w/o attenuation");
+	 * wf.updateCache();
+	 * 
+	 * Tool.trace("Setup with attenuation");
+	 * otf.setAttenuation( .99, 1.5);
+	 * otf.switchAttenuation(true);
+	 * wf.updateCache();
+	 * 
+	 * WienerFilter wf2 = new WienerFilter( param2 );
+	 * Tool.trace("Setup big Zeiss (3x5x5 @ 1024x1024)");
+	 * wf2.updateCache();
+	 * 
+	 * 
+	 * Tool.shutdown();
+	 * 
+	 * 
+	 * }
+	 */
 
 }

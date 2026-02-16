@@ -21,40 +21,46 @@ package org.fairsim.utils;
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Vec3d;
 
-/** Interface defining mechanisms to 
- *  display images to the user. */
+/**
+ * Interface defining mechanisms to
+ * display images to the user.
+ */
 public interface ImageStackOutput {
 
-    /** Set the i'th image to display the content of v.
-     *  @param v  Vector content to display (implementation must copy content)
-     *  @param z  z-Position of image to set
-     *  @param ch channel-Position of image to set
-     *  @param t  time-Position of image to set
-     *	@param label Label of image (may be 'null')
-     *	*/
-    public abstract void setImage( Vec2d.Real v, int z, int ch, int t, String label );
+    /**
+     * Set the i'th image to display the content of v.
+     * 
+     * @param v     Vector content to display (implementation must copy content)
+     * @param z     z-Position of image to set
+     * @param ch    channel-Position of image to set
+     * @param t     time-Position of image to set
+     * @param label Label of image (may be 'null')
+     */
+    public abstract void setImage(Vec2d.Real v, int z, int ch, int t, String label);
 
-    /** Set the i'th image to display the content of v.
-     *  @param v  Vector content to display (implementation must copy content)
-     *  @param ch channel-Position of image to set
-     *  @param t  time-Position of image to set
-     *	@param label Label of image (may be 'null')
-     *	*/
-    public abstract void setImage( Vec3d.Real v, int ch, int t, String label );
-
+    /**
+     * Set the i'th image to display the content of v.
+     * 
+     * @param v     Vector content to display (implementation must copy content)
+     * @param ch    channel-Position of image to set
+     * @param t     time-Position of image to set
+     * @param label Label of image (may be 'null')
+     */
+    public abstract void setImage(Vec3d.Real v, int ch, int t, String label);
 
     /** Set the lateral and axial pixel size (in mu) */
-    public abstract void setPixelSize( double micronsLateral, double micronsAxial );
+    public abstract void setPixelSize(double micronsLateral, double micronsAxial);
 
     /** Set an array of wavelengths assigned to each channel */
-    public abstract void setWavelengths( double [] wl );
+    public abstract void setWavelengths(double[] wl);
 
-    /** Called when images have been updated.
-     *  Here e.g. disk-writes or refreshing windows should happen. */
+    /**
+     * Called when images have been updated.
+     * Here e.g. disk-writes or refreshing windows should happen.
+     */
     public void update();
 
     /** Called when the image should be saved to disk */
-    public void saveToFile( String filename );
+    public void saveToFile(String filename);
 
 }
-

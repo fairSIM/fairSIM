@@ -33,7 +33,6 @@ import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
 import javax.swing.JFormattedTextField;
 
-
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import java.awt.Component;
@@ -46,524 +45,541 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.ChangeEvent;
 import java.awt.Dimension;
 
-
 /** Various GUI components */
 public class Tiles {
 
+	/** Labeled JSpinner to select numbers */
+	public static class LNSpinner extends JPanel {
 
-    /** Labeled JSpinner to select numbers */
-    public static class LNSpinner extends JPanel {
+		private List<NumberListener> listener = new ArrayList<NumberListener>();
 
-	private List<NumberListener> listener = new ArrayList<NumberListener>();
-    
-	/** Access to the spinner */
-	final public JSpinner spr; 
-	
-	/** Create a spinner
-	 *  @param label Label text in front of spinner 
-	 *  @param start Initial value
-	 *  @param min	 Minmal value
-	 *  @param max	 Maximal value
-	 *  @param inc   Increment */
-	public LNSpinner( String label, double start, double min, double max, double inc ) { 
-	    super();
-	    super.setLayout( new BoxLayout(this, BoxLayout.LINE_AXIS));
-	    
-	    final JLabel jl = new JLabel(label);
-	    final LNSpinner ref = this;
+		/** Access to the spinner */
+		final public JSpinner spr;
 
-	    spr = new JSpinner( new SpinnerNumberModel(start,min,max,inc));
-	    spr.setMaximumSize( spr.getPreferredSize() );;
-	    //spr.setEditor( new JSpinner.NumberEditor( spr, "##0.00"));
+		/**
+		 * Create a spinner
+		 * 
+		 * @param label Label text in front of spinner
+		 * @param start Initial value
+		 * @param min   Minmal value
+		 * @param max   Maximal value
+		 * @param inc   Increment
+		 */
+		public LNSpinner(String label, double start, double min, double max, double inc) {
+			super();
+			super.setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
-	    spr.addChangeListener( new ChangeListener() {
-	        public void stateChanged( ChangeEvent e ) {
-		   for ( NumberListener i : listener ) {
-			i.number( ref.getVal(), ref );
-		   }
+			final JLabel jl = new JLabel(label);
+			final LNSpinner ref = this;
+
+			spr = new JSpinner(new SpinnerNumberModel(start, min, max, inc));
+			spr.setMaximumSize(spr.getPreferredSize());
+			;
+			// spr.setEditor( new JSpinner.NumberEditor( spr, "##0.00"));
+
+			spr.addChangeListener(new ChangeListener() {
+				public void stateChanged(ChangeEvent e) {
+					for (NumberListener i : listener) {
+						i.number(ref.getVal(), ref);
+					}
+				}
+			});
+
+			super.add(Box.createRigidArea(new Dimension(5, 0)));
+			super.add(Box.createHorizontalGlue());
+			super.add(jl);
+			super.add(Box.createRigidArea(new Dimension(5, 0)));
+			super.add(spr);
+			super.add(Box.createHorizontalGlue());
+			super.add(Box.createRigidArea(new Dimension(5, 0)));
 		}
-	    }); 
-	    
-	    super.add( Box.createRigidArea(new Dimension(5,0)));
-	    super.add( Box.createHorizontalGlue());
-	    super.add( jl );
-	    super.add( Box.createRigidArea(new Dimension(5,0)));
-	    super.add( spr );
-	    super.add( Box.createHorizontalGlue());
-	    super.add( Box.createRigidArea(new Dimension(5,0)));
-	}
 
-	/** Create a spinner with automatic sizing based on expected digits
-	 *  @param label Label text in front of spinner 
-	 *  @param start Initial value
-	 *  @param min	 Minmal value
-	 *  @param max	 Maximal value
-	 *  @param inc   Increment
-	 *  @param expectedDigits Expected number of digits for sizing */
-	public LNSpinner( String label, double start, double min, double max, double inc, int expectedDigits ) { 
-	    this(label, start, min, max, inc);
-	    setMinimumSizeForDigits(expectedDigits);
-	}
-
-	@Override
-	public void setEnabled(boolean onoff) {
-	    spr.setEnabled(onoff);
-	}
-
-
-	/** Get the spinners current value */
-	public double getVal() {
-	    return ((Number)spr.getValue()).doubleValue();
-	}
-   
-	/** set the spinners current value */
-	public void setVal(double v) {
-		spr.setValue(v);
-	}
-
-	/** set how many digits are displayed */
-	public void setDigits(int d) {
-	    ((JSpinner.NumberEditor)spr.getEditor()).getFormat().setMinimumFractionDigits(d);
-		setMinimumSizeForDigits(d); // +3 for sign and decimal point
-	}
-
-	/** Set minimum size based on expected number of digits (including decimal point and sign) */
-	public void setMinimumSizeForDigits(int totalDigits) {
-	    // Create a sample string with the expected number of digits
-	    StringBuilder sample = new StringBuilder();
-	    sample.append("-"); // for potential negative sign
-	    for (int i = 0; i < totalDigits; i++) {
-		sample.append("0");
-	    }
-	    sample.append(".00"); // for decimal places
-	    
-	    // Get the text field from the spinner editor
-	    JSpinner.NumberEditor editor = (JSpinner.NumberEditor) spr.getEditor();
-	    JFormattedTextField textField = null;
-	    Component[] components = editor.getComponents();
-	    for (Component comp : components) {
-		if (comp instanceof JFormattedTextField) {
-		    textField = (JFormattedTextField) comp;
-		    break;
+		/**
+		 * Create a spinner with automatic sizing based on expected digits
+		 * 
+		 * @param label          Label text in front of spinner
+		 * @param start          Initial value
+		 * @param min            Minmal value
+		 * @param max            Maximal value
+		 * @param inc            Increment
+		 * @param expectedDigits Expected number of digits for sizing
+		 */
+		public LNSpinner(String label, double start, double min, double max, double inc, int expectedDigits) {
+			this(label, start, min, max, inc);
+			setMinimumSizeForDigits(expectedDigits);
 		}
-	    }
-	    
-	    // Calculate width needed for the sample text
-	    FontMetrics fm = textField.getFontMetrics(textField.getFont());
-	    int textWidth = fm.stringWidth(sample.toString());
-	    int textHeight = fm.getHeight();
-	    
-	    // Add some padding for spinner buttons and borders
-	    int totalWidth = textWidth + 40; // 40px for spinner buttons and padding
-	    int totalHeight = Math.max(textHeight + 6, 20); // minimum height
-	    
-	    Dimension minSize = new Dimension(totalWidth, totalHeight);
-	    spr.setMinimumSize(minSize);
-	    spr.setPreferredSize(minSize);
-	}
 
-	/** Automatically set minimum size based on the value range */
-	public void autoSizeForRange() {
-	    SpinnerNumberModel model = (SpinnerNumberModel) spr.getModel();
-	    
-	    // Get the maximum absolute value to determine digit count
-	    double maxVal = Math.max(Math.abs((Double)model.getMinimum()), 
-	                            Math.abs((Double)model.getMaximum()));
-	    
-	    // Calculate integer digits needed
-	    int integerDigits = (maxVal == 0) ? 1 : (int) Math.floor(Math.log10(maxVal)) + 1;
-	    
-	    // Get decimal places from the step increment
-	    double step = ((Double)model.getStepSize()).doubleValue();
-	    int decimalPlaces = 0;
-	    if (step < 1.0) {
-		String stepStr = String.valueOf(step);
-		if (stepStr.contains(".")) {
-		    decimalPlaces = stepStr.length() - stepStr.indexOf(".") - 1;
+		@Override
+		public void setEnabled(boolean onoff) {
+			spr.setEnabled(onoff);
 		}
-	    }
-	    
-	    int totalDigits = integerDigits + decimalPlaces + (decimalPlaces > 0 ? 1 : 0); // +1 for decimal point
-	    setMinimumSizeForDigits(totalDigits);
-	}
 
-	/** Add a NumberListener */
-	public void addNumberListener( NumberListener l ) {
-	    listener.add( l );
-	}
-	
-	/** Remove a NumberListener */
-	public void removeNumberListener( NumberListener l ) {
-	    listener.remove( l );
-	}
-
-
-
-    }
-
-    /** Notification that an LNSpinner changed to a new number */
-    public interface NumberListener {
-	/** Gets called with the new number */
-	public void number(double n, LNSpinner e);
-
-    }
-
-
-   
-
-    /** Labeled drop-down selection box */
-    public static class LComboBox<T> extends JPanel {
-	
-	boolean suppressEvents=false;
-
-	final JLabel jl;
-
-	List<SelectListener<T>> listener 
-	    = new ArrayList<SelectListener<T>>();
-
-	final Color defaultBackground = this.getBackground();
-
-	/** Access to the ComboBox. */
-	final public TComboBox<T> box;
-	
-	/** 
-	 * @param label Label in front of box
-	 * @param opts  Selectable elements */
-	@SuppressWarnings("unchecked")
-	public LComboBox(String label, T ... opts ) {
-	    this( label, (java.awt.Component)null, false, opts );
-	}
-
-	/** 
-	 * @param label Label in front of box
-	 * @param addComp Additional component, added directly after the box
-	 * @param opts  Selectable elements */
-	@SuppressWarnings("unchecked")
-	public LComboBox(String label, java.awt.Component addComp, T ... opts ) {
-	    this( label, addComp, false, opts );
-	}
-	
-	/** 
-	 * @param label Label in front of box
-	 * @param addComp Additional component, added directly after the box
-	 * @param showToolTip if true, display the full text for each entry as tooltip
-	 * @param opts  Selectable elements */
-	@SuppressWarnings("unchecked")
-	public LComboBox(String label, java.awt.Component addComp, 
-	    boolean showToolTip, T ... opts ) {
-	    
-	    super();
-	    super.setLayout( new BoxLayout(this, BoxLayout.LINE_AXIS));
-	    jl = new JLabel(label);
-	    
-	    if ((opts!=null)&&(opts.length>0))
-		box = new TComboBox<T>(opts);
-	    else
-		box = new TComboBox<T>();
-	  
-	    //box.setMaximumSize( box.getPreferredSize() );;
-
-	    box.addActionListener( new ActionListener() {
-	        public void actionPerformed( ActionEvent e ) {
-		    if (!suppressEvents ) {
-			for ( SelectListener<T> i : listener )
-			    i.selected(  getSelectedItem(), box.getSelectedIndex() );
-		    }
+		/** Get the spinners current value */
+		public double getVal() {
+			return ((Number) spr.getValue()).doubleValue();
 		}
-	    });
-	   
 
-	    // display tooltip with full file name
-	    if (showToolTip) {
-		box.setRenderer( new DefaultListCellRenderer() {
-		    @Override
-		    public Component getListCellRendererComponent(JList list, Object value,
-			int index, boolean isSelected, boolean cellHasFocus) {
-			
-			JComponent comp = (JComponent) super.getListCellRendererComponent(list,
-			    value, index, isSelected, cellHasFocus);
+		/** set the spinners current value */
+		public void setVal(double v) {
+			spr.setValue(v);
+		}
 
-			if (-1 < index && null != value ) {
-			    list.setToolTipText( value.toString() );
+		/** set how many digits are displayed */
+		public void setDigits(int d) {
+			((JSpinner.NumberEditor) spr.getEditor()).getFormat().setMinimumFractionDigits(d);
+			setMinimumSizeForDigits(d); // +3 for sign and decimal point
+		}
+
+		/**
+		 * Set minimum size based on expected number of digits (including decimal point
+		 * and sign)
+		 */
+		public void setMinimumSizeForDigits(int totalDigits) {
+			// Create a sample string with the expected number of digits
+			StringBuilder sample = new StringBuilder();
+			sample.append("-"); // for potential negative sign
+			for (int i = 0; i < totalDigits; i++) {
+				sample.append("0");
 			}
-			return comp;
-		    }
-		});
-	    }
+			sample.append(".00"); // for decimal places
 
-	    super.add( Box.createHorizontalGlue());
-	    super.add( jl );
-	    super.add( Box.createRigidArea(new Dimension(5,0)));
-	    super.add( box );
-	    super.add( Box.createHorizontalGlue());
-	    if (addComp!=null) {
-		super.add( Box.createRigidArea(new Dimension(5,0)));
-		super.add( addComp );
-	    }
-	}
+			// Get the text field from the spinner editor
+			JSpinner.NumberEditor editor = (JSpinner.NumberEditor) spr.getEditor();
+			JFormattedTextField textField = null;
+			Component[] components = editor.getComponents();
+			for (Component comp : components) {
+				if (comp instanceof JFormattedTextField) {
+					textField = (JFormattedTextField) comp;
+					break;
+				}
+			}
 
-	/** Returns the currently selected item. Might return
-	 * 'null' if the list is empty. */
-	@SuppressWarnings("unchecked")
-	public T getSelectedItem() {
-	    return (T)box.getSelectedItem();
-	}
+			// Calculate width needed for the sample text
+			FontMetrics fm = textField.getFontMetrics(textField.getFont());
+			int textWidth = fm.stringWidth(sample.toString());
+			int textHeight = fm.getHeight();
 
-	public int getSelectedIndex() {
-	    return box.getSelectedIndex();
-	}
+			// Add some padding for spinner buttons and borders
+			int totalWidth = textWidth + 40; // 40px for spinner buttons and padding
+			int totalHeight = Math.max(textHeight + 6, 20); // minimum height
 
-	public void setSelectedIndex(int i) {
-	    box.setSelectedIndex(i);
-	}
-
-	/** Set the currently selected item.
-	 *  If the item is not in the list, the selection is not changed and -1 is returned
-	 *  @param item The item to select
-	 *  @return The index of the item, or -1 if the item is not found 
-	 *  */
-	public int setSelectedItem( T item ) {
-	    
-	    for (int i=0; i<box.getItemCount(); i++) {
-		if ( item.equals( box.getItemAt(i))) {
-		    box.setSelectedIndex(i);
-		    return i;
+			Dimension minSize = new Dimension(totalWidth, totalHeight);
+			spr.setMinimumSize(minSize);
+			spr.setPreferredSize(minSize);
 		}
-	    }
 
-	    return -1;
-	}
+		/** Automatically set minimum size based on the value range */
+		public void autoSizeForRange() {
+			SpinnerNumberModel model = (SpinnerNumberModel) spr.getModel();
 
+			// Get the maximum absolute value to determine digit count
+			double maxVal = Math.max(Math.abs((Double) model.getMinimum()),
+					Math.abs((Double) model.getMaximum()));
 
+			// Calculate integer digits needed
+			int integerDigits = (maxVal == 0) ? 1 : (int) Math.floor(Math.log10(maxVal)) + 1;
 
-	@Override
-	public void setEnabled(boolean onoff) {
-	    box.setEnabled(onoff);
-	}
+			// Get decimal places from the step increment
+			double step = ((Double) model.getStepSize()).doubleValue();
+			int decimalPlaces = 0;
+			if (step < 1.0) {
+				String stepStr = String.valueOf(step);
+				if (stepStr.contains(".")) {
+					decimalPlaces = stepStr.length() - stepStr.indexOf(".") - 1;
+				}
+			}
 
-	public void setLabelColor( Color c ) {
-	    jl.setForeground(c);
-	}
-	
-	public void setBackgroundColor( Color c ) {
-	    if (c==null) c = defaultBackground;
-	    super.setBackground(c);
-	}
-
-
-	/** Add a listener to be notified when the selection changes */
-	public void addSelectListener( SelectListener<T> l ) {
-	    listener.add(l);
-	}
-	/** Remove the listener */
-	public void removeSelectListener( SelectListener<T> l ) {
-	    listener.remove(l);
-	}
-    
-	/** Fill the selector box with new elements.
-	 *  If the currently selected element is contained in the new list,
-	 *  it will be selected again. Otherwise, the first element is selected,
-	 *  and an event is send.*/
-	@SuppressWarnings("unchecked")
-	public void newElements( T ... opts ) {
-	    newElements(-1, opts );
-	}
-
-	/** Fill the selector box with new elements, select the i'th element. */
-	@SuppressWarnings("unchecked")
-	public void newElements( int idx, T ... opts ) {
-	    
-	    suppressEvents=true;
-
-	    T curSel = getSelectedItem(); 
-	    box.removeAllItems();
-	    boolean newSelection=true;
-	    
-	    // only add new elements if opts is not empty
-	    if (( opts != null ) && ( opts.length > 0)) {
-		for ( T a : opts ) {
-		    box.addItem( a );
-		    if (( a.equals( curSel ) )&&(idx<0)) {
-			box.setSelectedItem( a );
-			newSelection=false;
-		    }
+			int totalDigits = integerDigits + decimalPlaces + (decimalPlaces > 0 ? 1 : 0); // +1 for decimal point
+			setMinimumSizeForDigits(totalDigits);
 		}
-		if (idx>=0)
-		    box.setSelectedIndex(idx);
-	    } 
-	    // set to empty 
-	    else {
-		    box.setSelectedIndex(-1);
-	    }
 
-	    if (newSelection)
-		for ( SelectListener<T> i : listener )
-		    i.selected(  getSelectedItem(), box.getSelectedIndex() );
-	    
-	    suppressEvents=false;
-	}   
+		/** Add a NumberListener */
+		public void addNumberListener(NumberListener l) {
+			listener.add(l);
+		}
 
-    }
-   
-   /** Listener to be called if things get selected */
-    public interface SelectListener<T> {
-	/* Selected element, its index, calling object. */
-	public void selected(T e, int i); 
-    } 
-    
-   
-   /** Provides a type-save combo-box, like in java7.
-     *  Wrapper around JComboBox, to fix java-1.6 to java-1.7 issue */
-    public static class TComboBox<T> extends JComboBox<T> {
-	public TComboBox(T [] e) {
-	    super(e);
-	}
-	public TComboBox() {
-	    super();
-	}
-    
-	@SuppressWarnings("unchecked")
-	public T getSelectedItem() {
-	    return (T)super.getSelectedItem();
-	}
-   
-	@SuppressWarnings("unchecked")
-	public void addItemTypesave(T item) {
-		super.addItem(item);
+		/** Remove a NumberListener */
+		public void removeNumberListener(NumberListener l) {
+			listener.remove(l);
+		}
+
 	}
 
-    };
+	/** Notification that an LNSpinner changed to a new number */
+	public interface NumberListener {
+		/** Gets called with the new number */
+		public void number(double n, LNSpinner e);
 
- 
-    /** Provides a type-save JList, like in java7 */
-    public static class TGuiList<T> extends JList<T> {
-	
-	DefaultListModel<T> dlm = new DefaultListModel<T>();
-
-	/** Creates a List */
-	public TGuiList() {
-	    super();
-	    this.setModel( dlm );
-	}
-    
-	/** Adds a new element to the end of the list */
-	public void addElement( T e ) {
-	    dlm.addElement( e );
-	}
-   
-	/** Returns the number of elements in the list */
-	public int getListLength() {
-	    return dlm.size();
-	}
-    
-	/** Return all list elements as an array */
-	public List<T> getAllElements() {
-	    @SuppressWarnings("unchecked")
-	    List<T> ret  = java.util.Collections.list( (java.util.Enumeration<T>)dlm.elements() );
-	    return ret;
 	}
 
-	/** Return the currently selected element, or null */
-	public T getSelectedElement() {
-	    @SuppressWarnings("unchecked")
-	    T ret =  (T)getSelectedValue();
-	    return ret;
+	/** Labeled drop-down selection box */
+	public static class LComboBox<T> extends JPanel {
+
+		boolean suppressEvents = false;
+
+		final JLabel jl;
+
+		List<SelectListener<T>> listener = new ArrayList<SelectListener<T>>();
+
+		final Color defaultBackground = this.getBackground();
+
+		/** Access to the ComboBox. */
+		final public TComboBox<T> box;
+
+		/**
+		 * @param label Label in front of box
+		 * @param opts  Selectable elements
+		 */
+		@SuppressWarnings("unchecked")
+		public LComboBox(String label, T... opts) {
+			this(label, (java.awt.Component) null, false, opts);
+		}
+
+		/**
+		 * @param label   Label in front of box
+		 * @param addComp Additional component, added directly after the box
+		 * @param opts    Selectable elements
+		 */
+		@SuppressWarnings("unchecked")
+		public LComboBox(String label, java.awt.Component addComp, T... opts) {
+			this(label, addComp, false, opts);
+		}
+
+		/**
+		 * @param label       Label in front of box
+		 * @param addComp     Additional component, added directly after the box
+		 * @param showToolTip if true, display the full text for each entry as tooltip
+		 * @param opts        Selectable elements
+		 */
+		@SuppressWarnings("unchecked")
+		public LComboBox(String label, java.awt.Component addComp,
+				boolean showToolTip, T... opts) {
+
+			super();
+			super.setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+			jl = new JLabel(label);
+
+			if ((opts != null) && (opts.length > 0))
+				box = new TComboBox<T>(opts);
+			else
+				box = new TComboBox<T>();
+
+			// box.setMaximumSize( box.getPreferredSize() );;
+
+			box.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					if (!suppressEvents) {
+						for (SelectListener<T> i : listener)
+							i.selected(getSelectedItem(), box.getSelectedIndex());
+					}
+				}
+			});
+
+			// display tooltip with full file name
+			if (showToolTip) {
+				box.setRenderer(new DefaultListCellRenderer() {
+					@Override
+					public Component getListCellRendererComponent(JList list, Object value,
+							int index, boolean isSelected, boolean cellHasFocus) {
+
+						JComponent comp = (JComponent) super.getListCellRendererComponent(list,
+								value, index, isSelected, cellHasFocus);
+
+						if (-1 < index && null != value) {
+							list.setToolTipText(value.toString());
+						}
+						return comp;
+					}
+				});
+			}
+
+			super.add(Box.createHorizontalGlue());
+			super.add(jl);
+			super.add(Box.createRigidArea(new Dimension(5, 0)));
+			super.add(box);
+			super.add(Box.createHorizontalGlue());
+			if (addComp != null) {
+				super.add(Box.createRigidArea(new Dimension(5, 0)));
+				super.add(addComp);
+			}
+		}
+
+		/**
+		 * Returns the currently selected item. Might return
+		 * 'null' if the list is empty.
+		 */
+		@SuppressWarnings("unchecked")
+		public T getSelectedItem() {
+			return (T) box.getSelectedItem();
+		}
+
+		public int getSelectedIndex() {
+			return box.getSelectedIndex();
+		}
+
+		public void setSelectedIndex(int i) {
+			box.setSelectedIndex(i);
+		}
+
+		/**
+		 * Set the currently selected item.
+		 * If the item is not in the list, the selection is not changed and -1 is
+		 * returned
+		 * 
+		 * @param item The item to select
+		 * @return The index of the item, or -1 if the item is not found
+		 */
+		public int setSelectedItem(T item) {
+
+			for (int i = 0; i < box.getItemCount(); i++) {
+				if (item.equals(box.getItemAt(i))) {
+					box.setSelectedIndex(i);
+					return i;
+				}
+			}
+
+			return -1;
+		}
+
+		@Override
+		public void setEnabled(boolean onoff) {
+			box.setEnabled(onoff);
+		}
+
+		public void setLabelColor(Color c) {
+			jl.setForeground(c);
+		}
+
+		public void setBackgroundColor(Color c) {
+			if (c == null)
+				c = defaultBackground;
+			super.setBackground(c);
+		}
+
+		/** Add a listener to be notified when the selection changes */
+		public void addSelectListener(SelectListener<T> l) {
+			listener.add(l);
+		}
+
+		/** Remove the listener */
+		public void removeSelectListener(SelectListener<T> l) {
+			listener.remove(l);
+		}
+
+		/**
+		 * Fill the selector box with new elements.
+		 * If the currently selected element is contained in the new list,
+		 * it will be selected again. Otherwise, the first element is selected,
+		 * and an event is send.
+		 */
+		@SuppressWarnings("unchecked")
+		public void newElements(T... opts) {
+			newElements(-1, opts);
+		}
+
+		/** Fill the selector box with new elements, select the i'th element. */
+		@SuppressWarnings("unchecked")
+		public void newElements(int idx, T... opts) {
+
+			suppressEvents = true;
+
+			T curSel = getSelectedItem();
+			box.removeAllItems();
+			boolean newSelection = true;
+
+			// only add new elements if opts is not empty
+			if ((opts != null) && (opts.length > 0)) {
+				for (T a : opts) {
+					box.addItem(a);
+					if ((a.equals(curSel)) && (idx < 0)) {
+						box.setSelectedItem(a);
+						newSelection = false;
+					}
+				}
+				if (idx >= 0)
+					box.setSelectedIndex(idx);
+			}
+			// set to empty
+			else {
+				box.setSelectedIndex(-1);
+			}
+
+			if (newSelection)
+				for (SelectListener<T> i : listener)
+					i.selected(getSelectedItem(), box.getSelectedIndex());
+
+			suppressEvents = false;
+		}
+
 	}
 
-	/** Return the element at index i */
-	public T get(int i) {
-	    @SuppressWarnings("unchecked")
-	    T ret =  (T)dlm.get(i);
-	    
-	    return ret;
+	/** Listener to be called if things get selected */
+	public interface SelectListener<T> {
+		/* Selected element, its index, calling object. */
+		public void selected(T e, int i);
 	}
 
-	/** Return all elements in the list as array */
-	@SuppressWarnings("unchecked")
-	public T [] getArray() {
-	    if (dlm.size() == 0) {
-		return (T[]) new Object[0];
-	    }
-	    
-	    // Get the runtime type from the first element
-	    T firstElement = get(0);
-	    if (firstElement == null) {
-		return (T[]) new Object[dlm.size()];
-	    }
-	    
-	    // Create array of the correct type using reflection
-	    T[] ret = (T[]) java.lang.reflect.Array.newInstance(
-		firstElement.getClass(), dlm.size());
-	    
-	    for (int i = 0; i < ret.length; i++) {
-		ret[i] = this.get(i);
-	    }
-	    
-	    return ret;
+	/**
+	 * Provides a type-save combo-box, like in java7.
+	 * Wrapper around JComboBox, to fix java-1.6 to java-1.7 issue
+	 */
+	public static class TComboBox<T> extends JComboBox<T> {
+		public TComboBox(T[] e) {
+			super(e);
+		}
+
+		public TComboBox() {
+			super();
+		}
+
+		@SuppressWarnings("unchecked")
+		public T getSelectedItem() {
+			return (T) super.getSelectedItem();
+		}
+
+		@SuppressWarnings("unchecked")
+		public void addItemTypesave(T item) {
+			super.addItem(item);
+		}
+
+	};
+
+	/** Provides a type-save JList, like in java7 */
+	public static class TGuiList<T> extends JList<T> {
+
+		DefaultListModel<T> dlm = new DefaultListModel<T>();
+
+		/** Creates a List */
+		public TGuiList() {
+			super();
+			this.setModel(dlm);
+		}
+
+		/** Adds a new element to the end of the list */
+		public void addElement(T e) {
+			dlm.addElement(e);
+		}
+
+		/** Returns the number of elements in the list */
+		public int getListLength() {
+			return dlm.size();
+		}
+
+		/** Return all list elements as an array */
+		public List<T> getAllElements() {
+			@SuppressWarnings("unchecked")
+			List<T> ret = java.util.Collections.list((java.util.Enumeration<T>) dlm.elements());
+			return ret;
+		}
+
+		/** Return the currently selected element, or null */
+		public T getSelectedElement() {
+			@SuppressWarnings("unchecked")
+			T ret = (T) getSelectedValue();
+			return ret;
+		}
+
+		/** Return the element at index i */
+		public T get(int i) {
+			@SuppressWarnings("unchecked")
+			T ret = (T) dlm.get(i);
+
+			return ret;
+		}
+
+		/** Return all elements in the list as array */
+		@SuppressWarnings("unchecked")
+		public T[] getArray() {
+			if (dlm.size() == 0) {
+				return (T[]) new Object[0];
+			}
+
+			// Get the runtime type from the first element
+			T firstElement = get(0);
+			if (firstElement == null) {
+				return (T[]) new Object[dlm.size()];
+			}
+
+			// Create array of the correct type using reflection
+			T[] ret = (T[]) java.lang.reflect.Array.newInstance(
+					firstElement.getClass(), dlm.size());
+
+			for (int i = 0; i < ret.length; i++) {
+				ret[i] = this.get(i);
+			}
+
+			return ret;
+		}
+
 	}
 
-    }
+	/** Container */
+	public static class Container<T> {
+		private T val;
 
+		/** Construct a new container */
+		public Container(T i) {
+			val = i;
+		}
 
-    /** Container */
-    public static class Container<T> {
-	private T val;
-	/** Construct a new container */
-	public Container(T i) {
-	    val=i;
-	}
-	/** set the container to a value */
-	public void set(T i ) {
-	    val = i;
-	}
-	/** get hte container value */
-	public T get() {
-	    return val;
-	}
-    }
+		/** set the container to a value */
+		public void set(T i) {
+			val = i;
+		}
 
-
-    /** Named colors for selector lists */
-    enum NAMED_COLOR {
-	GREY(128,128,128),
-	RED(255,0,0),
-	BLUE(0,0,255),
-	GREEN(0,255,0),
-	WHITE(255,255,255),
-	BLACK(0,0,0),
-	CYAN(0,255,255),
-	MAGENTA(255,0,255),
-	YELLOW(255,255,0);
-
-	int red=0,blue=0,green=0;
-
-	NAMED_COLOR(int r, int g, int b) {
-	    red=r; green=g; blue=b;
+		/** get hte container value */
+		public T get() {
+			return val;
+		}
 	}
 
+	/** Named colors for selector lists */
+	enum NAMED_COLOR {
+		GREY(128, 128, 128),
+		RED(255, 0, 0),
+		BLUE(0, 0, 255),
+		GREEN(0, 255, 0),
+		WHITE(255, 255, 255),
+		BLACK(0, 0, 0),
+		CYAN(0, 255, 255),
+		MAGENTA(255, 0, 255),
+		YELLOW(255, 255, 0);
 
-	public Color getColor() {
-	    return new Color(red,green,blue);
+		int red = 0, blue = 0, green = 0;
+
+		NAMED_COLOR(int r, int g, int b) {
+			red = r;
+			green = g;
+			blue = b;
+		}
+
+		public Color getColor() {
+			return new Color(red, green, blue);
+		}
+
+		public String toString() {
+			switch (this) {
+				case GREY:
+					return "grey";
+				case RED:
+					return "red";
+				case BLUE:
+					return "blue";
+				case GREEN:
+					return "green";
+				case WHITE:
+					return "white";
+				case BLACK:
+					return "black";
+				case CYAN:
+					return "cyan";
+				case MAGENTA:
+					return "magenta";
+				case YELLOW:
+					return "yellow";
+			}
+			return null;
+		}
 	}
-
-	public String toString() {
-	    switch (this) {
-		case GREY: return "grey";
-		case RED: return "red";
-		case BLUE: return "blue";
-		case GREEN:  return "green";
-		case WHITE: return "white";
-		case BLACK: return "black";
-		case CYAN: return "cyan";
-		case MAGENTA: return "magenta";
-		case YELLOW: return "yellow";
-	    }
-	    return null;
-	}
-    }
-    
-
-
-
 
 }

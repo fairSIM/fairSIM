@@ -17,6 +17,6 @@ along with fairSIM.  If not, see <http://www.gnu.org/licenses/>
 */
 
 /**
- * SIM reconstruction and parameter fit algorithms 
+ * SIM reconstruction and parameter fit algorithms
  */
 package org.fairsim.sim_algorithm;

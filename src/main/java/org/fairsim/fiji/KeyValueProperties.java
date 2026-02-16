@@ -21,19 +21,20 @@ import org.fairsim.utils.Tool;
 import ij.Prefs;
 
 public class KeyValueProperties implements Tool.KeyValueStore {
-    
+
     @Override
     public String retrieveString(String key) {
-        String s = Prefs.getString(Prefs.KEY_PREFIX+"fairsim."+key);
+        String s = Prefs.getString(Prefs.KEY_PREFIX + "fairsim." + key);
         if (s != null && s.equals("[null]")) {
             return null;
         }
         return s;
     }
+
     @Override
     public boolean storeString(String key, String val) {
-        String value = (val==null)?("[null]"):(val);
-        Prefs.set("fairsim."+key,value);    
+        String value = (val == null) ? ("[null]") : (val);
+        Prefs.set("fairsim." + key, value);
         Prefs.savePreferences();
         return true;
     }
@@ -41,10 +42,5 @@ public class KeyValueProperties implements Tool.KeyValueStore {
     public String toString() {
         return "ImageJ key/value storage";
     }
-    
-
-
-
-    
 
 }

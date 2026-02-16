@@ -28,8 +28,12 @@ import java.lang.annotation.ElementType;
 
 public @interface UserParameter {
     public String value() default "";
+
     public String desc() default "";
+
     public int decimals() default 3;
+
     public boolean scientific() default false;
+
     public boolean mandatory() default false;
 }

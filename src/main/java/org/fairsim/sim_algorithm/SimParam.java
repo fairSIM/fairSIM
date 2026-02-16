@@ -23,1015 +23,1045 @@ import org.fairsim.utils.Conf;
 import org.fairsim.linalg.Vec2d;
 import org.fairsim.linalg.Vec3d;
 
-/** Storage / management of SIM reconstruction parameters. 
- *  Provides a good way to connect GUI and algorithm, as checks,
- *  conversions etc. can happen in this class instead of cluttering other
- *  code.
- * */
+/**
+ * Storage / management of SIM reconstruction parameters.
+ * Provides a good way to connect GUI and algorithm, as checks,
+ * conversions etc. can happen in this class instead of cluttering other
+ * code.
+ */
 public class SimParam implements Vec2d.Size, Vec3d.Size {
 
-    public enum FilterStyle {
-	Wiener("Wiener filter"),	
-	RLin("RL on input, WF out"), 
-	RLout("RL on output"),
-	RLboth("RL on both"),
-	NoFilter("no filtering");
+	public enum FilterStyle {
+		Wiener("Wiener filter"),
+		RLin("RL on input, WF out"),
+		RLout("RL on output"),
+		RLboth("RL on both"),
+		NoFilter("no filtering");
 
-	final String name;
-	FilterStyle(String a) { name = a; };
+		final String name;
 
-	@Override public String toString() { return name; };
-    }
+		FilterStyle(String a) {
+			name = a;
+		};
 
-    /** number of angles/pattern directions */
-    final protected int nrDirs;	
-    final protected int nrBands;	
-    final protected int nrPhases;
-    final protected Dir [] directions ;
-    final protected boolean is3D;		    // if z-information is provided
+		@Override
+		public String toString() {
+			return name;
+		};
+	}
 
-    // Image parameters
-    private int imgSize=-1;			    // image size in pxl
-    private double micronsPerPixel=-1;		    // spatial extent of pixel
-    private double cyclesPerMicron=-1;		    // freq extent of FFT pixel
+	/** number of angles/pattern directions */
+	final protected int nrDirs;
+	final protected int nrBands;
+	final protected int nrPhases;
+	final protected Dir[] directions;
+	final protected boolean is3D; // if z-information is provided
 
-    private int stackSize=-1;			    // z-stack length in #slices
-    private double micronsPerSlice=-1;		    // spatial extent of the z-slice stage shift
-    private double cyclesPerMicronInZ=-1;	    // freq extent of FFT in z-slices
+	// Image parameters
+	private int imgSize = -1; // image size in pxl
+	private double micronsPerPixel = -1; // spatial extent of pixel
+	private double cyclesPerMicron = -1; // freq extent of FFT pixel
 
-    private IMGSEQ imgSeq = IMGSEQ.PAZ;		    // order of images in input
-    private CLIPSCALE clipScaleMode 
-	= CLIPSCALE.NONE;			    // clip&scale of output
+	private int stackSize = -1; // z-stack length in #slices
+	private double micronsPerSlice = -1; // spatial extent of the z-slice stage shift
+	private double cyclesPerMicronInZ = -1; // freq extent of FFT in z-slices
 
+	private IMGSEQ imgSeq = IMGSEQ.PAZ; // order of images in input
+	private CLIPSCALE clipScaleMode = CLIPSCALE.NONE; // clip&scale of output
 
-    private FilterStyle filterStyle = 
-		FilterStyle.Wiener;		    // which filter to use
+	private FilterStyle filterStyle = FilterStyle.Wiener; // which filter to use
 
-    private double wienerFilterParameter = 0.05;    // Wiener filter parameter
-    private double apoCutOff = 2;		    // Apo cutoff parameter lateral component (2D and 3D)
-	private double apoCutOffAxial = 2;	    // Apo cutoff parameter for axial component in 3D SIM
-    private double apoBend   = 0.9;		    // Apo bend parameter
-	private int    apoType = 0;		    	// Apo type (currently: 0=linear, 1=cosine, 2=off))
+	private double wienerFilterParameter = 0.05; // Wiener filter parameter
+	private double apoCutOff = 2; // Apo cutoff parameter lateral component (2D and 3D)
+	private double apoCutOffAxial = 2; // Apo cutoff parameter for axial component in 3D SIM
+	private double apoBend = 0.9; // Apo bend parameter
+	private int apoType = 0; // Apo type (currently: 0=linear, 1=cosine, 2=off))
 
-    private int rlIterations = 5;		    // number of Richardson-Lucy iterations
-    
+	private int rlIterations = 5; // number of Richardson-Lucy iterations
 
-    double modLowLimit = 0.4, modHighLimit = 1.1, defaultModulation = 0.65;
+	double modLowLimit = 0.4, modHighLimit = 1.1, defaultModulation = 0.65;
 
-    // Transfer function, OTF attenuation, Apotization
-    private OtfProvider   currentOtf2D=null;
-    private OtfProvider3D currentOtf3D=null;
+	// Transfer function, OTF attenuation, Apotization
+	private OtfProvider currentOtf2D = null;
+	private OtfProvider3D currentOtf3D = null;
 
-    // creation/modification date
-    private long paramDate = System.currentTimeMillis();
-    private long runtimeTimestamp = 0;
+	// creation/modification date
+	private long paramDate = System.currentTimeMillis();
+	private long runtimeTimestamp = 0;
 
+	/** Use factory method {@link #create} to obtain object */
+	protected SimParam(int bands, int dirs, int phases, boolean threeD) {
+		if (dirs < 1)
+			throw new RuntimeException("dirs < 1, not useful");
 
-    /** Use factory method {@link #create} to obtain object */
-    protected SimParam(int bands, int dirs, int phases, boolean threeD) { 
-	if (dirs<1)
-	    throw new RuntimeException("dirs < 1, not useful");
-	
-	nrDirs   = dirs;
-	nrBands  = bands;
-	nrPhases = phases;
-	is3D	 = threeD;
+		nrDirs = dirs;
+		nrBands = bands;
+		nrPhases = phases;
+		is3D = threeD;
 
-	directions = new Dir[ nrDirs ];
-	for (int i=0; i<nrDirs; i++)
-	    directions[i] = new Dir( bands, phases, i );
-	
-    }
-    
-    /** New set of SIM reconstruction parameters for 2D reconstruction. 
-     *	@param bands  Number of bands
-     *	@param dirs   Number of pattern orientations
-     *	@param phases Number of phases
-     * */
-    public static SimParam create(int bands, int dirs, int phases ) {
-	return new SimParam( bands, dirs, phases, false);
-    }
-    
-    /** New set of SIM reconstruction parameters for 2D reconstruction. 
-     *	@param bands  Number of bands
-     *	@param dirs   Number of pattern orientations
-     *	@param phases Number of phases
-     *	@param size Size in pixels (width or height) of raw images
-     *	@param micronsPerPxl Size of a pixel in micrometers 
-     * */
-    public static SimParam create(int bands, int dirs, int phases, 
-	int size, double micronsPerPxl, OtfProvider otf ) {
-	SimParam sp = new SimParam( bands, dirs, phases, false);
-	sp.setPxlSize( size, micronsPerPxl );
-	sp.otf( otf );
-	return sp;
-    }
-   
+		directions = new Dir[nrDirs];
+		for (int i = 0; i < nrDirs; i++)
+			directions[i] = new Dir(bands, phases, i);
 
-    /** New set of SIM reconstruction parameters for 3D reconstruction. 
-     *	@param bands  Number of bands
-     *	@param dirs   Number of pattern orientations
-     *	@param phases Number of phases
-     * */
-    public static SimParam create3d(int bands, int dirs, int phases ) {
-	return new SimParam( bands, dirs, phases, true);
-    }
-    
-    /** New set of SIM reconstruction parameters for 2D reconstruction. 
-     *	@param bands  Number of bands
-     *	@param dirs   Number of pattern orientations
-     *	@param phases Number of phases
-     *	@param latsize Size in pixels (width or height) of raw images
-     *	@param axsize  Number of z-stacks
-     *	@param micronsPerPxl Size of a pixel in micrometers 
-     *	@param micronsPerSlice Distance of z-slices, in mcirons
-     *	@param otf	projected 2D OTF provider
-     *	@param otf3d	full 3D OTF provider
-     * */
-    public static SimParam create3d(int bands, int dirs, int phases, 
-	int latsize, int axsize, double micronsPerPxl, double micronsPerSlice, 
-	OtfProvider otf, OtfProvider3D otf3d ) {
-	SimParam sp = new SimParam( bands, dirs, phases, true);
-	sp.setPxlSize3d( latsize, axsize, micronsPerPxl, micronsPerSlice );
-	sp.otf( otf, otf3d );
-	return sp;
-    }
-   
-    /** Copy an existing SimParam dataset */
-    public SimParam duplicate() {
-	SimParam ret = new SimParam(nrBands, nrDirs, nrPhases, this.is3D);
+	}
 
-	// copy the simple variables
-	ret.imgSize		    	= this.imgSize;
-	ret.micronsPerPixel	    = this.micronsPerPixel;
-	ret.cyclesPerMicron	    = this.cyclesPerMicron;
-	ret.stackSize		    = this.stackSize;
-	ret.micronsPerSlice	    = this.micronsPerSlice;
-	ret.cyclesPerMicronInZ	= this.cyclesPerMicronInZ;
-	ret.imgSeq		    	= this.imgSeq;
-	ret.wienerFilterParameter   = this.wienerFilterParameter;
-	ret.apoCutOff		    = this.apoCutOff;
-	ret.apoCutOffAxial	    = this.apoCutOffAxial;
-	ret.apoBend		    	= this.apoBend;
-	ret.apoType		    	= this.apoType;
-	ret.modLowLimit		    = this.modLowLimit;
-	ret.modHighLimit	    = this.modHighLimit;
-	ret.paramDate		    = this.paramDate;
+	/**
+	 * New set of SIM reconstruction parameters for 2D reconstruction.
+	 * 
+	 * @param bands  Number of bands
+	 * @param dirs   Number of pattern orientations
+	 * @param phases Number of phases
+	 */
+	public static SimParam create(int bands, int dirs, int phases) {
+		return new SimParam(bands, dirs, phases, false);
+	}
 
-	// copy the OTFs
-	if ( this.currentOtf2D!=null )
-	    ret.currentOtf2D = this.currentOtf2D.duplicate();
-	if ( this.currentOtf3D!=null )
-	    ret.currentOtf3D = this.currentOtf3D.duplicate();
-	
-	// copy the directions
-	for (int d=0; d<this.nrDirs; d++)
-	    ret.directions[d] = this.directions[d].duplicate();
+	/**
+	 * New set of SIM reconstruction parameters for 2D reconstruction.
+	 * 
+	 * @param bands         Number of bands
+	 * @param dirs          Number of pattern orientations
+	 * @param phases        Number of phases
+	 * @param size          Size in pixels (width or height) of raw images
+	 * @param micronsPerPxl Size of a pixel in micrometers
+	 */
+	public static SimParam create(int bands, int dirs, int phases,
+			int size, double micronsPerPxl, OtfProvider otf) {
+		SimParam sp = new SimParam(bands, dirs, phases, false);
+		sp.setPxlSize(size, micronsPerPxl);
+		sp.otf(otf);
+		return sp;
+	}
 
-	return ret;
+	/**
+	 * New set of SIM reconstruction parameters for 3D reconstruction.
+	 * 
+	 * @param bands  Number of bands
+	 * @param dirs   Number of pattern orientations
+	 * @param phases Number of phases
+	 */
+	public static SimParam create3d(int bands, int dirs, int phases) {
+		return new SimParam(bands, dirs, phases, true);
+	}
 
-    }
+	/**
+	 * New set of SIM reconstruction parameters for 2D reconstruction.
+	 * 
+	 * @param bands           Number of bands
+	 * @param dirs            Number of pattern orientations
+	 * @param phases          Number of phases
+	 * @param latsize         Size in pixels (width or height) of raw images
+	 * @param axsize          Number of z-stacks
+	 * @param micronsPerPxl   Size of a pixel in micrometers
+	 * @param micronsPerSlice Distance of z-slices, in mcirons
+	 * @param otf             projected 2D OTF provider
+	 * @param otf3d           full 3D OTF provider
+	 */
+	public static SimParam create3d(int bands, int dirs, int phases,
+			int latsize, int axsize, double micronsPerPxl, double micronsPerSlice,
+			OtfProvider otf, OtfProvider3D otf3d) {
+		SimParam sp = new SimParam(bands, dirs, phases, true);
+		sp.setPxlSize3d(latsize, axsize, micronsPerPxl, micronsPerSlice);
+		sp.otf(otf, otf3d);
+		return sp;
+	}
 
+	/** Copy an existing SimParam dataset */
+	public SimParam duplicate() {
+		SimParam ret = new SimParam(nrBands, nrDirs, nrPhases, this.is3D);
 
-    
-    /** Get parameter subset for pattern direction 'i' */
-    public Dir dir(int i) {
-	return directions[i];
-    }
+		// copy the simple variables
+		ret.imgSize = this.imgSize;
+		ret.micronsPerPixel = this.micronsPerPixel;
+		ret.cyclesPerMicron = this.cyclesPerMicron;
+		ret.stackSize = this.stackSize;
+		ret.micronsPerSlice = this.micronsPerSlice;
+		ret.cyclesPerMicronInZ = this.cyclesPerMicronInZ;
+		ret.imgSeq = this.imgSeq;
+		ret.wienerFilterParameter = this.wienerFilterParameter;
+		ret.apoCutOff = this.apoCutOff;
+		ret.apoCutOffAxial = this.apoCutOffAxial;
+		ret.apoBend = this.apoBend;
+		ret.apoType = this.apoType;
+		ret.modLowLimit = this.modLowLimit;
+		ret.modHighLimit = this.modHighLimit;
+		ret.paramDate = this.paramDate;
 
-    /** Get the number of directions */
-    public int nrDir() {
-	return nrDirs;
-    }
-    
-    /** Get the number of bands */
-    public int nrBand() {
-	return nrBands;
-    }
+		// copy the OTFs
+		if (this.currentOtf2D != null)
+			ret.currentOtf2D = this.currentOtf2D.duplicate();
+		if (this.currentOtf3D != null)
+			ret.currentOtf3D = this.currentOtf3D.duplicate();
 
-    /** Get cycles / micron pxl size */
-    public double pxlSizeCyclesMicron() {
-	return cyclesPerMicron;
-    }
-    
-    /** Get cycles / micron pxl size */
-    public double pxlSizeCyclesMicronInZ() {
-	if (!is3D)
-	    throw new RuntimeException("Not a 3D parameter set");
-	return cyclesPerMicronInZ;
-    }
-    
-    
-    /** Get the image ordering */
-    public IMGSEQ getImgSeq() {
-	return imgSeq;
-    }
-    /** Set the image ordering */
-    public SimParam setImgSeq( IMGSEQ i) {
-	imgSeq = i;
-	return this;
-    }
+		// copy the directions
+		for (int d = 0; d < this.nrDirs; d++)
+			ret.directions[d] = this.directions[d].duplicate();
 
-    /** Get the image ordering */
-    public CLIPSCALE getClipScale() {
-	return clipScaleMode;
-    }
-    
-    /** Set the image ordering */
-    public SimParam setClipScale( CLIPSCALE i) {
-	clipScaleMode = i;
-	return this;
-    }
+		return ret;
 
-    /** Get the number of images in one z plane */
-    public int getImgPerZ() {
-	int ret=0;
-	for ( Dir d : directions )
-	    ret+= d.nrPha();
-	return ret;
-    }
-	
-    /** Get number of phases */
-    public int nrPha() {
-        return nrPhases;
-    }
+	}
 
+	/** Get parameter subset for pattern direction 'i' */
+	public Dir dir(int i) {
+		return directions[i];
+	}
 
-    /** Set the image size
-     *  @param pxl Number of pixels
-     *  @param microns Number of microns per pxl */
-    public SimParam setPxlSize( int pxl, double microns ) {
-	imgSize  = pxl;
-	micronsPerPixel = microns;
-	cyclesPerMicron = 1/(pxl*microns);
-	this.otf( currentOtf2D );	// propagate size to OTF
-	return this;
-    }
+	/** Get the number of directions */
+	public int nrDir() {
+		return nrDirs;
+	}
 
+	/** Get the number of bands */
+	public int nrBand() {
+		return nrBands;
+	}
 
-    /** Set the width / height of the raw images to process.
-     *  @see setPxlSize
-     *  @param pxl width / height of raw images
-     */
-    public SimParam setPxlSize(int pxl) {
-        return setPxlSize( pxl, micronsPerPixel );
-    }
+	/** Get cycles / micron pxl size */
+	public double pxlSizeCyclesMicron() {
+		return cyclesPerMicron;
+	}
 
+	/** Get cycles / micron pxl size */
+	public double pxlSizeCyclesMicronInZ() {
+		if (!is3D)
+			throw new RuntimeException("Not a 3D parameter set");
+		return cyclesPerMicronInZ;
+	}
 
-    /** Set the image and stack size */
-    public SimParam setPxlSize3d( int pxl, int stack, double micronPxl, double micronStack) {
-	// in x,y
-	setPxlSize( pxl, micronPxl);
-	// in z
-	stackSize = stack;
-	micronsPerSlice=micronStack;
-	cyclesPerMicronInZ = 1/(stack*micronStack);
-	this.otf( currentOtf2D, currentOtf3D);
-	return this;
-    }
+	/** Get the image ordering */
+	public IMGSEQ getImgSeq() {
+		return imgSeq;
+	}
 
+	/** Set the image ordering */
+	public SimParam setImgSeq(IMGSEQ i) {
+		imgSeq = i;
+		return this;
+	}
 
-    /** Set the filter type to use */
-    public void setFilterStyle( FilterStyle s ) {
-	filterStyle = s;
-    }
+	/** Get the image ordering */
+	public CLIPSCALE getClipScale() {
+		return clipScaleMode;
+	}
 
-    /** Get the filter type to use */
-    public FilterStyle getFilterStyle() {
-	return filterStyle;
-    }
+	/** Set the image ordering */
+	public SimParam setClipScale(CLIPSCALE i) {
+		clipScaleMode = i;
+		return this;
+	}
 
-    /** Determine if Wiener-filtering is used on output data*/
-    public boolean useWienerFilter() {
-	return ( filterStyle == FilterStyle.Wiener ||
-		 filterStyle == FilterStyle.RLin );
-    }
+	/** Get the number of images in one z plane */
+	public int getImgPerZ() {
+		int ret = 0;
+		for (Dir d : directions)
+			ret += d.nrPha();
+		return ret;
+	}
 
+	/** Get number of phases */
+	public int nrPha() {
+		return nrPhases;
+	}
 
+	/**
+	 * Set the image size
+	 * 
+	 * @param pxl     Number of pixels
+	 * @param microns Number of microns per pxl
+	 */
+	public SimParam setPxlSize(int pxl, double microns) {
+		imgSize = pxl;
+		micronsPerPixel = microns;
+		cyclesPerMicron = 1 / (pxl * microns);
+		this.otf(currentOtf2D); // propagate size to OTF
+		return this;
+	}
 
-    /** Determine if RL-filtering is used on input data*/
-    public boolean useRLonInput() {
-	return ( filterStyle == FilterStyle.RLboth || 
-		 filterStyle == FilterStyle.RLin   );
-    }
-    
-    /** Determine if RL-filtering is used on output data*/
-    public boolean useRLonOutput() {
-	return ( filterStyle == FilterStyle.RLboth || 
-		 filterStyle == FilterStyle.RLout   );
-    }
+	/**
+	 * Set the width / height of the raw images to process.
+	 * 
+	 * @see setPxlSize
+	 * @param pxl width / height of raw images
+	 */
+	public SimParam setPxlSize(int pxl) {
+		return setPxlSize(pxl, micronsPerPixel);
+	}
 
-    /** True if all filtering is to be turned off */
-    public boolean useNoFiltering() {
-	return (filterStyle == FilterStyle.NoFilter );
-    }
+	/** Set the image and stack size */
+	public SimParam setPxlSize3d(int pxl, int stack, double micronPxl, double micronStack) {
+		// in x,y
+		setPxlSize(pxl, micronPxl);
+		// in z
+		stackSize = stack;
+		micronsPerSlice = micronStack;
+		cyclesPerMicronInZ = 1 / (stack * micronStack);
+		this.otf(currentOtf2D, currentOtf3D);
+		return this;
+	}
 
+	/** Set the filter type to use */
+	public void setFilterStyle(FilterStyle s) {
+		filterStyle = s;
+	}
 
+	/** Get the filter type to use */
+	public FilterStyle getFilterStyle() {
+		return filterStyle;
+	}
 
+	/** Determine if Wiener-filtering is used on output data */
+	public boolean useWienerFilter() {
+		return (filterStyle == FilterStyle.Wiener ||
+				filterStyle == FilterStyle.RLin);
+	}
 
-    /** Set the number of RL iterations */
-    public void setRLiterations( int n ) {
-	rlIterations = n;
-    }
+	/** Determine if RL-filtering is used on input data */
+	public boolean useRLonInput() {
+		return (filterStyle == FilterStyle.RLboth ||
+				filterStyle == FilterStyle.RLin);
+	}
 
-    /** Get the number of RL iterations */
-    public int getRLiterations() {
-	return rlIterations;
-    }
+	/** Determine if RL-filtering is used on output data */
+	public boolean useRLonOutput() {
+		return (filterStyle == FilterStyle.RLboth ||
+				filterStyle == FilterStyle.RLout);
+	}
 
+	/** True if all filtering is to be turned off */
+	public boolean useNoFiltering() {
+		return (filterStyle == FilterStyle.NoFilter);
+	}
 
-    /** Set the Wiener Filter parameter */
-    public SimParam setWienerFilter( double wf ) {
-	wienerFilterParameter = wf;
-	return this;
-    }
-    
-    /** Get the Wiener Filter parameter */
-    public double getWienerFilter() {
-	return wienerFilterParameter;
-    }
-    
-    /** Set the APO cutoff factor (cutoff in relation to OTF cutoff) */
-    public SimParam setApoCutoff( double af ) {
-	apoCutOff = af;
-	return this;
-    }
-   
+	/** Set the number of RL iterations */
+	public void setRLiterations(int n) {
+		rlIterations = n;
+	}
 
-    /** Set the APO bend parameter (curvature of the APO) */
-    public SimParam setApoBend( double ab ) {
-	apoBend = ab;
-	return this;
-    }
-   
+	/** Get the number of RL iterations */
+	public int getRLiterations() {
+		return rlIterations;
+	}
+
+	/** Set the Wiener Filter parameter */
+	public SimParam setWienerFilter(double wf) {
+		wienerFilterParameter = wf;
+		return this;
+	}
+
+	/** Get the Wiener Filter parameter */
+	public double getWienerFilter() {
+		return wienerFilterParameter;
+	}
+
+	/** Set the APO cutoff factor (cutoff in relation to OTF cutoff) */
+	public SimParam setApoCutoff(double af) {
+		apoCutOff = af;
+		return this;
+	}
+
+	/** Set the APO bend parameter (curvature of the APO) */
+	public SimParam setApoBend(double ab) {
+		apoBend = ab;
+		return this;
+	}
+
 	/** Set he APO bend parameter for the axial direction */
-	public SimParam setApoCutoffAxial( double af ) {	
-	apoCutOffAxial = af;
-	return this;
-    }	
+	public SimParam setApoCutoffAxial(double af) {
+		apoCutOffAxial = af;
+		return this;
+	}
 
 	// TODO: this should be changed to be an enum type in the future
 	/** Set the APO type (0=linear, 1=cosine, 2=off) */
-	public SimParam setApoType( int type ) {
-	if (type<0 || type>2)
-		throw new RuntimeException("Invalid Apo type");
-	
-	apoType = type;
-	return this;
-    }	
+	public SimParam setApoType(int type) {
+		if (type < 0 || type > 2)
+			throw new RuntimeException("Invalid Apo type");
 
-    /** Get the APO cutoff factor */
-    public double getApoCutoff() {
-	return apoCutOff;
-    }
-    
-    /** Get the APO cutoff factor */
-    public double getApoBend() {
-	return apoBend;
-    }
+		apoType = type;
+		return this;
+	}
+
+	/** Get the APO cutoff factor */
+	public double getApoCutoff() {
+		return apoCutOff;
+	}
+
+	/** Get the APO cutoff factor */
+	public double getApoBend() {
+		return apoBend;
+	}
 
 	/** Get the APO cutoff factor for the axial direction */
 	public double getApoCutoffAxial() {
-	return apoCutOffAxial;
-    }
+		return apoCutOffAxial;
+	}
 
 	/** Get the APO type */
 	public int getApoType() {
-	return apoType;
+		return apoType;
 	}
 
 	/** Get the APO type as string */
 	public String getApoTypeSting() {
 		switch (apoType) {
-			case 0: return "linear";
-			case 1: return "cosine";
-			case 2: return "off";
-			default: return "unknown";
+			case 0:
+				return "linear";
+			case 1:
+				return "cosine";
+			case 2:
+				return "off";
+			default:
+				return "unknown";
 		}
 	}
 
-
-
-    /** Get the current otf */
-    public OtfProvider otf() {
-	return currentOtf2D;
-    }
-    
-    /** Get the current otf */
-    public OtfProvider3D otf3d() {
-	return currentOtf3D;
-    }
-
-    /** Set a new OTF */
-    public void otf(OtfProvider otf) {
-
-	if (otf!=null) { 
-	    currentOtf2D=otf;
-	    otf.setPixelSize( cyclesPerMicron );
-	}
-    }
-    /** Set a new 3D OTF */
-    public void otf3d(OtfProvider3D otf) {
-
-	if (otf!=null) { 
-	    currentOtf3D=otf;
-	    //otf.setPixelSize( cyclesPerMicron );
-	}
-    }
-
-
-    
-    /** Set a new OTF */
-    public void otf(OtfProvider otf, OtfProvider3D otf3d) {
-	if (!is3D)
-	    throw new RuntimeException("Please provida a 2D OTF instead");
-
-	if (otf!=null) { 
-	    currentOtf2D=otf;
-	    currentOtf3D=otf3d;
-	    otf.setPixelSize( cyclesPerMicron );
-	    otf3d.setPixelSize( cyclesPerMicron, cyclesPerMicronInZ );
-	}
-    }
-
-
-    // ----------------------------------------------------------------------------------
-
-    /** Parameters for each pattern orientation. */
-    public class Dir {
-	
-	private final int nrBands;  // how many bands
-	private final int nrPhases; // how many phases
-	private double pX, pY;	    // shift vector (band1)
-	private double phaOff;	    // global phase offsets
-	private double [] phases;   // phases
-	private double [] modul;    // modulation 
-	private int thisBand;	    // which band is this
-	private boolean hasIndividualPhases;	// if non-equidist. phases are set
-	
-	private double angleIntensityFactor=1;   // the intensity factor to apply to this angle
-	private double [] phaseIntensityFactors; // the intensity factors to apply phase-by-phase
-
-
-
-	Dir(int nBands, int nPha, int thisBand) {
-	    
-	    if (nBands<2) 
-		throw new RuntimeException("bands < 2, not useful");
-	    if (nPha < (nBands*2) -1)
-		throw new RuntimeException("not enough phases for bands:"+nBands+" "+nPha);
-	    
-	    nrBands = nBands;
-	    nrPhases = nPha;
-	    phases = new double[ nrPhases ];
-	    resetPhases();  // inits the phases to equidistant
-	    modul=new double[ nrBands ];
-	    this.thisBand = thisBand;
-
-	    for (int i=0;i<nrBands;i++)
-		modul[i] = 1.0;
-	    
-	    phaseIntensityFactors = new double[nrPhases];
-	    for (int i=0;i<nrPhases;i++)
-		phaseIntensityFactors[i] = 1.0;
-	
+	/** Get the current otf */
+	public OtfProvider otf() {
+		return currentOtf2D;
 	}
 
-	/** copy these direction values */
-	Dir duplicate() {
-	    Dir ret = new Dir(nrBands, nrPhases, thisBand);
-
-	    ret.pX		    = this.pX;
-	    ret.pY		    = this.pY;
-	    ret.phaOff		    = this.phaOff;
-	    ret.hasIndividualPhases = this.hasIndividualPhases;
-	    
-	    System.arraycopy( this.phases , 0 , ret.phases, 0, this.phases.length);
-	    System.arraycopy( this.modul  , 0 , ret.modul , 0, this.modul.length );
-
-	    return ret;
+	/** Get the current otf */
+	public OtfProvider3D otf3d() {
+		return currentOtf3D;
 	}
 
+	/** Set a new OTF */
+	public void otf(OtfProvider otf) {
 
+		if (otf != null) {
+			currentOtf2D = otf;
+			otf.setPixelSize(cyclesPerMicron);
+		}
+	}
+
+	/** Set a new 3D OTF */
+	public void otf3d(OtfProvider3D otf) {
+
+		if (otf != null) {
+			currentOtf3D = otf;
+			// otf.setPixelSize( cyclesPerMicron );
+		}
+	}
+
+	/** Set a new OTF */
+	public void otf(OtfProvider otf, OtfProvider3D otf3d) {
+		if (!is3D)
+			throw new RuntimeException("Please provida a 2D OTF instead");
+
+		if (otf != null) {
+			currentOtf2D = otf;
+			currentOtf3D = otf3d;
+			otf.setPixelSize(cyclesPerMicron);
+			otf3d.setPixelSize(cyclesPerMicron, cyclesPerMicronInZ);
+		}
+	}
+
+	// ----------------------------------------------------------------------------------
+
+	/** Parameters for each pattern orientation. */
+	public class Dir {
+
+		private final int nrBands; // how many bands
+		private final int nrPhases; // how many phases
+		private double pX, pY; // shift vector (band1)
+		private double phaOff; // global phase offsets
+		private double[] phases; // phases
+		private double[] modul; // modulation
+		private int thisBand; // which band is this
+		private boolean hasIndividualPhases; // if non-equidist. phases are set
+
+		private double angleIntensityFactor = 1; // the intensity factor to apply to this angle
+		private double[] phaseIntensityFactors; // the intensity factors to apply phase-by-phase
+
+		Dir(int nBands, int nPha, int thisBand) {
+
+			if (nBands < 2)
+				throw new RuntimeException("bands < 2, not useful");
+			if (nPha < (nBands * 2) - 1)
+				throw new RuntimeException("not enough phases for bands:" + nBands + " " + nPha);
+
+			nrBands = nBands;
+			nrPhases = nPha;
+			phases = new double[nrPhases];
+			resetPhases(); // inits the phases to equidistant
+			modul = new double[nrBands];
+			this.thisBand = thisBand;
+
+			for (int i = 0; i < nrBands; i++)
+				modul[i] = 1.0;
+
+			phaseIntensityFactors = new double[nrPhases];
+			for (int i = 0; i < nrPhases; i++)
+				phaseIntensityFactors[i] = 1.0;
+
+		}
+
+		/** copy these direction values */
+		Dir duplicate() {
+			Dir ret = new Dir(nrBands, nrPhases, thisBand);
+
+			ret.pX = this.pX;
+			ret.pY = this.pY;
+			ret.phaOff = this.phaOff;
+			ret.hasIndividualPhases = this.hasIndividualPhases;
+
+			System.arraycopy(this.phases, 0, ret.phases, 0, this.phases.length);
+			System.arraycopy(this.modul, 0, ret.modul, 0, this.modul.length);
+
+			return ret;
+		}
+
+		void failBand(int i) {
+			if ((i < 0) || (i >= nrBands))
+				throw new RuntimeException("Wrong band index");
+		}
+
+		/** Return number of bands */
+		public int nrBand() {
+			return nrBands;
+		}
+
+		/** Return number of components (2*bands-1) */
+		public int nrComp() {
+			return nrBands * 2 - 1;
+		}
+
+		// --- Phases ---
+
+		/** Set a global phase offset. */
+		public void setPhaOff(double pha) {
+			phaOff = pha;
+		}
+
+		/**
+		 * Set individual phases.
+		 * 
+		 * @param pha   Phases to set
+		 * @param reset If true, resets the phase offset to 0
+		 */
+		public void setPhases(double[] pha, boolean reset) {
+			if (pha.length != nrPhases)
+				throw new RuntimeException("Length mismatch");
+			if (reset)
+				phaOff = 0;
+			for (int i = 0; i < nrPhases; i++)
+				phases[i] = pha[i];
+			hasIndividualPhases = true;
+		}
+
+		/**
+		 * Set one individual phase.
+		 * 
+		 * @param pha    Phase to set
+		 * @param phaIdx Index of phase to set
+		 */
+		public void setSinglePhase(double pha, int phaIdx) {
+			phases[phaIdx] = pha;
+			hasIndividualPhases = true;
+		}
+
+		/** Reset individual phases back to equidistant. */
+		public void resetPhases() {
+			resetPhases(1.);
+		}
+
+		/** Reset individual phases back to equidistant. */
+		public void resetPhases(double multiplier) {
+			for (int i = 0; i < nrPhases; i++)
+				phases[i] = (2 * Math.PI * multiplier / nrPhases) * i;
+			hasIndividualPhases = false;
+		}
+
+		/**
+		 * Get absolute phases. I.e. phases with the offset applied.
+		 * This can directly be passed as
+		 * 'phases' to {@link BandSeparation#separateBands}.
+		 */
+		public double[] getPhases() {
+			double[] ret = new double[nrPhases];
+			for (int i = 0; i < nrPhases; i++)
+				ret[i] = phases[i] + phaOff;
+			return ret;
+		}
+
+		/** Get number of phases */
+		public int nrPha() {
+			return nrPhases;
+		}
+
+		/** Get phase #i, without offset applied. */
+		public double getPhase(int i) {
+			return phases[i];
+		}
+
+		/** Get the phase offset */
+		public double getPhaOff() {
+			return phaOff;
+		}
+
+		// --- Shifts ---
+
+		/**
+		 * Set shift px, py (from estimate for highest band).
+		 * Lower bands are set equidistant in between.
+		 * 
+		 * @param cor Either an array (x[0],y[1]) or 2 numbers: x,y
+		 */
+		public void setPxPy(double inPx, double inPy) {
+			pX = inPx / (nrBands - 1);
+			pY = inPy / (nrBands - 1);
+		}
+
+		/**
+		 * Return x for shift of band n.
+		 * Bands count from 0.
+		 */
+		public double px(int band) {
+			failBand(band);
+			return pX * band;
+		}
+
+		/**
+		 * Return y for shift of band n.
+		 * Bands count from 0.
+		 */
+		public double py(int band) {
+			failBand(band);
+			return pY * band;
+		}
+
+		/**
+		 * Return shift of band n.
+		 * Bands count from 0.
+		 */
+		public double[] getPxPy(int band) {
+			failBand(band);
+			return new double[] { pX * band, pY * band };
+		}
+
+		/**
+		 * Return angle of shift of band n (atan2).
+		 * Bands count from 0.
+		 */
+		public double getPxPyAngle(int band) {
+			failBand(band);
+			return Math.atan2(pY * band, pX * band);
+		}
+
+		/**
+		 * Return length of shift of band n (hypot).
+		 * Bands count from 0.
+		 */
+		public double getPxPyLen(int band) {
+			failBand(band);
+			return Math.hypot(pY * band, pX * band);
+		}
+
+		/** Compute the estimated resolution improvement */
+		public double getEstResImprovement() {
+
+			if (currentOtf2D == null) {
+				throw new RuntimeException("No OTF set for SIM parameter instance");
+			}
+
+			double shift = getPxPyLen(nrBands - 1) * cyclesPerMicron;
+			double otfCutoff = currentOtf2D.getCutoff();
+
+			return (shift + otfCutoff) / otfCutoff;
+
+		}
+
+		// --- modulation ---
+		/** Set the modulation of band n. */
+		public boolean setModulation(int b, double m) {
+			failBand(b);
+			modul[b] = m;
+			return ((m > modLowLimit) & (m < modHighLimit));
+		}
+
+		/** Get modulations */
+		public double[] getRawModulations() {
+			double[] ret = new double[nrBands];
+			System.arraycopy(modul, 0, ret, 0, nrBands);
+			return ret;
+		}
+
+		/** Get modulations (limited to 'reasonable' range) */
+		public double[] getModulations() {
+			double[] ret = new double[nrBands];
+			System.arraycopy(modul, 0, ret, 0, nrBands);
+			// if any modulation is outside of limits, return limit
+			for (int b = 0; b < nrBands; b++) {
+				if (ret[b] < modLowLimit)
+					ret[b] = defaultModulation;
+				if (ret[b] > modHighLimit)
+					ret[b] = defaultModulation;
+			}
+			return ret;
+		}
+
+		// -- correction factors ---
+
+		/** Set an intensity correction factor for this angle */
+		public void setAngleIntensityFactor(double f) {
+			angleIntensityFactor = f;
+		}
+
+		/** Set a phase intensity correction factor for this angle and phase i */
+		public void setPhaseIntensityFactor(int p, double f) {
+			phaseIntensityFactors[p] = f;
+		}
+
+		/** Get the angle intensity factor */
+		public double getAngleIntensityFactor() {
+			return angleIntensityFactor;
+		}
+
+		/** Get a phase intensity factor */
+		public double getPhaseIntensityFactor(int p) {
+			return phaseIntensityFactors[p];
+		}
+
+		/** Returns a combined correction quotient: 1/(angleIntesity*phaseIntensity) */
+		public double getIntensityQuotient(int p) {
+			return 1 / (angleIntensityFactor * phaseIntensityFactors[p]);
+		}
+
+	}
+
+	/** check if index belongs to a band */
 	void failBand(int i) {
-	    if ((i<0)||(i>=nrBands))
-		throw new RuntimeException("Wrong band index");
+		if ((i < 0) || (i >= nrBands))
+			throw new RuntimeException("Wrong band index");
 	}
 
-	/** Return number of bands */
-	public int nrBand() { return nrBands; }
-	
-	/** Return number of components (2*bands-1) */
-	public int nrComp() { return nrBands*2-1; }
+	// ----------------------------------------------------------------------------------
 
-
-	// --- Phases ---
-
-	/** Set a global phase offset.  */
-	public void setPhaOff( double pha ) {
-	    phaOff = pha;
+	/** get the timestamp associated with this parameter set */
+	public long getParamTimestamp() {
+		return paramDate;
 	}
 
-	/** Set individual phases.
-	 *  @param pha Phases to set
-	 *  @param reset If true, resets the phase offset to 0
-	 * */
-	public void setPhases( double [] pha, boolean reset ) {
-	    if (pha.length != nrPhases )
-		throw new RuntimeException("Length mismatch");
-	    if (reset)
-		phaOff = 0;
-	    for (int i=0; i<nrPhases; i++)
-		phases[i] = pha[i];
-	    hasIndividualPhases = true;
-	}
-
-	/** Set one individual phase.
-	 * @param pha Phase to set
-	 * @param phaIdx Index of phase to set
+	/**
+	 * set the timestamp associated with this
+	 * parameter set to current system time
 	 */
-	public void setSinglePhase( double pha, int phaIdx ) {
-	    phases[phaIdx] = pha;
-	    hasIndividualPhases = true;
+	public void setParamTimestamp() {
+		paramDate = System.currentTimeMillis();
 	}
 
-
-	/** Reset individual phases back to equidistant. */
-	public void resetPhases() {
-	    resetPhases(1.);
+	/** set the timestamp associated with this parameter set */
+	public void setParamTimestamp(long ms) {
+		paramDate = ms;
 	}
 
-	/** Reset individual phases back to equidistant. */
-	public void resetPhases(double multiplier) {
-	    for (int i=0; i<nrPhases; i++) 
-		phases[i] = ( 2*Math.PI*multiplier / nrPhases ) * i;
-	    hasIndividualPhases = false;
-	}
-	
-	/** Get absolute phases. I.e. phases with the offset applied.
-	 *  This can directly be passed as 
-	 *  'phases' to {@link BandSeparation#separateBands}. */
-	public double [] getPhases() {
-	    double [] ret = new double[nrPhases];
-	    for (int i=0; i<nrPhases; i++)
-		ret[i] = phases[i] + phaOff;
-	    return ret;
-	}
+	/**
+	 * Save the parameters to a configuration folder.
+	 * Creates sub-folders 'sim-param'
+	 */
+	public void saveConfig(Conf.Folder cfg) {
 
-	/** Get number of phases */
-	public int nrPha() {
-	    return nrPhases;
-	}
+		Conf.Folder fd = cfg.mk("sim-param");
 
-	/** Get phase #i, without offset applied. */
-	public double getPhase(int i) {
-	    return phases[i];
-	}
-	/** Get the phase offset */
-	public double getPhaOff(){
-	    return phaOff;
-	}
+		fd.newInt("nr-angles").setVal(nrDirs);
+		fd.newInt("nr-bands").setVal(nrBands);
+		fd.newInt("nr-phases").setVal(nrPhases);
+		fd.newStr("img-seq").setVal(imgSeq.name());
+		fd.newInt("img-size-pxl").setVal(imgSize);
+		fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
+		fd.newDbl("wiener-parameter").setVal(wienerFilterParameter);
+		fd.newDbl("apodization-cutoff").setVal(apoCutOff);
+		fd.newDbl("apodization-bend").setVal(apoBend);
+		fd.newInt("apodization-type").setVal(apoType);
+		fd.newTDE("timestamp").set(paramDate);
 
+		for (int d = 0; d < nrDirs; d++) {
+			Conf.Folder df = fd.mk(String.format("dir-%d", d));
+			SimParam.Dir dir = this.dir(d);
 
-	// --- Shifts ---
+			// df.newInt("nr-bands").setVal(dir.nrBands);
+			// df.newInt("nr-phases").setVal(dir.nrPhases);
+			df.newDbl("shift").setVal(new double[] { dir.pX * (dir.nrBands - 1), dir.pY * (dir.nrBands - 1) });
+			df.newDbl("phase-offset").setVal(dir.phaOff);
+			df.newDbl("modulations").setVal(dir.modul);
+			if (dir.hasIndividualPhases)
+				df.newDbl("phases").setVal(dir.phases);
 
-	/** Set shift px, py (from estimate for highest band). 
-	 *  Lower bands are set equidistant in between. 
-	 *  @param cor Either an array (x[0],y[1]) or 2 numbers: x,y
-	 *  */
-	public void setPxPy(double inPx, double inPy) { 
-	    pX = inPx/(nrBands-1); 
-	    pY = inPy/(nrBands-1); 
+		}
 	}
 
-	/** Return x for shift of band n. 
-	 *  Bands count from 0.*/
-	public double px(int band) {
-	    failBand(band);
-	    return pX*band;
-	}
-	
-	/** Return y for shift of band n. 
-	 *  Bands count from 0.*/
-	public double py(int band) {
-	    failBand(band);
-	    return pY*band;
-	}
-    
-	/** Return shift of band n. 
-	 *  Bands count from 0.*/
-	public double [] getPxPy(int band) {
-	    failBand(band);
-	    return new double [] { pX*band, pY*band };
-	}
+	/** Initialize a parameter set from a configuraion folder */
+	public static SimParam loadConfig(Conf.Folder cfg)
+			throws Conf.EntryNotFoundException {
 
-	/** Return angle of shift of band n (atan2). 
-	 *  Bands count from 0.*/
-	public double getPxPyAngle(int band) {
-	    failBand(band);
-	    return Math.atan2( pY*band, pX*band );
-	}
-	
-	/** Return length of shift of band n (hypot). 
-	 *  Bands count from 0.*/
-	public double getPxPyLen(int band) {
-	    failBand(band);
-	    return Math.hypot( pY*band, pX*band );
-	}
+		Conf.Folder fd = cfg.cd("sim-param");
 
-	/** Compute the estimated resolution improvement */
-	public double getEstResImprovement() {
+		// basics
+		int nDirs = fd.getInt("nr-angles").val();
+		int nBand = fd.getInt("nr-bands").val();
+		int nPhas = fd.getInt("nr-phases").val();
+		SimParam ret = new SimParam(nBand, nDirs, nPhas, true);
 
-	    if (currentOtf2D == null) {
-		throw new RuntimeException("No OTF set for SIM parameter instance");
-	    }
+		// pixel size
+		ret.setPxlSize(fd.getInt("img-size-pxl").val(),
+				fd.getDbl("microns-per-pxl").val());
 
-	    double shift	= getPxPyLen( nrBands -1) * cyclesPerMicron;
-	    double otfCutoff    = currentOtf2D.getCutoff();
+		// timestamp of config
+		if (fd.contains("timestamp")) {
+			ret.setParamTimestamp(fd.getTDE("timestamp").val());
+		}
+		// image type
+		IMGSEQ isq = IMGSEQ.fromName(fd.getStr("img-seq").val());
+		ret.setImgSeq(isq);
 
-	    return (shift+otfCutoff) / otfCutoff;
+		// filter settings
+		ret.setWienerFilter(fd.getDbl("wiener-parameter").val());
+		ret.setApoCutoff(fd.getDbl("apodization-cutoff").val());
 
-	}
+		// optional parameters that might have been stored
+		if (fd.contains("apodization-bend")) {
+			ret.setApoBend(fd.getDbl("apodization-bend").val());
+		}
+		;
 
+		if (fd.contains("apodization-type")) {
+			ret.setApoType(fd.getInt("apodization-type").val());
+		}
+		;
 
+		// for each pattern direction ...
+		for (int d = 0; d < ret.nrDirs; d++) {
+			Conf.Folder df = fd.cd(String.format("dir-%d", d));
+			SimParam.Dir dir = ret.dir(d);
 
-	// --- modulation ---
-	/** Set the modulation of band n. */
-	public boolean setModulation(int b, double m) {
-	    failBand(b);
-	    modul[b]=m;
-	    return ((m>modLowLimit)&(m<modHighLimit));
-	}
+			dir.setPxPy(df.getDbl("shift").vals()[0], df.getDbl("shift").vals()[1]);
+			dir.setPhaOff(df.getDbl("phase-offset").val());
+			double[] mod = df.getDbl("modulations").vals();
+			for (int i = 0; i < mod.length; i++)
+				dir.setModulation(i, mod[i]);
+			if (df.contains("phases"))
+				dir.setPhases(df.getDbl("phases").vals(), false);
 
-	/** Get modulations */
-	public double [] getRawModulations() {
-	    double [] ret = new double [nrBands];
-	    System.arraycopy( modul, 0, ret, 0, nrBands );
-	    return ret;
-	}
-	
-	/** Get modulations (limited to 'reasonable' range) */
-	public double [] getModulations() {
-	    double [] ret = new double [nrBands];
-	    System.arraycopy( modul, 0, ret, 0, nrBands );
-	    // if any modulation is outside of limits, return limit
-	    for (int b=0; b< nrBands; b++) {
-		if (ret[b]<modLowLimit)  ret[b] = defaultModulation;
-		if (ret[b]>modHighLimit) ret[b] = defaultModulation;
-	    }
-	    return ret;
-	}
-    
+		}
 
-
-	// -- correction factors ---
-	
-	/** Set an intensity correction factor for this angle */
-	public void setAngleIntensityFactor( double f ) {
-	    angleIntensityFactor = f;
+		// return the result
+		return ret;
 	}
 
-	/** Set a phase intensity correction factor for this angle and phase i */
-	public void setPhaseIntensityFactor( int p, double f ) {
-	    phaseIntensityFactors[p] = f;
-	}
+	// ----------------------------------------------------------------------------------
 
-	/** Get the angle intensity factor */
-	public double getAngleIntensityFactor() {
-	    return angleIntensityFactor;
-	}
+	public static enum CLIPSCALE {
+		BOTH("clip&scale"),
+		CLIP("clip zeros"),
+		NONE("raw values");
 
-	/** Get a phase intensity factor */
-	public double getPhaseIntensityFactor(int p) {
-	    return phaseIntensityFactors[p];
-	}
+		final String name;
 
-	/** Returns a combined correction quotient: 1/(angleIntesity*phaseIntensity) */
-	public double getIntensityQuotient(int p) {
-	    return 1/(angleIntensityFactor*phaseIntensityFactors[p]);
-	}
+		CLIPSCALE(String n) {
+			name = n;
+		}
 
-
-
-    }
-
-    /** check if index belongs to a band */
-    void failBand(int i) {
-	if ((i<0)||(i>=nrBands))
-	    throw new RuntimeException("Wrong band index");
-    }
-
-    // ----------------------------------------------------------------------------------
-    
-    /** get the timestamp associated with this parameter set */
-    public long getParamTimestamp() {
-	return paramDate; 
-    }
-
-    /** set the timestamp associated with this 
-     *	parameter set to current system time */
-    public void setParamTimestamp() {
-	paramDate = System.currentTimeMillis();
-    }
-    
-    /** set the timestamp associated with this parameter set */
-    public void setParamTimestamp( long ms ) {
-	paramDate = ms;
-    }
-
-
-    /** Save the parameters to a configuration folder.
-	Creates sub-folders 'sim-param'  */
-    public void saveConfig( Conf.Folder cfg ) {
-    
-	Conf.Folder fd = cfg.mk("sim-param");
-
-	fd.newInt("nr-angles").setVal(nrDirs);
-	fd.newInt("nr-bands").setVal(nrBands);
-	fd.newInt("nr-phases").setVal(nrPhases);
-	fd.newStr("img-seq").setVal( imgSeq.name());
-	fd.newInt("img-size-pxl").setVal(imgSize);
-	fd.newDbl("microns-per-pxl").setVal(micronsPerPixel);
-	fd.newDbl("wiener-parameter").setVal( wienerFilterParameter );
-	fd.newDbl("apodization-cutoff").setVal( apoCutOff );
-	fd.newDbl("apodization-bend").setVal( apoBend );
-	fd.newInt("apodization-type").setVal( apoType );
-	fd.newTDE("timestamp").set( paramDate );
-    
-	for ( int d=0; d < nrDirs; d++ ) {
-	    Conf.Folder df = fd.mk(String.format("dir-%d",d));
-	    SimParam.Dir dir = this.dir(d);
-
-	    //df.newInt("nr-bands").setVal(dir.nrBands);
-	    //df.newInt("nr-phases").setVal(dir.nrPhases);
-	    df.newDbl("shift").setVal( new double [] 
-		{dir.pX *(dir.nrBands-1) , dir.pY * (dir.nrBands-1)} );
-	    df.newDbl("phase-offset").setVal( dir.phaOff );
-	    df.newDbl("modulations").setVal( dir.modul );
-	    if ( dir.hasIndividualPhases )
-		df.newDbl("phases").setVal( dir.phases );
-
-	}
-    }
-
-    /** Initialize a parameter set from a configuraion folder */
-    public static SimParam loadConfig( Conf.Folder cfg ) 
-	throws Conf.EntryNotFoundException {
-	
-	Conf.Folder fd = cfg.cd("sim-param");
-	
-	// basics
-	int nDirs = fd.getInt("nr-angles").val();
-	int nBand = fd.getInt("nr-bands").val();
-	int nPhas = fd.getInt("nr-phases").val();
-	SimParam ret = new SimParam( nBand, nDirs, nPhas, true );
-	
-	// pixel size
-	ret.setPxlSize( fd.getInt("img-size-pxl").val(),
-			fd.getDbl("microns-per-pxl").val() );
-
-	// timestamp of config
-	if ( fd.contains("timestamp") ) {
-	    ret.setParamTimestamp( fd.getTDE("timestamp").val());
-	} 
-	// image type
-	IMGSEQ isq = IMGSEQ.fromName( fd.getStr("img-seq").val() );
-	ret.setImgSeq(isq);
-	
-	// filter settings
-	ret.setWienerFilter( fd.getDbl("wiener-parameter").val() );
-	ret.setApoCutoff( fd.getDbl("apodization-cutoff").val() );
-	
-	// optional parameters that might have been stored
-	if ( fd.contains("apodization-bend")) {
-	    ret.setApoBend( fd.getDbl("apodization-bend").val());
-	};
-
-	if ( fd.contains("apodization-type")) {
-	    ret.setApoType( fd.getInt("apodization-type").val());
-	};
-
-
-	// for each pattern direction ...
-	for ( int d=0; d < ret.nrDirs; d++ ) {
-	    Conf.Folder df = fd.cd(String.format("dir-%d",d));
-	    SimParam.Dir dir = ret.dir(d);
-	    
-	    dir.setPxPy( df.getDbl("shift").vals()[0], df.getDbl("shift").vals()[1] );
-	    dir.setPhaOff( df.getDbl("phase-offset").val());
-	    double [] mod = df.getDbl("modulations").vals();
-	    for ( int i=0; i< mod.length ; i++)
-		dir.setModulation( i, mod[i]);
-	    if ( df.contains("phases"))
-		dir.setPhases( 	df.getDbl("phases").vals(), false );
+		@Override
+		public String toString() {
+			return name;
+		}
 
 	}
 
+	public static enum IMGSEQ {
+		PAZ("p,a,z (def)"),
+		PZA("p,z,a (OMX)"),
+		ZAP("z,a,p (Zeiss)");
 
+		final String name;
 
-	// return the result
-	return ret;
-    }
+		IMGSEQ(String n) {
+			name = n;
+		}
 
+		@Override
+		public String toString() {
+			return name;
+		}
 
+		/**
+		 * Calculate position in z stack.
+		 * This currently assumes channel and timepoint being taken care of
+		 * before. TODO: See issue #13, this should be moved out of this class.
+		 * 
+		 * @param ang    Index of angle
+		 * @param pha    Index of phase
+		 * @param z      Index of z
+		 * @param angMax Number of angles
+		 * @param phaMax Number of phases
+		 * @param zMax   Number of z slices
+		 */
+		public int calcPos(int ang, int pha, int z, int angMax, int phaMax, int zMax) {
+			if ((ang >= angMax) || (pha >= phaMax) || (z >= zMax) ||
+					(ang < 0) || (pha < 0) || (z < 0))
+				throw new RuntimeException("Parameter wrong!");
 
+			switch (this) {
+				case PZA:
+					return (pha + z * phaMax + ang * phaMax * zMax);
+				case ZAP:
+					return (z + ang * zMax + pha * zMax * angMax);
+				case PAZ:
+				default:
+					return (pha + ang * phaMax + z * phaMax * angMax);
+			}
+		}
 
+		/**
+		 * Calculate position in (raw) z stack.
+		 * 
+		 * @param ang    Index of angle
+		 * @param pha    Index of phase
+		 * @param z      Index of z
+		 * @param t      Index of time
+		 * @param angMax Number of angles
+		 * @param phaMax Number of phases
+		 * @param zMax   Number of z slices
+		 */
+		public int calcPosWithTime(int ang, int pha, int z, int t, int angMax, int phaMax, int zMax) {
+			if ((ang >= angMax) || (pha >= phaMax) || (z >= zMax) ||
+					(ang < 0) || (pha < 0) || (z < 0))
+				throw new RuntimeException("Parameter wrong!");
 
-   
-    // ----------------------------------------------------------------------------------
+			switch (this) {
+				case PZA:
+					return (pha + z * phaMax + ang * phaMax * zMax +
+							phaMax * zMax * angMax * t);
+				case ZAP:
+					return (z + ang * zMax + pha * zMax * angMax +
+							phaMax * zMax * angMax * t);
+				case PAZ:
+				default:
+					return (pha + ang * phaMax + z * phaMax * angMax +
+							phaMax * zMax * angMax * t);
+			}
+		}
 
-    public static enum CLIPSCALE {
-	BOTH("clip&scale"),
-	CLIP("clip zeros"),
-	NONE("raw values");
+		/** Return a default SIM parameter set */
+		public SimParam getParam() {
+			switch (this) {
+				case PZA:
+					return SimParam.create(3, 3, 5, 512, 0.082, null);
+				case ZAP:
+					return SimParam.create(3, 5, 5, 1024, 0.064, null);
+				default:
+					return null;
+			}
+		}
 
-	final String name;
+		/** Return the ENUM from name */
+		public static IMGSEQ fromName(String n) {
+			for (IMGSEQ i : IMGSEQ.values())
+				if (n.trim().equals(i.name()))
+					return i;
+			return null;
+		}
 
-	CLIPSCALE(String n) {
-	    name=n;
 	}
 
-	@Override 
-	public String toString() {
-	    return name;
+	// ----------------------------------------------------------------------------------
+
+	/** update the internal timestamp to signal changes, return the timestamp */
+	public long signalRuntimeChange() {
+		runtimeTimestamp = System.currentTimeMillis();
+		return runtimeTimestamp;
 	}
 
-    }
-
-    public static enum IMGSEQ {
-	PAZ("p,a,z (def)"), 
-	PZA("p,z,a (OMX)"), 
-	ZAP("z,a,p (Zeiss)");
-	
-	final String name;
-    
-	IMGSEQ(String n) {
-	    name=n;
-	}
-	
-	@Override 
-	public String toString() {
-	    return name;
+	/**
+	 * returns the last time 'signalRuntimeChange' was called, as
+	 * System.currentTimeMillis
+	 */
+	public long getRuntimeTimestamp() {
+		return runtimeTimestamp;
 	}
 
-	/** Calculate position in z stack.
-	 *  This currently assumes channel and timepoint being taken care of
-	 *  before. TODO: See issue #13, this should be moved out of this class.
-	 *  @param ang Index of angle
-	 *  @param pha Index of phase
-	 *  @param z   Index of z
-	 *  @param angMax   Number of angles
-	 *  @param phaMax   Number of phases
-	 *  @param zMax	    Number of z slices */
-	public int calcPos( int ang, int pha, int z, int angMax, int phaMax, int zMax ) {
-	    if (( ang>=angMax ) || ( pha >= phaMax ) || ( z >= zMax ) || 
-		( ang <0 ) || ( pha < 0) || ( z < 0 ))
-		throw new RuntimeException("Parameter wrong!");
-	    
-	    switch(this) {
-		case PZA: return ( pha +   z*phaMax  + ang*phaMax*zMax );
-		case ZAP: return (  z  + ang*zMax    + pha*zMax*angMax );
-		case PAZ: 
-		default:
-			  return ( pha + ang*phaMax  + z*phaMax*angMax );
-	    }
-	}
-	
-	/** Calculate position in (raw) z stack.
-	 *  @param ang Index of angle
-	 *  @param pha Index of phase
-	 *  @param z   Index of z
-	 *  @param t   Index of time
-	 *  @param angMax   Number of angles
-	 *  @param phaMax   Number of phases
-	 *  @param zMax	    Number of z slices */
-	public int calcPosWithTime( int ang, int pha, int z, int t, int angMax, int phaMax, int zMax ) {
-	    if (( ang>=angMax ) || ( pha >= phaMax ) || ( z >= zMax ) || 
-		( ang <0 ) || ( pha < 0) || ( z < 0 ))
-		throw new RuntimeException("Parameter wrong!");
-	    
-	    switch(this) {
-		case PZA: return ( pha +   z*phaMax  + ang*phaMax*zMax + 
-		    phaMax*zMax*angMax * t );
-		case ZAP: return (  z  + ang*zMax    + pha*zMax*angMax +
-		    phaMax*zMax*angMax * t );
-		case PAZ: 
-		default:
-			  return ( pha + ang*phaMax  + z*phaMax*angMax +
-		    phaMax*zMax*angMax * t );
-	    }
+	/**
+	 * returns true if the timestamp provided is older than the stamp generated
+	 * by the last call to singalRuntimeChange.
+	 */
+	public boolean compareRuntimeTimestamp(long timestamp) {
+		return ((timestamp - runtimeTimestamp) < 0);
 	}
 
-	/** Return a default SIM parameter set */
-	public SimParam getParam() {
-	    switch(this) {
-		case PZA: return SimParam.create(3,3,5,512,0.082,null);
-		case ZAP: return SimParam.create(3,5,5,1024,0.064,null);
-		default:  return null;
-	    }
-	}
-	
-	/** Return the ENUM from name */
-	public static IMGSEQ fromName( String n ){
-	    for ( IMGSEQ i : IMGSEQ.values() )
-		if ( n.trim().equals( i.name()) )
-		    return i;
-	    return null;
+	// ----------------------------------------------------------------------------------
+
+	/** Return width */
+	@Override
+	public int vectorWidth() {
+		return imgSize;
 	}
 
-
-
-    }
-
-    // ----------------------------------------------------------------------------------
-
-    /** update the internal timestamp to signal changes, return the timestamp */
-    public long signalRuntimeChange() {
-	runtimeTimestamp = System.currentTimeMillis();
-	return runtimeTimestamp;
-    }
-
-    /** returns the last time 'signalRuntimeChange' was called, as
-     * System.currentTimeMillis */
-    public long getRuntimeTimestamp() {
-	return runtimeTimestamp;
-    }
-    
-    /** returns true if the timestamp provided is older than the stamp generated
-     * by the last call to singalRuntimeChange. */ 
-    public boolean compareRuntimeTimestamp( long timestamp ) {
-	return (( timestamp - runtimeTimestamp ) < 0);
-    }
-
-
-    // ----------------------------------------------------------------------------------
-    
-    /** Return width */
-    @Override public int vectorWidth() { return imgSize; }
-    
-    /** Return height */
-    @Override public int vectorHeight() { return imgSize; }
-    
-    /** Return height */
-    @Override public int vectorDepth() { return stackSize ; }
-
-    /** Returns a multi-line, human-readable output of parameters */
-    public String prettyPrint(boolean phaInDeg) {
-	final double pf = ((phaInDeg)?(180/Math.PI):(1));
-	String ret = "--- SIM parameter summary ---\n";
-	ret += String.format("pxl %7.5f microns (freq pxl %8.6f cycles/micron)\n",
-	     micronsPerPixel, cyclesPerMicron);
-	    
-	ret += String.format("Nr bands: %d, timestamp: %s\n ------\n", 
-	    nrBands, Tool.readableTimeStampMillis(paramDate, true));
-	
-	for ( Dir d : directions ) {
-	    int b = d.nrBand()-1; 
-	    ret += String.format("Nr bands: %d, shift of outer-most band:\n", b);
-	    ret += String.format("px: %6.3f py: %6.3f (len %6.3f) \n",
-		d.px(b), d.py(b), Math.sqrt(d.px(b)*d.px(b)+d.py(b)*d.py(b)));
-	    ret += String.format("phases (%s) [ ",((phaInDeg)?("deg"):("rad")) );
-	    for (double p : d.getPhases() )
-		ret+=String.format("%6.3f ", p*pf);
-	    ret += " ]\n Modulation: [ ";
-	    for (double m: d.getModulations() ) {
-		ret+=String.format("%6.3f ",m);
-	    }
-	    ret += " ]\n ----\n";
-	}
-	return ret;
-    }
-    
-    // ----------------------------------------------------------------------------------
-
-    /** For testing input / output to CONF */
-    public static void main( String args [] ) throws Exception {
-
-	if (args.length<2) {
-	    System.out.println("Use: i - Input, o - Output [filename] ");
-	    return;
+	/** Return height */
+	@Override
+	public int vectorHeight() {
+		return imgSize;
 	}
 
-	SimParam foo = SimParam.create(3,4,5,512,0.082, null);
-
-	// output
-	if (args[0].equals("o")) {
-	    Conf cfg = new Conf("fairsim");
-	    foo.saveConfig( cfg.r() );
-	    cfg.saveFile(args[1]);
+	/** Return height */
+	@Override
+	public int vectorDepth() {
+		return stackSize;
 	}
-	
-	// input
-	if (args[0].equals("i")) {
-	    Conf cfg = Conf.loadFile(args[1]);
-	    SimParam bar = loadConfig(cfg.r());
-	    System.out.println( bar.prettyPrint(true));
-	}
-	
 
-	Tool.shutdown();
-    }
+	/** Returns a multi-line, human-readable output of parameters */
+	public String prettyPrint(boolean phaInDeg) {
+		final double pf = ((phaInDeg) ? (180 / Math.PI) : (1));
+		String ret = "--- SIM parameter summary ---\n";
+		ret += String.format("pxl %7.5f microns (freq pxl %8.6f cycles/micron)\n",
+				micronsPerPixel, cyclesPerMicron);
+
+		ret += String.format("Nr bands: %d, timestamp: %s\n ------\n",
+				nrBands, Tool.readableTimeStampMillis(paramDate, true));
+
+		for (Dir d : directions) {
+			int b = d.nrBand() - 1;
+			ret += String.format("Nr bands: %d, shift of outer-most band:\n", b);
+			ret += String.format("px: %6.3f py: %6.3f (len %6.3f) \n",
+					d.px(b), d.py(b), Math.sqrt(d.px(b) * d.px(b) + d.py(b) * d.py(b)));
+			ret += String.format("phases (%s) [ ", ((phaInDeg) ? ("deg") : ("rad")));
+			for (double p : d.getPhases())
+				ret += String.format("%6.3f ", p * pf);
+			ret += " ]\n Modulation: [ ";
+			for (double m : d.getModulations()) {
+				ret += String.format("%6.3f ", m);
+			}
+			ret += " ]\n ----\n";
+		}
+		return ret;
+	}
+
+	// ----------------------------------------------------------------------------------
+
+	/** For testing input / output to CONF */
+	public static void main(String args[]) throws Exception {
+
+		if (args.length < 2) {
+			System.out.println("Use: i - Input, o - Output [filename] ");
+			return;
+		}
+
+		SimParam foo = SimParam.create(3, 4, 5, 512, 0.082, null);
+
+		// output
+		if (args[0].equals("o")) {
+			Conf cfg = new Conf("fairsim");
+			foo.saveConfig(cfg.r());
+			cfg.saveFile(args[1]);
+		}
+
+		// input
+		if (args[0].equals("i")) {
+			Conf cfg = Conf.loadFile(args[1]);
+			SimParam bar = loadConfig(cfg.r());
+			System.out.println(bar.prettyPrint(true));
+		}
+
+		Tool.shutdown();
+	}
 
 }
-
-

@@ -41,301 +41,284 @@ import ij.plugin.PlugIn;
 import ij.IJ;
 import ij.ImagePlus;
 
-
 public class FairSim_ImageJplugin implements PlugIn {
 
-    /** Called by Fiji to start the plugin */
-    public void run(String inputarg) {
+	/** Called by Fiji to start the plugin */
+	public void run(String inputarg) {
 
-	SimParam sp=null;
-	String [] args = inputarg.split("-");
+		SimParam sp = null;
+		String[] args = inputarg.split("-");
 
-	// amount and redirection of output
-	if ( args.length>1 && args[1].equals("log")) 
-	    setLog(true);
-	else
-	    setLog(false);
+		// amount and redirection of output
+		if (args.length > 1 && args[1].equals("log"))
+			setLog(true);
+		else
+			setLog(false);
 
-	// set access to ImageJ key/value store
-	Tool.setKeyValueStore(new KeyValueProperties());
+		// set access to ImageJ key/value store
+		Tool.setKeyValueStore(new KeyValueProperties());
 
-	// show the 'about' window
-	if (args[0].equals("about")) {
-	    showAbout();
-	    return;
-	}
-
-
-	boolean fromFile = false;
-
-	// create new reconstruction, or load
-	if (args[0].equals("new"))
-	    sp = FairSimGUI.newSpDialog( IJ.getInstance());
-
-	if (args[0].equals("load")) {
-	    try {
-		sp = FairSimGUI.fromFileChooser( IJ.getInstance() );
-		fromFile = true;
-	    } catch (Exception e ) {
-		JOptionPane.showMessageDialog( IJ.getInstance(),
-		 "Problem loading file\n"+e, "fairSIM laod file",
-		 JOptionPane.ERROR_MESSAGE);
-	    }
-
-	}
-
-
-	if (args[0].equals("createDefaultConfig")) {
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Create new fairsim default values config file");
-		int returnVal = fc.showSaveDialog( IJ.getInstance());
-	
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			String fname = fc.getSelectedFile().getAbsolutePath();
-			Conf cfg = new Conf("fairsim-default-values");
-			try {
-				cfg.saveFile(fname);
-			} catch (Conf.SomeIOException e) {
-				JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
-				JOptionPane.ERROR_MESSAGE);
-			}
-			Tool.tell("New default config created: "+fname);
-			Tool.setString("default-values-file",fname);
-		}
-	
-	}
-	if (args[0].equals("selectDefaultConfig")) {
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Select fairsim default values config file");
-		int returnVal = fc.showOpenDialog( IJ.getInstance());
-	
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			String fname = fc.getSelectedFile().getAbsolutePath();
-			try {
-				Conf cfg = Conf.loadFile(fname);
-			} catch (Conf.SomeIOException e) {
-				JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
-		   		JOptionPane.ERROR_MESSAGE);
-	   		}
-			IJ.log("[fairSIM] New default config selected: "+fname);
-			Tool.setString("default-values-file",fname);
-		}
-	
-	}
-
-	if (args[0].equals("clearDefaultConfig")) {
-		Tool.setString("default-values-file", null);
-		IJ.log("[fairSIM] Default config cleared");
-	}
-
-	if (args[0].equals("resultSummary")) {
-
-		if (args.length<2 || (!(args[1].equals("show") || args[1].equals("hide") ))) {
-			Tool.error("Malformed plugin call",true);
+		// show the 'about' window
+		if (args[0].equals("about")) {
+			showAbout();
 			return;
 		}
 
-		boolean summary = true;
-		if (args[1].equals("hide"))
-			summary = false;
+		boolean fromFile = false;
 
-		Conf cfg = Tool.getDefaultConfig();
-		if (cfg!=null) {
-			cfg.r().newBool("show-result-summary").setVal(summary);
-			Tool.writeDefaultConfig(cfg);
-			Tool.tell("fairSIM "+((summary)?("show"):("hide"))+"s result summary");
+		// create new reconstruction, or load
+		if (args[0].equals("new"))
+			sp = FairSimGUI.newSpDialog(IJ.getInstance());
+
+		if (args[0].equals("load")) {
+			try {
+				sp = FairSimGUI.fromFileChooser(IJ.getInstance());
+				fromFile = true;
+			} catch (Exception e) {
+				JOptionPane.showMessageDialog(IJ.getInstance(),
+						"Problem loading file\n" + e, "fairSIM laod file",
+						JOptionPane.ERROR_MESSAGE);
+			}
+
+		}
+
+		if (args[0].equals("createDefaultConfig")) {
+			JFileChooser fc = new JFileChooser();
+			fc.setDialogTitle("Create new fairsim default values config file");
+			int returnVal = fc.showSaveDialog(IJ.getInstance());
+
+			if (returnVal == JFileChooser.APPROVE_OPTION) {
+				String fname = fc.getSelectedFile().getAbsolutePath();
+				Conf cfg = new Conf("fairsim-default-values");
+				try {
+					cfg.saveFile(fname);
+				} catch (Conf.SomeIOException e) {
+					JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
+							JOptionPane.ERROR_MESSAGE);
+				}
+				Tool.tell("New default config created: " + fname);
+				Tool.setString("default-values-file", fname);
+			}
+
+		}
+		if (args[0].equals("selectDefaultConfig")) {
+			JFileChooser fc = new JFileChooser();
+			fc.setDialogTitle("Select fairsim default values config file");
+			int returnVal = fc.showOpenDialog(IJ.getInstance());
+
+			if (returnVal == JFileChooser.APPROVE_OPTION) {
+				String fname = fc.getSelectedFile().getAbsolutePath();
+				try {
+					Conf cfg = Conf.loadFile(fname);
+				} catch (Conf.SomeIOException e) {
+					JOptionPane.showMessageDialog(IJ.getInstance(), "IO Error", e.toString(),
+							JOptionPane.ERROR_MESSAGE);
+				}
+				IJ.log("[fairSIM] New default config selected: " + fname);
+				Tool.setString("default-values-file", fname);
+			}
+
+		}
+
+		if (args[0].equals("clearDefaultConfig")) {
+			Tool.setString("default-values-file", null);
+			IJ.log("[fairSIM] Default config cleared");
+		}
+
+		if (args[0].equals("resultSummary")) {
+
+			if (args.length < 2 || (!(args[1].equals("show") || args[1].equals("hide")))) {
+				Tool.error("Malformed plugin call", true);
+				return;
+			}
+
+			boolean summary = true;
+			if (args[1].equals("hide"))
+				summary = false;
+
+			Conf cfg = Tool.getDefaultConfig();
+			if (cfg != null) {
+				cfg.r().newBool("show-result-summary").setVal(summary);
+				Tool.writeDefaultConfig(cfg);
+				Tool.tell("fairSIM " + ((summary) ? ("show") : ("hide")) + "s result summary");
+			} else {
+				Tool.error("No fairSIM config file selected", false);
+			}
+		}
+
+		if (sp == null)
+			return;
+
+		// create the main GUI
+		FairSimGUI a = new FairSimGUI(
+				sp,
+				new ImageOpener(),
+				DisplayWrapper.getFactory(),
+				fromFile);
+
+	}
+
+	/** set the logger (and amount) */
+	static void setLog(boolean full) {
+		if (full) {
+			Tool.setLogger(new Tool.Logger() {
+				@Override
+				public void writeTrace(String w) {
+					IJ.log("[fairSIM] " + w);
+				}
+
+				@Override
+				public void writeError(final String w, boolean fatal) {
+					IJ.log("[fairSIM ERROR] " + w);
+					if (fatal)
+						IJ.error(w);
+				}
+
+				@Override
+				public void writeShortMessage(String w) {
+					IJ.showStatus(w);
+					IJ.log("(fairSIM) " + w);
+				}
+
+			});
+			Tool.trace("fairSIM started with log output");
 		} else {
-			Tool.error("No fairSIM config file selected", false);
+			Tool.setLogger(new Tool.Logger() {
+				@Override
+				public void writeTrace(String w) {
+
+				}
+
+				@Override
+				public void writeShortMessage(String w) {
+					IJ.showStatus(w);
+				}
+
+				@Override
+				public void writeError(final String w, boolean fatal) {
+					IJ.log("[fairSIM ERROR] " + w);
+					if (fatal)
+						IJ.error(w);
+				}
+			});
+
 		}
 	}
 
+	/** open the 'about' window */
+	void showAbout() {
 
+		InputStream is1 = getClass().getResourceAsStream("/org/fairsim/resources/about.html");
+		InputStream is2 = getClass().getResourceAsStream("/org/fairsim/git-version.txt");
 
-	if (sp==null)
-	    return;
-
-	// create the main GUI
-	FairSimGUI a =  new FairSimGUI( 
-	    sp,
-	    new ImageOpener(),
-	    DisplayWrapper.getFactory(),
-	    fromFile
-	    );
-	    
-    }
-
-    /** set the logger (and amount) */
-    static void setLog(boolean full) {
-	if (full) {
-	    Tool.setLogger( new Tool.Logger () {
-		@Override
-		public void writeTrace(String w) {
-		    IJ.log("[fairSIM] "+w);
-		}
-		@Override
-		public void writeError(final String w, boolean fatal) {
-		    IJ.log("[fairSIM ERROR] "+w);
-		    if (fatal)
-			IJ.error(w);
-		}
-		@Override
-		public void writeShortMessage(String w) {
-		    IJ.showStatus(w);
-			IJ.log("(fairSIM) " + w);
+		boolean mavenBuild = false;
+		if (is2 == null) {
+			is2 = getClass().getResourceAsStream("/org/fairsim/git-version-maven.txt");
+			mavenBuild = true;
 		}
 
-	    });
-	    Tool.trace("fairSIM started with log output");
-	} else {
-	    Tool.setLogger( new Tool.Logger () {
-		@Override
-		public void writeTrace(String w) {
-		
+		if (is1 == null) {
+			JOptionPane.showMessageDialog(IJ.getInstance(),
+					"About information not found", "about fairSIM",
+					JOptionPane.WARNING_MESSAGE);
+			return;
 		}
-		@Override
-		public void writeShortMessage(String w) {
-		    IJ.showStatus(w);
+
+		// get the about text
+		BufferedReader br = new BufferedReader(new InputStreamReader(is1));
+		StringBuffer text = new StringBuffer();
+		String line;
+		try {
+			while ((line = br.readLine()) != null)
+				text.append(line);
+		} catch (java.io.IOException e) {
+			text = new StringBuffer("failed to read about information");
 		}
-		@Override
-		public void writeError(final String w, boolean fatal) {
-		    IJ.log("[fairSIM ERROR] "+w);
-		    if (fatal)
-			IJ.error(w);
+
+		// get the version information
+		String gitCommit = "not found";
+		String version = "not found";
+		String buildType = (mavenBuild) ? ("(maven build)") : ("(standard build)");
+		if (is2 != null) {
+			BufferedReader br2 = new BufferedReader(new InputStreamReader(is2));
+			try {
+				gitCommit = br2.readLine();
+				version = br2.readLine();
+			} catch (java.io.IOException e) {
+				gitCommit = "n/a";
+				version = "unknown";
+			}
 		}
-	    });
+
+		// String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
+
+		String htmlContent = "<html>" + text + "<h2>Version</h2>" +
+				"version: " + version.substring(0, Math.min(12, version.length())) +
+				"<br />git build id: " +
+				gitCommit.substring(0, Math.min(10, gitCommit.length())) + " " + buildType +
+				"<br /><br />Please include version and git id when reporting bugs.</html>";
+
+		JEditorPane jep = new JEditorPane("text/html", htmlContent);
+		jep.setEditable(false);
+
+		jep.addHyperlinkListener(new HyperlinkListener() {
+			public void hyperlinkUpdate(HyperlinkEvent e) {
+
+				if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED
+						&& Desktop.isDesktopSupported()) {
+
+					try {
+						Desktop.getDesktop().browse(e.getURL().toURI());
+					} catch (Exception ex) {
+						Tool.trace("Could not open URL: " + ex);
+					}
+				}
+
+			}
+		});
+
+		JOptionPane.showMessageDialog(IJ.getInstance(),
+				jep,
+				"About fairSIM",
+				JOptionPane.INFORMATION_MESSAGE);
 
 	}
-    }
 
-    /** open the 'about' window */
-    void showAbout() {
+	/** for testing */
+	public static void main(String[] arg) {
 
-	InputStream is1 = getClass().getResourceAsStream("/org/fairsim/resources/about.html");
-	InputStream is2 = getClass().getResourceAsStream("/org/fairsim/git-version.txt");
-
-	boolean mavenBuild = false;
-	if (is2==null) {
-	    is2 = getClass().getResourceAsStream("/org/fairsim/git-version-maven.txt");
-	    mavenBuild = true;
-	}
-	
-	if ( is1 == null ) {
-		JOptionPane.showMessageDialog( IJ.getInstance(),
-		 "About information not found", "about fairSIM",
-		 JOptionPane.WARNING_MESSAGE);
-		return;
-	}   
-
-	// get the about text	
-	BufferedReader br = new BufferedReader( new InputStreamReader( is1 ) );
-	StringBuffer text = new StringBuffer();
-	String line;
-	try {
-	    while ( (line = br.readLine()) != null )
-		text.append( line );
-	} catch ( java.io.IOException e ) {
-	    text = new StringBuffer("failed to read about information"); 
-	}
-
-	// get the version information
-	String gitCommit = "not found";
-	String version   = "not found";
-	String buildType = (mavenBuild)?("(maven build)"):("(standard build)");
-	if ( is2 != null ) {
-	    BufferedReader br2 = new BufferedReader( new InputStreamReader( is2 ) );
-	    try {
-		gitCommit = br2.readLine();
-		version   = br2.readLine();
-	    } catch ( java.io.IOException e ) {
-		gitCommit = "n/a";   
-		version = "unknown";
-	    }
-	}
-
-
-	//String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
-
-	String htmlContent = 
-	    "<html>"+text+"<h2>Version</h2>"+
-	    "version: "+version.substring(0, Math.min(12, version.length()))+
-	    "<br />git build id: "+
-	    gitCommit.substring(0, Math.min(10, gitCommit.length()))+" "+buildType+
-	    "<br /><br />Please include version and git id when reporting bugs.</html>";
-	
-	JEditorPane jep = new JEditorPane("text/html", htmlContent);
-	jep.setEditable(false);
-
-	jep.addHyperlinkListener( new HyperlinkListener() {
-	    public void hyperlinkUpdate( HyperlinkEvent e ) {
-
-		if ( e.getEventType() == HyperlinkEvent.EventType.ACTIVATED 
-		    && Desktop.isDesktopSupported() ) {
-		    
-		    try {
-			Desktop.getDesktop().browse( e.getURL().toURI());
-		    } catch ( Exception ex ) {
-			Tool.trace("Could not open URL: "+ex);
-		    }
+		if (arg.length < 1) {
+			FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
+			pl.showAbout();
+			return;
 		}
-		
-	    }
-	});
 
-	JOptionPane.showMessageDialog( IJ.getInstance(),
-	    jep,
-	    "About fairSIM",
-	    JOptionPane.INFORMATION_MESSAGE);
-    
-    }
+		new ij.ImageJ(ij.ImageJ.EMBEDDED);
 
+		// TODO: Clean this up, written in a hurry in 2025
+		if (arg[0].equals("test") && arg.length >= 2) {
 
-	
-	
-	
+			if (arg.length >= 3) {
+				ImagePlus ip = IJ.openImage(arg[0]);
+				ip.show();
+			}
 
-	
-		
-
-	
-
-
-    /** for testing */
-    public static void main( String [] arg ) {
-
-	if (arg.length<1) {
-	    FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
-	    pl.showAbout();
-	    return;
-	}
-	
-	new ij.ImageJ( ij.ImageJ.EMBEDDED );
-	
-	// TODO: Clean this up, written in a hurry in 2025
-	if (arg[0].equals("test") && arg.length>=2 ) {
-		
-		if (arg.length>=3) {
-			ImagePlus ip = IJ.openImage(arg[0]);
-			ip.show();
+			FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
+			pl.run(arg[1]);
+			return;
 		}
-		
-		FairSim_ImageJplugin pl = new FairSim_ImageJplugin();
-		pl.run(arg[1]);
-		return;
-	} 
-	
-	ImagePlus ip = IJ.openImage(arg[0]);
-	ip.show();
 
-	// setup for testing w. OMX data
-	SimParam sp = SimParam.create(3,3,5,512, 0.078, null);
-	sp.setImgSeq( SimParam.IMGSEQ.PZA );
+		ImagePlus ip = IJ.openImage(arg[0]);
+		ip.show();
 
-	FairSimGUI a =  new FairSimGUI( 
-	    sp, new ImageOpener(), 
-	    DisplayWrapper.getFactory(),
-	    false
-	    );
-    }
+		// setup for testing w. OMX data
+		SimParam sp = SimParam.create(3, 3, 5, 512, 0.078, null);
+		sp.setImgSeq(SimParam.IMGSEQ.PZA);
 
+		FairSimGUI a = new FairSimGUI(
+				sp, new ImageOpener(),
+				DisplayWrapper.getFactory(),
+				false);
+	}
 
 }
