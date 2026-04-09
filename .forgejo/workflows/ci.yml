@@ -28,8 +28,8 @@ jobs:
           if-no-files-found: error
       - name: Rename the JAR file
         run: |
-          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ) ./fairSIM.jar
-          ls -lah ./fairSIM.jar
+          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ) ./fairSIM_plugin.jar
+          ls -lah ./fairSIM_plugin.jar
       - name: Verify Package Publish Token
         run: |
           if [ -z "${{ secrets.FAIRSIM_PACKAGE_TOKEN }}" ]; then
@@ -40,14 +40,14 @@ jobs:
 
       - name: Upload plain JAR to Forgejo Packages
         run: |
-          if [ -f ./fairSIM.jar ]; then
+          if [ -f ./fairSIM_plugin.jar ]; then
             COMMIT_HASH=$(git rev-parse --short HEAD)
             BRANCH_NAME=$(basename $FORGEJO_REF)
             REPO_NAME=$(basename $FORGEJO_REPOSITORY)
             PACKAGE_NAME=${REPO_NAME}_${BRANCH_NAME}
-            curl -v --upload-file ./fairSIM.jar \
+            curl -v --upload-file ./fairSIM_plugin.jar \
               -H "Authorization: Bearer ${{ secrets.FAIRSIM_PACKAGE_TOKEN }}" \
-              $FORGEJO_SERVER_URL/api/packages/fairSIM/generic/$PACKAGE_NAME/$COMMIT_HASH/fairSIM.jar
+              $FORGEJO_SERVER_URL/api/packages/fairSIM/generic/$PACKAGE_NAME/$COMMIT_HASH/fairSIM_plugin.jar
           else
             echo "JAR file not found!" && exit 1
           fi
