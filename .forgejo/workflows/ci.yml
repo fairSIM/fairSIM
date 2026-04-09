@@ -1,0 +1,53 @@
+name: Build and Package
+
+on:
+  push:
+    branches:
+      - develop
+      - develop-3D-SIM
+  pull_request:
+
+jobs:
+  build:
+    runs-on: linux-java 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: List files
+        run: ls -la
+      - name: Build with Maven
+        run: mvn compile
+      - name: Package with Maven
+        run: mvn package
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: fairSIM-jar
+          path: target/*.jar
+          if-no-files-found: error
+      - name: Rename the JAR file
+        run: |
+          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ) ./fairSIM.jar
+          ls -lah ./fairSIM.jar
+      - name: Verify Package Publish Token
+        run: |
+          if [ -z "${{ secrets.FAIRSIM_PACKAGE_TOKEN }}" ]; then
+            echo "Error: FAIRSIM_PACKAGE_TOKEN secret is not set." && exit 1
+          else
+            echo "FAIRSIM_PACKAGE_TOKEN secret is set."
+          fi
+
+      - name: Upload plain JAR to Forgejo Packages
+        run: |
+          if [ -f ./fairSIM.jar ]; then
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+            BRANCH_NAME=$(basename $FORGEJO_REF)
+            REPO_NAME=$(basename $FORGEJO_REPOSITORY)
+            PACKAGE_NAME=${REPO_NAME}_${BRANCH_NAME}
+            curl -v --upload-file ./fairSIM.jar \
+              -H "Authorization: Bearer ${{ secrets.FAIRSIM_PACKAGE_TOKEN }}" \
+              $FORGEJO_SERVER_URL/api/packages/fairSIM/generic/$PACKAGE_NAME/$COMMIT_HASH/fairSIM.jar
+          else
+            echo "JAR file not found!" && exit 1
+          fi
