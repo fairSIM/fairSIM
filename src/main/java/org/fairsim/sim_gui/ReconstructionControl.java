@@ -177,19 +177,72 @@ public class ReconstructionControl {
 		p1.add(wienerParam);
 		p1.add(Box.createRigidArea(new Dimension(0, 5)));
 
-		// APO cutoff
+		// APO shape
+		final Tiles.LComboBox<OtfProvider.APO_SHAPE> apoShape = new Tiles.LComboBox<OtfProvider.APO_SHAPE>(
+				"APO shape", OtfProvider.APO_SHAPE.values());
+		apoShape.setSelectedItem(simParam.getApoShape());
+		apoShape.box.setToolTipText("<html>Shape of the apodization<br />"
+				+ "elliptical / stadium allow a different cutoff along vs. across<br />"
+				+ "'APO angle', for data with resolution enhancement along one axis only");
+
+		p1.add(apoShape);
+		p1.add(Box.createRigidArea(new Dimension(0, 5)));
+
+		// APO cutoff, along the main axis, with a button to set it from the
+		// actual resolution enhancement measured for the current parameters
 		final Tiles.LNSpinner apoCutOff = new Tiles.LNSpinner("APO cutoff",
 				simParam.getApoCutoff(), 1.0, 2.5, 0.1);
 		apoCutOff.spr.setToolTipText("<html>Cutoff freq. of the apodization<br />"
 				+ "as factor of OTF cutoff.<br /> Set below 2 if the"
 				+ "dataset does not reach full resolution enhancement");
 
+		JButton apoCutOffAuto = new JButton("auto");
+		apoCutOffAuto.setToolTipText("<html>Set to the resolution enhancement<br />"
+				+ "of the direction with the highest measured shift");
+		apoCutOffAuto.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (simParam.otf() == null)
+					return;
+				double best = 0;
+				for (int d = 0; d < simParam.nrDir(); d++)
+					best = Math.max(best, simParam.dir(d).getEstResImprovement());
+				apoCutOff.setVal(best);
+			}
+		});
+
+		JPanel apoCutOffRow = new JPanel();
+		apoCutOffRow.setLayout(new BoxLayout(apoCutOffRow, BoxLayout.LINE_AXIS));
+		apoCutOffRow.add(apoCutOff);
+		apoCutOffRow.add(apoCutOffAuto);
+
+		// APO cutoff, across the main axis (elliptical / stadium shapes only)
+		final Tiles.LNSpinner apoCutOffMinor = new Tiles.LNSpinner("APO cutoff (minor)",
+				simParam.getApoCutoffMinor(), 1.0, 2.5, 0.1);
+		apoCutOffMinor.spr.setToolTipText("<html>Cutoff freq. of the apodization across 'APO angle'<br />"
+				+ "as factor of OTF cutoff. Only used for elliptical / stadium shape.");
+
+		p1.add(apoCutOffRow);
+		p1.add(apoCutOffMinor);
+		p1.add(Box.createRigidArea(new Dimension(0, 5)));
+
+		// APO angle, pre-populated from the measured pattern angle (dir 0,
+		// highest band) if available, in degrees
+		double apoAngleDefault = Math.toDegrees(simParam.dir(0).getPxPyAngle(simParam.nrBand() - 1));
+		final Tiles.LNSpinner apoAngle = new Tiles.LNSpinner("APO angle",
+				apoAngleDefault, -180, 180, 1);
+		apoAngle.spr.setToolTipText("<html>Rotation angle of the apodization's main axis, in degrees<br />"
+				+ "Only used for elliptical / stadium shape. Pre-filled with the<br />"
+				+ "pattern angle of direction 0, once parameter estimation has run.");
+
+		p1.add(apoAngle);
+		p1.add(Box.createRigidArea(new Dimension(0, 5)));
+
+		// APO bend
 		final Tiles.LNSpinner apoBend = new Tiles.LNSpinner("APO bend",
 				simParam.getApoBend(), 0.1, 2.0, 0.1);
 		apoBend.spr.setToolTipText("<html>Curvature of the apoditazion<br />"
 				+ "Changes the medium frequency response of the reconstruction.");
 
-		p1.add(apoCutOff);
 		p1.add(apoBend);
 		p1.add(Box.createRigidArea(new Dimension(0, 5)));
 
@@ -209,7 +262,10 @@ public class ReconstructionControl {
 				simParam.setFilterStyle(filterTypeBox.getSelectedItem());
 				simParam.setWienerFilter(wienerParam.getVal());
 				simParam.setApoCutoff(apoCutOff.getVal());
+				simParam.setApoCutoffMinor(apoCutOffMinor.getVal());
 				simParam.setApoBend(apoBend.getVal());
+				simParam.setApoShape(apoShape.getSelectedItem());
+				simParam.setApoAngle(Math.toRadians(apoAngle.getVal()));
 				simParam.setRLiterations((int) rlInterationCount.getVal());
 				simParam.setClipScale(imgScaleBox.getSelectedItem());
 				dialog.dispose();

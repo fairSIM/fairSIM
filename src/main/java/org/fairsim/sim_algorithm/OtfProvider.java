@@ -64,6 +64,33 @@ public class OtfProvider {
 
 	};
 
+	/** Shape of the apodization filter, see {@link #writeApoVector} */
+	public enum APO_SHAPE {
+		ISOTROPIC("isotropic"),
+		ELLIPTICAL("elliptical"),
+		STADIUM("stadium");
+
+		private final String id;
+
+		private APO_SHAPE(String s) {
+			id = s;
+		}
+
+		public static APO_SHAPE fromString(String name) {
+			APO_SHAPE[] As = APO_SHAPE.values();
+			for (int i = 0; i < As.length; i++) {
+				if (As[i].id.equalsIgnoreCase(name))
+					return As[i];
+			}
+			return APO_SHAPE.ISOTROPIC;
+		}
+
+		public String toString() {
+			return id;
+		}
+
+	};
+
 	// vals[band][idx], where idx = cycles / cyclesPerMicron
 	private Cplx.Float[][] vals = null;
 	private Cplx.Float[][] valsAtt = null;
@@ -565,17 +592,41 @@ public class OtfProvider {
 	// ------ Other vectors ------
 
 	/**
-	 * Creates an apotization vector.
+	 * Creates an isotropic apotization vector.
 	 * This yields an ideal OTF, with some 'bend' (augmenting medium frequencies),
 	 * and a new cutoff value. Usually, cutoff is set to 2x original cutoff.
 	 * Bend is used as "apo = idealOtf^bend"
-	 * 
+	 *
 	 * @param vec    Vector to write to
 	 * @param bend   Bend to augment medium frequencies, 0..1, 1 for ideal OTF
 	 * @param cutOff Cutoff, as factor to the OTF cutoff (so e.g. 2 for 2x lateral
 	 *               improvement)
 	 */
 	public void writeApoVector(final Vec2d.Cplx vec, final double bend, final double cutOff) {
+		writeApoVector(vec, bend, cutOff, APO_SHAPE.ISOTROPIC, 0, cutOff);
+	}
+
+	/**
+	 * Creates an apotization vector, of a given shape.
+	 * This yields an ideal OTF, with some 'bend' (augmenting medium frequencies),
+	 * and a new cutoff value. Usually, cutoff is set to 2x original cutoff.
+	 * Bend is used as "apo = idealOtf^bend".
+	 * For ELLIPTICAL and STADIUM shapes, 'cutOff' is the extent along 'angle',
+	 * 'cutOffMinor' the extent across it. STADIUM is two half-circles of
+	 * radius 'cutOffMinor', joined by straight sides reaching out to 'cutOff'.
+	 *
+	 * @param vec         Vector to write to
+	 * @param bend        Bend to augment medium frequencies, 0..1, 1 for ideal OTF
+	 * @param cutOff      Cutoff, as factor to the OTF cutoff (so e.g. 2 for 2x
+	 *                    lateral improvement). For non-isotropic shapes, this is
+	 *                    the extent along 'angle'.
+	 * @param shape       Shape of the apodization
+	 * @param angle       Rotation angle of the shape's main axis, in radians
+	 * @param cutOffMinor Cutoff, as factor to the OTF cutoff, across 'angle'.
+	 *                    Ignored for ISOTROPIC.
+	 */
+	public void writeApoVector(final Vec2d.Cplx vec, final double bend, final double cutOff,
+			final APO_SHAPE shape, final double angle, final double cutOffMinor) {
 		if (vecCyclesPerMicron <= 0)
 			throw new IllegalStateException("Vector pixel size not initialized");
 		final int w = vec.vectorWidth(), h = vec.vectorHeight();
@@ -587,17 +638,45 @@ public class OtfProvider {
 					// wrap to coordinates: x in [-w/2,w/2], y in [-h/2, h/2]
 					double xh = (x < w / 2) ? (x) : (x - w);
 					double yh = (y < h / 2) ? (-y) : (h - y);
-					// from these, calculate distance to 0, convert to phys. units
-					double rad = MTool.fhypot(xh, yh);
-					double cycl = rad * vecCyclesPerMicron;
 					// calculate fraction of cutoff, get idealOTF, augment with 'bend'
-					double frac = cycl / (getCutoff() * cutOff);
+					double frac = apoFrac(xh, yh, shape, angle, cutOff, cutOffMinor);
 					double val = Math.pow(valIdealOTF(frac), bend);
 					// set output to that value
 					vec.set(x, y, new Cplx.Float((float) val));
 				}
 			}
 		};
+	}
+
+	/**
+	 * Normalized distance of (xh,yh) from center for a given apodization shape,
+	 * in units of the shape's (shape-dependent) cutoff. Values &gt;1 fall outside
+	 * the apodization and yield 0 via {@link #valIdealOTF}.
+	 */
+	private double apoFrac(double xh, double yh, APO_SHAPE shape,
+			double angle, double cutOff, double cutOffMinor) {
+
+		if (shape == APO_SHAPE.ISOTROPIC) {
+			double rad = MTool.fhypot(xh, yh);
+			double cycl = rad * vecCyclesPerMicron;
+			return cycl / (getCutoff() * cutOff);
+		}
+
+		// rotate into the shape's frame, so a point along 'angle' has yr=0
+		double ca = Math.cos(angle), sa = Math.sin(angle);
+		double xr = (xh * ca + yh * sa) * vecCyclesPerMicron;
+		double yr = (-xh * sa + yh * ca) * vecCyclesPerMicron;
+
+		double a = getCutoff() * cutOff; // extent along 'angle'
+		double b = getCutoff() * cutOffMinor; // extent across 'angle'
+
+		if (shape == APO_SHAPE.ELLIPTICAL)
+			return MTool.fhypot(xr / a, yr / b);
+
+		// STADIUM: two half-circles of radius 'b', joined by straight
+		// sides of half-length 'a-b' along 'angle'
+		double dx = Math.max(Math.abs(xr) - (a - b), 0);
+		return MTool.fhypot(dx, yr) / b;
 	}
 
 	/**
