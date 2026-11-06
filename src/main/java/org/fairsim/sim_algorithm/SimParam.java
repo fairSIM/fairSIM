@@ -76,6 +76,9 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 	private double apoCutOffAxial = 2; // Apo cutoff parameter for axial component in 3D SIM
 	private double apoBend = 0.9; // Apo bend parameter
 	private int apoType = 0; // Apo type (currently: 0=linear, 1=cosine, 2=off))
+	private double apoCutOffMinor = 1.0; // Apo cutoff parameter, cross-axis (elliptical/stadium)
+	private OtfProvider.APO_SHAPE apoShape = OtfProvider.APO_SHAPE.ISOTROPIC; // Apo shape
+	private double apoAngle = 0; // Apo rotation angle, in radians
 
 	private int rlIterations = 5; // number of Richardson-Lucy iterations
 
@@ -183,6 +186,9 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		ret.apoCutOffAxial = this.apoCutOffAxial;
 		ret.apoBend = this.apoBend;
 		ret.apoType = this.apoType;
+		ret.apoShape = this.apoShape;
+		ret.apoAngle = this.apoAngle;
+		ret.apoCutOffMinor = this.apoCutOffMinor;
 		ret.modLowLimit = this.modLowLimit;
 		ret.modHighLimit = this.modHighLimit;
 		ret.paramDate = this.paramDate;
@@ -359,6 +365,12 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		return this;
 	}
 
+	/** Set the APO cutoff factor across the main axis (elliptical / stadium shapes) */
+	public SimParam setApoCutoffMinor(double af) {
+		apoCutOffMinor = af;
+		return this;
+	}
+
 	/** Set the APO bend parameter (curvature of the APO) */
 	public SimParam setApoBend(double ab) {
 		apoBend = ab;
@@ -381,12 +393,29 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		return this;
 	}
 
+	/** Set the APO shape (isotropic, elliptical, stadium) */
+	public SimParam setApoShape(OtfProvider.APO_SHAPE as) {
+		apoShape = as;
+		return this;
+	}
+
+	/** Set the APO rotation angle, in radians */
+	public SimParam setApoAngle(double aa) {
+		apoAngle = aa;
+		return this;
+	}
+
 	/** Get the APO cutoff factor */
 	public double getApoCutoff() {
 		return apoCutOff;
 	}
 
-	/** Get the APO cutoff factor */
+	/** Get the APO cutoff factor across the main axis (elliptical / stadium shapes) */
+	public double getApoCutoffMinor() {
+		return apoCutOffMinor;
+	}
+
+	/** Get the APO bend parameter */
 	public double getApoBend() {
 		return apoBend;
 	}
@@ -413,6 +442,16 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 			default:
 				return "unknown";
 		}
+	}
+
+	/** Get the APO shape */
+	public OtfProvider.APO_SHAPE getApoShape() {
+		return apoShape;
+	}
+
+	/** Get the APO rotation angle, in radians */
+	public double getApoAngle() {
+		return apoAngle;
 	}
 
 	/** Get the current otf */
@@ -774,6 +813,9 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		fd.newDbl("apodization-bend").setVal(apoBend);
 		fd.newInt("apodization-type").setVal(apoType);
 		fd.newTDE("timestamp").set(paramDate);
+		fd.newStr("apodization-shape").setVal(apoShape.toString());
+		fd.newDbl("apodization-angle").setVal(apoAngle);
+		fd.newDbl("apodization-cutoff-minor").setVal(apoCutOffMinor);
 
 		for (int d = 0; d < nrDirs; d++) {
 			Conf.Folder df = fd.mk(String.format("dir-%d", d));
@@ -822,12 +864,16 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		if (fd.contains("apodization-bend")) {
 			ret.setApoBend(fd.getDbl("apodization-bend").val());
 		}
-		;
 
 		if (fd.contains("apodization-type")) {
 			ret.setApoType(fd.getInt("apodization-type").val());
 		}
-		;
+
+		if (fd.contains("apodization-shape")) {
+			ret.setApoShape(OtfProvider.APO_SHAPE.fromString(fd.getStr("apodization-shape").val()));
+			ret.setApoAngle(fd.getDbl("apodization-angle").val());
+			ret.setApoCutoffMinor(fd.getDbl("apodization-cutoff-minor").val());
+		}
 
 		// for each pattern direction ...
 		for (int d = 0; d < ret.nrDirs; d++) {

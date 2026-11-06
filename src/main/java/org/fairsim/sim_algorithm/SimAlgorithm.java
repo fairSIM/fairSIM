@@ -509,6 +509,9 @@ public class SimAlgorithm {
 		final int w = inFFT[0][0].vectorWidth(), h = inFFT[0][0].vectorHeight();
 
 		final double apoB = param.getApoBend(), apoF = param.getApoCutoff(); // Bend and mag. factor of APO
+		final OtfProvider.APO_SHAPE apoShape = param.getApoShape();
+		final double apoAngle = param.getApoAngle();
+		final double apoFMinor = param.getApoCutoffMinor(); // mag. factor of APO, across main axis
 
 		final OtfProvider otfPr = param.otf();
 
@@ -754,7 +757,7 @@ public class SimAlgorithm {
 
 			// apply apotization filter
 			Vec2d.Cplx apo = Vec2d.createCplx(2 * w, 2 * h);
-			otfPr.writeApoVector(apo, apoB, apoF);
+			otfPr.writeApoVector(apo, apoB, apoF, apoShape, apoAngle, apoFMinor);
 
 			if (visualFeedback > 1) {
 				Vec2d.Real tmp = Vec2d.createReal(2 * w, 2 * h);
