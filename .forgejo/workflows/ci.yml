@@ -9,11 +9,16 @@ on:
 
 jobs:
   build:
-    runs-on: linux-java 
+    runs-on: linux
+    container:
+      # built from ci/fairsim-build/Dockerfile; CI_REGISTRY is set on the forge
+      image: ${{ vars.CI_REGISTRY }}/fairsim/fairsim-build:jdk8-1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Show toolchain
+        run: java -version && mvn -v && node -v
       - name: List files
         run: ls -la
       - name: Build with Maven
