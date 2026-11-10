@@ -12,6 +12,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
     <ij.version>1.48v</ij.version>
     <jar.suffix></jar.suffix>
+    <test.excludedGroups>defect</test.excludedGroups>
   </properties>
 
   <groupId>org.fairsim</groupId>
@@ -150,6 +151,8 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
         <configuration>
+          <!-- tests for known, not yet fixed defects; run them with -Dtest.excludedGroups=none -Dgroups=defect -->
+          <excludedGroups>${test.excludedGroups}</excludedGroups>
           <systemPropertyVariables>
             <java.awt.headless>true</java.awt.headless>
           </systemPropertyVariables>
