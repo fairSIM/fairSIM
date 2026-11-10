@@ -209,7 +209,7 @@ class BasicVector implements VectorFactory {
 					for (int x = 0; x < width; x++) {
 						out[y * width + x] += in[z * width * height + y * width + x];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -230,6 +230,7 @@ class BasicVector implements VectorFactory {
 			for (int y = 0; y < height; y++)
 				for (int x = 0; x < width; x++)
 					out[x + y * width] = in[x + y * width] & 0xFFFF;
+			this.syncBuffer();
 		}
 
 	}
@@ -335,6 +336,7 @@ class BasicVector implements VectorFactory {
 					out[2 * (x + y * width) + 0] = (in[x + y * width] & 0xFFFF);
 					out[2 * (x + y * width) + 1] = 0;
 				}
+			this.syncBuffer();
 		}
 
 		@Override
@@ -386,7 +388,7 @@ class BasicVector implements VectorFactory {
 						out[(y * width + x) * 2 + 0] += in[(z * width * height + y * width + x) * 2 + 0];
 						out[(y * width + x) * 2 + 1] += in[(z * width * height + y * width + x) * 2 + 1];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -464,7 +466,7 @@ class BasicVector implements VectorFactory {
 				for (int x = 0; x < width; x++) {
 					data[x + width * y + z * width * height] = in[x + width * y];
 				}
-
+			this.syncBuffer();
 		}
 
 	}
@@ -538,7 +540,7 @@ class BasicVector implements VectorFactory {
 					data[2 * (x + width * y + z * width * height) + 0] = in[2 * (x + width * y) + 0];
 					data[2 * (x + width * y + z * width * height) + 1] = in[2 * (x + width * y) + 1];
 				}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -555,7 +557,7 @@ class BasicVector implements VectorFactory {
 					data[2 * (x + width * y + z * width * height) + 0] = in[x + width * y];
 					data[2 * (x + width * y + z * width * height) + 1] = 0;
 				}
-
+			this.syncBuffer();
 		}
 
 		/** Look into source code for usage */
