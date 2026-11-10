@@ -399,7 +399,7 @@ public class OtfControl {
 				p1.setLayout(new BoxLayout(p1, BoxLayout.LINE_AXIS));
 
 				attStr[b][fc] = new Tiles.LNSpinner("strength",
-						((attPresetStr.length > fc) ? (attPresetStr[fc]) : (0.95)), 0.1, 1.0, 0.0005);
+						((attPresetStr.length > fc) ? (attPresetStr[fc]) : (0.95)), 0.0, 1.0, 0.0005);
 				attFWHM[b][fc] = new Tiles.LNSpinner("FWHM",
 						((attPresetFWHM.length > fc) ? (attPresetFWHM[fc]) : (1.2)), 0.05, 20.0, 0.05);
 
