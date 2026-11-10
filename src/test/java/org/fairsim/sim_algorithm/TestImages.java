@@ -110,6 +110,20 @@ class TestImages {
 		write(toImage(name + "-widefield", widefield), name + "-widefield.tif");
 	}
 
+	/** Save a stack, data in [x + w*y + w*h*z], if an output folder is set */
+	static void saveStack(String name, int w, int h, int d, float[] data) {
+		if (OUT == null)
+			return;
+		new File(OUT).mkdirs();
+		ImageStack is = new ImageStack(w, h);
+		for (int z = 0; z < d; z++) {
+			float[] sl = new float[w * h];
+			System.arraycopy(data, z * w * h, sl, 0, w * h);
+			is.addSlice("z" + z, new FloatProcessor(w, h, sl, null));
+		}
+		write(new ImagePlus(name, is), name + ".tif");
+	}
+
 	private static ImagePlus toImage(String title, Vec2d.Real v) {
 		return new ImagePlus(title, new FloatProcessor(v.vectorWidth(), v.vectorHeight(),
 				v.vectorData().clone(), null));
