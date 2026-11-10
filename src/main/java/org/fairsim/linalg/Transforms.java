@@ -43,7 +43,10 @@ public abstract class Transforms {
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
 		// see if we have an instance already, otherwise make one
-		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h));
+		final FFTkey key = keyFor(w, h, 1);
+		if (key == null)
+			return;
+		FftProvider.Instance ffti = getOrCreateInstance(key);
 		float[] dat = in.vectorData();
 		transform(ffti, dat, inverse);
 		in.syncBuffer();
@@ -55,7 +58,10 @@ public abstract class Transforms {
 		final int h = in.vectorHeight();
 		final int d = in.vectorDepth();
 		// see if we have an instance already, otherwise make one
-		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h, d));
+		final FFTkey key = keyFor(w, h, d);
+		if (key == null)
+			return;
+		FftProvider.Instance ffti = getOrCreateInstance(key);
 		float[] dat = in.vectorData();
 		transform(ffti, dat, inverse);
 		in.syncBuffer();
@@ -121,6 +127,25 @@ public abstract class Transforms {
 				return (t.z - z);
 			return 0;
 		}
+	}
+
+	/** key over the axes longer than 1: size-1 axes do not change the transform, null for a single element */
+	static private FFTkey keyFor(int w, int h, int d) {
+		int[] n = new int[3];
+		int c = 0;
+		if (w > 1)
+			n[c++] = w;
+		if (h > 1)
+			n[c++] = h;
+		if (d > 1)
+			n[c++] = d;
+		if (c == 0)
+			return null;
+		if (c == 1)
+			return new FFTkey(n[0]);
+		if (c == 2)
+			return new FFTkey(n[0], n[1]);
+		return new FFTkey(n[0], n[1], n[2]);
 	}
 
 	/** FFT instances */

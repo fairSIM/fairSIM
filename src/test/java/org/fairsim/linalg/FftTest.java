@@ -20,10 +20,8 @@ package org.fairsim.linalg;
 
 import static org.fairsim.linalg.LinalgFixtures.*;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.api.Test;
 
 /** FFT against a naive double-precision DFT, on odd and non-square sizes */
 public class FftTest {
@@ -71,13 +69,22 @@ public class FftTest {
 		assertClose(v.vectorData(), in, TOL, "forward then inverse");
 	}
 
-	/** a dimension of size 1 should reduce to the lower-dimensional FFT */
-	@Test
-	@Tag("defect")
-	void fft2dWithHeightOne() {
-		Vec2d.Cplx v = randomCplx(8, 1, 4);
+	/** a dimension of size 1 reduces to the lower-dimensional FFT */
+	@ParameterizedTest(name = "{0}x{1}x{2}")
+	@CsvSource({ "8,1,1", "1,7,1", "6,5,1", "6,1,4", "1,1,5", "1,1,1" })
+	void fftWithSizeOneAxes(int w, int h, int d) {
+		Vec3d.Cplx v = randomCplx(w, h, d, 4);
 		double[] in = toDouble(v.vectorData());
-		v.fft2d(false);
-		assertClose(v.vectorData(), dft(in, 8, 1, 1, false), TOL, "forward");
+		v.fft3d(false);
+		assertClose(v.vectorData(), dft(in, w, h, d, false), TOL, "forward 3d");
+		v.fft3d(true);
+		assertClose(v.vectorData(), in, TOL, "forward then inverse 3d");
+
+		if (d == 1) {
+			Vec2d.Cplx u = randomCplx(w, h, 5);
+			double[] in2 = toDouble(u.vectorData());
+			u.fft2d(false);
+			assertClose(u.vectorData(), dft(in2, w, h, 1, false), TOL, "forward 2d");
+		}
 	}
 }
