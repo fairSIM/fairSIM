@@ -16,9 +16,10 @@ fairSIM reconstructs structured illumination microscopy (SIM) data. It is writte
 
 - `mvn package` builds the plugin jar into `target/`. Build with a 1.8 JDK: the plugin targets the Java 8 runtime of Fiji stable.
 - The `Makefile` is a legacy build. It needs the jars that `external/get-dependencies.sh` fetches.
+- Both builds produce a self-contained jar. Maven bundles JTransforms and its dependencies, relocated to `org.fairsim.extern.shaded`; the Makefile bundles the fairSIM JTransforms fork. Their licence notices are in `src/main/resources/third-party-licenses.txt` and the about dialog. Keep both build paths working.
 - `doc/` is javadoc output only, and `make clean` deletes it. Never put hand-written files there.
 - CI (`.forgejo/workflows/ci.yml`) builds in the image defined in `ci/fairsim-build/`. Bump the image tag with every Dockerfile change, push the image, and update `ci.yml`.
-- There are no automated tests on this line. A successful compile says nothing about correctness.
+- `mvn test` runs the JUnit tests in `src/test/`, including a full 2D reconstruction of simulated data. Coverage is still thin: a successful build says little about correctness.
 
 ## Changing reconstruction code
 

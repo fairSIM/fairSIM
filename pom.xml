@@ -66,6 +66,7 @@
       <groupId>net.imagej</groupId>
       <artifactId>ij</artifactId>
       <version>1.48v</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -106,6 +107,7 @@
             <include>*.svg</include>
             <include>*.png</include>
             <include>*.html</include>
+            <include>third-party-licenses.txt</include>
           </includes>
       </resource>
       <resource>
@@ -148,6 +150,50 @@
             <java.awt.headless>true</java.awt.headless>
           </systemPropertyVariables>
         </configuration>
+      </plugin>
+
+      <!-- bundle JTransforms and its dependencies, relocated, so the plugin
+           jar runs on any ImageJ / Fiji independent of their copies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <minimizeJar>true</minimizeJar>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <relocations>
+                <relocation>
+                  <pattern>org.jtransforms</pattern>
+                  <shadedPattern>org.fairsim.extern.shaded.jtransforms</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>pl.edu.icm.jlargearrays</pattern>
+                  <shadedPattern>org.fairsim.extern.shaded.jlargearrays</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.apache.commons.math3</pattern>
+                  <shadedPattern>org.fairsim.extern.shaded.math3</shadedPattern>
+                </relocation>
+              </relocations>
+              <!-- their notices are in resources/third-party-licenses.txt -->
+              <filters>
+                <filter>
+                  <artifact>org.apache.commons:commons-math3</artifact>
+                  <excludes>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/NOTICE.txt</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

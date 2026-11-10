@@ -33,7 +33,7 @@ jobs:
           if-no-files-found: error
       - name: Rename the JAR file
         run: |
-          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ) ./fairSIM_plugin.jar
+          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ! -name "original-*" ) ./fairSIM_plugin.jar
           ls -lah ./fairSIM_plugin.jar
       - name: Verify Package Publish Token
         run: |
