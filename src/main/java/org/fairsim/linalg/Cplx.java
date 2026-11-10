@@ -387,8 +387,8 @@ public class Cplx {
 
 	/** Returns 1/a */
 	public static Cplx.Float reciproc(Cplx.Float a) {
-		float s = a.re * a.re + a.im * a.im;
-		return new Cplx.Float(a.re / s, -a.im / s);
+		double s = (double) a.re * a.re + (double) a.im * a.im;
+		return new Cplx.Float((float) (a.re / s), (float) (-a.im / s));
 	}
 
 	/** Returns a/b */

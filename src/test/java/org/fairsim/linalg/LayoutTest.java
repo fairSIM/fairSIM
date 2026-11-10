@@ -21,7 +21,6 @@ package org.fairsim.linalg;
 import static org.fairsim.linalg.LinalgFixtures.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -29,40 +28,62 @@ import org.junit.jupiter.params.provider.CsvSource;
 /** Layout ops: pasteFreq, project / slice, quadrant swap, size checks */
 public class LayoutTest {
 
-	/** reference zero-padding: signed frequency index kept, unshifted layout */
-	static double[] pasteFreqRef(double[] in, int wi, int hi, int wo, int ho) {
+	/** reference zero-padding: signed frequency index kept, plus offset, unshifted layout */
+	static double[] pasteFreqRef(double[] in, int wi, int hi, int wo, int ho, int xOff, int yOff) {
 		double[] out = new double[2 * wo * ho];
 		for (int y = 0; y < hi; y++)
 			for (int x = 0; x < wi; x++) {
-				int fx = (x < (wi + 1) / 2) ? x : x - wi;
-				int fy = (y < (hi + 1) / 2) ? y : y - hi;
-				int o = (fx + wo) % wo + wo * ((fy + ho) % ho);
+				int fx = ((x < (wi + 1) / 2) ? x : x - wi) + xOff;
+				int fy = ((y < (hi + 1) / 2) ? y : y - hi) + yOff;
+				int o = (fx % wo + wo) % wo + wo * ((fy % ho + ho) % ho);
 				out[2 * o] = in[2 * (x + wi * y)];
 				out[2 * o + 1] = in[2 * (x + wi * y) + 1];
 			}
 		return out;
 	}
 
-	static void checkPasteFreq(int wi, int hi, int wo, int ho) {
+	static void checkPasteFreq(int wi, int hi, int wo, int ho, int xOff, int yOff) {
 		Vec2d.Cplx in = randomCplx(wi, hi, 1);
 		Vec2d.Cplx out = Vec2d.createCplx(wo, ho);
-		double[] ref = pasteFreqRef(toDouble(in.vectorData()), wi, hi, wo, ho);
-		out.pasteFreq(in);
+		double[] ref = pasteFreqRef(toDouble(in.vectorData()), wi, hi, wo, ho, xOff, yOff);
+		out.pasteFreq(in, xOff, yOff);
 		assertClose(out.vectorData(), ref, 0, "pasteFreq " + wi + "x" + hi + " -> " + wo + "x" + ho);
 	}
 
-	/** 2x, even sizes: the case the reconstruction uses */
-	@Test
-	void pasteFreqDouble() {
-		checkPasteFreq(8, 6, 16, 12);
+	/** 2x even (the reconstruction case), odd sizes, other factors, offsets */
+	@ParameterizedTest(name = "{0}x{1} -> {2}x{3}, offset ({4},{5})")
+	@CsvSource({ "8,6,16,12,0,0", "7,5,14,10,0,0", "8,6,24,18,0,0", "8,6,16,12,3,-2", "7,5,14,10,-9,4", "8,6,8,6,0,0" })
+	void pasteFreqGeneral(int wi, int hi, int wo, int ho, int xOff, int yOff) {
+		checkPasteFreq(wi, hi, wo, ho, xOff, yOff);
 	}
 
-	/** pasteFreq with odd input sizes, and factors other than 2 */
-	@ParameterizedTest(name = "{0}x{1} -> {2}x{3}")
-	@CsvSource({ "7,5,14,10", "8,6,24,18" })
-	@Tag("defect")
-	void pasteFreqGeneral(int wi, int hi, int wo, int ho) {
-		checkPasteFreq(wi, hi, wo, ho);
+	@Test
+	void pasteFreqTooSmallThrows() {
+		final Vec2d.Cplx in = randomCplx(8, 6, 1), out = Vec2d.createCplx(6, 6);
+		assertThrows(IllegalArgumentException.class, () -> out.pasteFreq(in));
+	}
+
+	/** 3D, same signed-frequency rule on all three axes */
+	@ParameterizedTest(name = "{0}x{1}x{2} -> {3}x{4}x{5}")
+	@CsvSource({ "8,6,4,16,12,4", "7,5,3,14,10,6" })
+	void pasteFreq3d(int wi, int hi, int ti, int wo, int ho, int to) {
+		Vec3d.Cplx in = randomCplx(wi, hi, ti, 1);
+		Vec3d.Cplx out = Vec3d.createCplx(wo, ho, to);
+		double[] d = toDouble(in.vectorData());
+		double[] ref = new double[2 * wo * ho * to];
+		for (int z = 0; z < ti; z++)
+			for (int y = 0; y < hi; y++)
+				for (int x = 0; x < wi; x++) {
+					int fx = (x < (wi + 1) / 2) ? x : x - wi;
+					int fy = (y < (hi + 1) / 2) ? y : y - hi;
+					int fz = (z < (ti + 1) / 2) ? z : z - ti;
+					int o = (fx + wo) % wo + wo * ((fy + ho) % ho + ho * ((fz + to) % to));
+					int i = x + wi * (y + hi * z);
+					ref[2 * o] = d[2 * i];
+					ref[2 * o + 1] = d[2 * i + 1];
+				}
+		out.pasteFreq(in);
+		assertClose(out.vectorData(), ref, 0, "pasteFreq 3D");
 	}
 
 	/** project sums z planes, slice extracts one */
@@ -99,7 +120,6 @@ public class LayoutTest {
 
 	/** complex project / slice keep the imaginary part */
 	@Test
-	@Tag("defect")
 	void cplxProjectAndSlice() {
 		Vec3d.Cplx v = randomCplx(5, 4, 3, 1);
 		double[] in = toDouble(v.vectorData());
@@ -133,20 +153,58 @@ public class LayoutTest {
 	}
 
 	/** swapQuadrant on odd sizes (display only) */
-	@Test
-	@Tag("defect")
-	void swapQuadrantOdd() {
-		Vec2d.Cplx v = randomCplx(5, 4, 1);
-		double[] ref = fftshiftRef(toDouble(v.vectorData()), 5, 4);
+	@ParameterizedTest(name = "{0}x{1}")
+	@CsvSource({ "5,4", "4,5", "5,5" })
+	void swapQuadrantOdd(int w, int h) {
+		Vec2d.Cplx v = randomCplx(w, h, 1);
+		double[] ref = fftshiftRef(toDouble(v.vectorData()), w, h);
 		Transforms.swapQuadrant(v);
-		assertClose(v.vectorData(), ref, 0, "swapQuadrant 5x4");
+		assertClose(v.vectorData(), ref, 0, "swapQuadrant cplx");
+
+		Vec2d.Real r = randomReal(w, h, 2);
+		double[] rd = toDouble(r.vectorData()), rref = new double[rd.length];
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++)
+				rref[(x + w / 2) % w + w * ((y + h / 2) % h)] = rd[x + w * y];
+		Transforms.swapQuadrant(r);
+		assertClose(r.vectorData(), rref, 0, "swapQuadrant real");
 	}
 
-	/** element-wise ops on vectors of different shape but equal element count */
+	/** power spectrum scales by magnitudes: the largest |z| maps to 1, also if it has negative components */
 	@Test
-	@Tag("defect")
+	void powerSpectrumScaling() {
+		Vec2d.Cplx v = Vec2d.createCplx(5, 4);
+		java.util.Arrays.fill(v.vectorData(), 0.01f);
+		v.syncBuffer();
+		v.set(0, 0, new Cplx.Float(-5f, 0f));
+		v.set(1, 0, new Cplx.Float(1f, 0f));
+		Vec2d.Real out = Vec2d.createReal(5, 4), sw = Vec2d.createReal(5, 4);
+		Transforms.computePowerSpectrum(v, out, false);
+		Transforms.computePowerSpectrum(v, sw, true);
+
+		float[] o = out.vectorData();
+		assertClose(new float[] { o[0] }, new double[] { 1 }, 1e-6, "max at the largest magnitude");
+		for (float f : o)
+			org.junit.jupiter.api.Assertions.assertTrue(f >= 0 && f <= 1, "range 0..1: " + f);
+
+		// swapped output is the same values, moved
+		double[] ref = new double[o.length];
+		for (int y = 0; y < 4; y++)
+			for (int x = 0; x < 5; x++)
+				ref[(x + 2) % 5 + 5 * ((y + 2) % 4)] = o[x + 5 * y];
+		assertClose(sw.vectorData(), ref, 0, "swapped power spectrum");
+	}
+
+	/** element-wise ops on 2D vectors of different shape but equal element count */
+	@Test
 	void shapeMismatchThrows() {
 		final Vec2d.Cplx a = randomCplx(6, 4, 1), b = randomCplx(4, 6, 2);
 		assertThrows(RuntimeException.class, () -> a.times(b));
+		final Vec3d.Cplx c = randomCplx(6, 4, 2, 1), d = randomCplx(4, 6, 2, 2);
+		assertThrows(RuntimeException.class, () -> c.add(d));
+
+		// a plain vector of the same length still combines with a 2D one
+		Vec.Cplx e = Vec.createCplx(24);
+		a.times(e);
 	}
 }

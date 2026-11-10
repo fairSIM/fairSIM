@@ -172,7 +172,7 @@ public final class Vec3d {
 		/** Compute the in-place fft */
 		public void fft3d(boolean inverse);
 
-		/** TODO: comment, see Vec2d */
+		/** Copy a freq-space vector into this one, zero-padding, see Vec2d.Cplx#pasteFreq */
 		public void pasteFreq(Cplx i);
 
 		/** TODO: comment */

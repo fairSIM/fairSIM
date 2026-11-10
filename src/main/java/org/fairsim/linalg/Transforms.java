@@ -44,7 +44,10 @@ public abstract class Transforms {
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
 		// see if we have an instance already, otherwise make one
-		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h));
+		final FFTkey key = keyFor(w, h, 1);
+		if (key == null)
+			return;
+		FftProvider.Instance ffti = getOrCreateInstance(key);
 		float[] dat = in.vectorData();
 		transform(ffti, dat, inverse);
 		in.syncBuffer();
@@ -56,7 +59,10 @@ public abstract class Transforms {
 		final int h = in.vectorHeight();
 		final int d = in.vectorDepth();
 		// see if we have an instance already, otherwise make one
-		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h, d));
+		final FFTkey key = keyFor(w, h, d);
+		if (key == null)
+			return;
+		FftProvider.Instance ffti = getOrCreateInstance(key);
 		float[] dat = in.vectorData();
 		transform(ffti, dat, inverse);
 		in.syncBuffer();
@@ -122,6 +128,25 @@ public abstract class Transforms {
 				return (t.z - z);
 			return 0;
 		}
+	}
+
+	/** key over the axes longer than 1: size-1 axes do not change the transform, null for a single element */
+	static private FFTkey keyFor(int w, int h, int d) {
+		int[] n = new int[3];
+		int c = 0;
+		if (w > 1)
+			n[c++] = w;
+		if (h > 1)
+			n[c++] = h;
+		if (d > 1)
+			n[c++] = d;
+		if (c == 0)
+			return null;
+		if (c == 1)
+			return new FFTkey(n[0]);
+		if (c == 2)
+			return new FFTkey(n[0], n[1]);
+		return new FFTkey(n[0], n[1], n[2]);
 	}
 
 	/** FFT instances */
@@ -225,14 +250,16 @@ public abstract class Transforms {
 		if ((w != outV.vectorWidth()) || (h != outV.vectorHeight()))
 			throw new RuntimeException("Vector size mismatch");
 
-		// calculate min and max for scaling
+		// magnitudes, and their min and max for scaling
+		final float[] mag = new float[w * h];
 		float min = Float.MAX_VALUE;
-		float max = Float.MIN_VALUE;
-		for (float i : in) {
-			if (i < min)
-				min = i;
-			if (i > max)
-				max = i;
+		float max = 0;
+		for (int i = 0; i < w * h; i++) {
+			mag[i] = (float) Math.hypot(in[2 * i], in[2 * i + 1]);
+			if (mag[i] < min)
+				min = mag[i];
+			if (mag[i] > max)
+				max = mag[i];
 		}
 
 		// reduce the range
@@ -243,16 +270,12 @@ public abstract class Transforms {
 
 		for (int y = 0; y < h; y++)
 			for (int x = 0; x < w; x++) {
-				float r = (float) Math.sqrt(
-						Math.pow(in[2 * (y * w + x) + 0], 2) + Math.pow(in[2 * (y * w + x) + 1], 2));
-				r = (float) (((Math.log(r) - min) / (max - min)));
+				float r = (float) ((Math.log(mag[y * w + x]) - min) / (max - min));
 				if (Float.isNaN(r) || r < 0)
 					r = 0f;
 
 				if (swap_quad) {
-					int xo = (x < w / 2) ? (x + w / 2) : (x - w / 2);
-					int yo = (y < h / 2) ? (y + h / 2) : (y - h / 2);
-					out[yo * w + xo] = r;
+					out[((y + h / 2) % h) * w + (x + w / 2) % w] = r;
 				} else {
 					out[y * w + x] = r;
 				}
@@ -262,44 +285,31 @@ public abstract class Transforms {
 
 	}
 
-	/** Swap quadrands. */
+	/** Swap quadrants: element (x,y) moves to ((x+w/2)%w, (y+h/2)%h), DC to the centre, also for odd sizes */
 	static public void swapQuadrant(Vec2d.Cplx in) {
-		Vec2d.failEvenSizes(in);
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
-		for (int y = 0; y < h / 2; y++)
-			for (int x = 0; x < w / 2; x++) {
-				// 1 <-> 3
-				Cplx.Float tmp1 = in.get(x, y);
-				Cplx.Float tmp3 = in.get(x + w / 2, y + h / 2);
-				in.set(x, y, tmp3);
-				in.set(x + w / 2, y + h / 2, tmp1);
-				// 2 <-> 3
-				Cplx.Float tmp2 = in.get(x, y + h / 2);
-				Cplx.Float tmp4 = in.get(x + w / 2, y);
-				in.set(x, y + h / 2, tmp4);
-				in.set(x + w / 2, y, tmp2);
+		final float[] dat = in.vectorData();
+		final float[] tmp = dat.clone();
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++) {
+				final int o = ((y + h / 2) % h) * w + (x + w / 2) % w;
+				dat[2 * o] = tmp[2 * (y * w + x)];
+				dat[2 * o + 1] = tmp[2 * (y * w + x) + 1];
 			}
+		in.syncBuffer();
 	}
 
-	/** Swap quadrands. */
+	/** Swap quadrants, see {@link #swapQuadrant(Vec2d.Cplx)} */
 	static public void swapQuadrant(Vec2d.Real in) {
-		Vec2d.failEvenSizes(in);
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
-		for (int y = 0; y < h / 2; y++)
-			for (int x = 0; x < w / 2; x++) {
-				// 1 <-> 3
-				float tmp1 = in.get(x, y);
-				float tmp3 = in.get(x + w / 2, y + h / 2);
-				in.set(x, y, tmp3);
-				in.set(x + w / 2, y + h / 2, tmp1);
-				// 2 <-> 3
-				float tmp2 = in.get(x, y + h / 2);
-				float tmp4 = in.get(x + w / 2, y);
-				in.set(x, y + h / 2, tmp4);
-				in.set(x + w / 2, y, tmp2);
-			}
+		final float[] dat = in.vectorData();
+		final float[] tmp = dat.clone();
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++)
+				dat[((y + h / 2) % h) * w + (x + w / 2) % w] = tmp[y * w + x];
+		in.syncBuffer();
 	}
 
 	/** Swap quadrands in place. (this only works if all dimensions are even) */
@@ -434,12 +444,11 @@ public abstract class Transforms {
 	 */
 
 	/**
-	 * Multiply a vector with Fourier shift theorem phases.
-	 * Vector has to be of square size (w==h).
+	 * Multiply a vector with Fourier shift theorem phases, see {@link Vec2d.Cplx#fourierShift}.
 	 * 
 	 * @param kx   x-coordinate of shift
 	 * @param ky   y-coordinate of shift
-	 * @param fast Use faster, but less precise sin/cos (see {@link MTool#fsin})
+	 * @param fast ignored, phases are always computed in double precision
 	 */
 	@Deprecated
 	static public void timesShiftVector(final Vec2d.Cplx vec,
@@ -447,38 +456,7 @@ public abstract class Transforms {
 		vec.fourierShift(kx, ky);
 	}
 
-	static public void runTimesShiftVector(final Vec2d.Cplx vec,
-			final double kx, final double ky, final boolean fast) {
-		final float[] val = vec.vectorData();
-		final int N = Vec2d.checkSquare(vec);
-
-		// run outer loop in parallel
-		new SimpleMT.PFor(0, N) {
-			public void at(int y) {
-				for (int x = 0; x < N; x++) {
-					float phaVal = (float) (2 * Math.PI * (kx * x + ky * y) / N);
-					float si, co;
-					if (fast) {
-						co = (float) MTool.fcos(phaVal);
-						si = (float) MTool.fsin(phaVal);
-					} else {
-						co = (float) Math.cos(phaVal);
-						si = (float) Math.sin(phaVal);
-					}
-					// get
-					float re = val[(y * N + x) * 2 + 0];
-					float im = val[(y * N + x) * 2 + 1];
-					// set
-					val[(y * N + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-					val[(y * N + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
-				}
-			}
-		};
-
-		vec.syncBuffer();
-	}
-
-	/** See {@link #timesShiftVector}, with fast='false' */
+	/** See {@link #timesShiftVector} */
 	static public void timesShiftVector(final Vec2d.Cplx vec, double kx, double ky) {
 		timesShiftVector(vec, kx, ky, false);
 	}

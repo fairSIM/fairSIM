@@ -36,7 +36,7 @@ fairSIM reconstructs structured illumination microscopy (SIM) data. It is writte
 
 - Match the style of the file you edit.
 - Comments are terse. Javadoc is mostly a single line; `@param` lines are short and state units and conventions inline. Inline comments are short step labels (`// check some inputs`).
-- No long explanatory comment blocks. A longer "why" goes in the commit message.
+- Where an algorithm or design needs explaining, a longer comment block at that place is fine. Otherwise, no long explanatory blocks.
 - New code uses container types, not plain arrays, unless arrays are needed for performance.
 - Vector operations that work on any vector type are default methods on the vector interfaces, not static helpers.
 
@@ -58,6 +58,7 @@ fairSIM is GPL-licensed (see `LICENSE`). Keep provenance clean:
   - Do not rebase or rewrite branches others have pulled.
 - Commits:
   - One logical change per commit.
+  - Short log-style messages: a subject line and at most a few lines of body. Explanations go in code comments, not in the message.
   - Stage files explicitly.
   - Build before committing.
   - Mark AI-assisted commits with a `Co-Authored-By:` trailer.

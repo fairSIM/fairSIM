@@ -33,6 +33,17 @@ class BasicVector implements VectorFactory {
 	};
 
 	/** Get the factory (singleton) for BasicVectors */
+	/** exp(2 pi i k j/n) for j = 0..n-1, interleaved re/im, computed in double */
+	static double[] shiftPhases(final double k, final int n) {
+		double[] ret = new double[2 * n];
+		for (int j = 0; j < n; j++) {
+			final double a = 2 * Math.PI * ((k * j / n) % 1.0);
+			ret[2 * j] = Math.cos(a);
+			ret[2 * j + 1] = Math.sin(a);
+		}
+		return ret;
+	}
+
 	public static BasicVector getFactory() {
 		if (instance == null)
 			instance = new BasicVector();
@@ -330,25 +341,29 @@ class BasicVector implements VectorFactory {
 			final int wo = this.vectorWidth();
 			final int ho = this.vectorHeight();
 
+			// check some inputs
+			if (wo < wi || ho < hi)
+				throw new IllegalArgumentException("pasteFreq: output " + wo + "x" + ho
+						+ " smaller than input " + wi + "x" + hi);
+			if (inV == this)
+				inV = inV.duplicate();
+
 			final float[] out = this.vectorData();
 			final float[] in = inV.vectorData();
 
-			// while (xOffset<0) xOffset += wo;
-			// while (yOffset<0) yOffset += ho;
-
 			this.zero();
 
-			// loop output
+			// keep each signed frequency, add offset, wrap into the output
 			for (int y = 0; y < hi; y++)
 				for (int x = 0; x < wi; x++) {
-					int xo = (x < wi / 2) ? (x) : (x + wo / 2);
-					int yo = (y < hi / 2) ? (y) : (y + ho / 2);
-					xo = (xo + xOffset + wo) % wo;
-					yo = (yo + yOffset + ho) % ho;
+					int xo = (x < (wi + 1) / 2) ? (x) : (x - wi);
+					int yo = (y < (hi + 1) / 2) ? (y) : (y - hi);
+					xo = ((xo + xOffset) % wo + wo) % wo;
+					yo = ((yo + yOffset) % ho + ho) % ho;
 					out[(xo + (wo * yo)) * 2 + 0] = in[(x + wi * y) * 2 + 0];
 					out[(xo + (wo * yo)) * 2 + 1] = in[(x + wi * y) * 2 + 1];
 				}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -375,34 +390,24 @@ class BasicVector implements VectorFactory {
 		@Override
 		public void fourierShift(final double kx, final double ky) {
 
-			final boolean fast = true; // TODO: make this user-settable??
-
 			final float[] val = vectorData();
-			final int N = Vec2d.checkSquare(this);
+			final int w = vectorWidth(), h = vectorHeight();
+			final double[] phx = shiftPhases(kx, w), phy = shiftPhases(ky, h);
 
 			// run outer loop in parallel
-			new SimpleMT.PFor(0, N) {
+			new SimpleMT.PFor(0, h) {
 				public void at(int y) {
-					for (int x = 0; x < N; x++) {
-						float phaVal = (float) (2 * Math.PI * (kx * x + ky * y) / N);
-						float si, co;
-						if (fast) {
-							co = (float) MTool.fcos(phaVal);
-							si = (float) MTool.fsin(phaVal);
-						} else {
-							co = (float) Math.cos(phaVal);
-							si = (float) Math.sin(phaVal);
-						}
-						// get
-						float re = val[(y * N + x) * 2 + 0];
-						float im = val[(y * N + x) * 2 + 1];
-						// set
-						val[(y * N + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-						val[(y * N + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
+					for (int x = 0; x < w; x++) {
+						final double co = phx[2 * x] * phy[2 * y] - phx[2 * x + 1] * phy[2 * y + 1];
+						final double si = phx[2 * x] * phy[2 * y + 1] + phx[2 * x + 1] * phy[2 * y];
+						final int i = (y * w + x) * 2;
+						final double re = val[i], im = val[i + 1];
+						val[i] = (float) (re * co - im * si);
+						val[i + 1] = (float) (re * si + im * co);
 					}
 				}
 			};
-
+			syncBuffer();
 		}
 
 		@Override
@@ -613,9 +618,6 @@ class BasicVector implements VectorFactory {
 		@Override
 		public void pasteFreq(Vec3d.Cplx inV) {
 
-			// TODO: This currently only works for the very specific case of
-			// the output vector size being 2*w, 2*h, z (as typ. in SIM)
-
 			final int wi = inV.vectorWidth();
 			final int hi = inV.vectorHeight();
 			final int ti = inV.vectorDepth();
@@ -623,62 +625,60 @@ class BasicVector implements VectorFactory {
 			final int ho = this.vectorHeight();
 			final int to = this.vectorDepth();
 
+			// check some inputs
+			if (wo < wi || ho < hi || to < ti)
+				throw new IllegalArgumentException("pasteFreq: output " + wo + "x" + ho + "x" + to
+						+ " smaller than input " + wi + "x" + hi + "x" + ti);
+			if (inV == this)
+				inV = inV.duplicate();
+
 			final float[] out = this.vectorData();
 			final float[] in = inV.vectorData();
 
 			this.zero();
 
-			// loop output
+			// keep each signed frequency, wrap into the output
 			for (int z = 0; z < ti; z++)
 				for (int y = 0; y < hi; y++)
 					for (int x = 0; x < wi; x++) {
-						int xo = (x < wi / 2) ? (x) : (x + wo / 2);
-						int yo = (y < hi / 2) ? (y) : (y + ho / 2);
-						int zo = (z < ti / 2) ? (z) : (z + to / 2);
-						// out[ (xo + wo*yo + wo*ho*zo)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
-						// out[ (xo + wo*yo + wo*ho*zo)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
-						out[(xo + wo * yo + wo * ho * z) * 2 + 0] = in[(x + wi * y + wi * hi * z) * 2 + 0];
-						out[(xo + wo * yo + wo * ho * z) * 2 + 1] = in[(x + wi * y + wi * hi * z) * 2 + 1];
+						int xo = (x < (wi + 1) / 2) ? (x) : (x - wi + wo);
+						int yo = (y < (hi + 1) / 2) ? (y) : (y - hi + ho);
+						int zo = (z < (ti + 1) / 2) ? (z) : (z - ti + to);
+						out[(xo + wo * yo + wo * ho * zo) * 2 + 0] = in[(x + wi * y + wi * hi * z) * 2 + 0];
+						out[(xo + wo * yo + wo * ho * zo) * 2 + 1] = in[(x + wi * y + wi * hi * z) * 2 + 1];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
 		public void fourierShift(
 				final double kx, final double ky, final double kz) {
 
-			final boolean fast = true; // TODO: user-settable??, see above
 			final float[] val = vectorData();
 			final int w = vectorWidth();
 			final int h = vectorHeight();
 			final int d = vectorDepth();
+			final double[] phx = shiftPhases(kx, w), phy = shiftPhases(ky, h), phz = shiftPhases(kz, d);
 
 			// run outer loop in parallel
 			new SimpleMT.PFor(0, d) {
 				public void at(int z) {
-					for (int y = 0; y < h; y++)
+					for (int y = 0; y < h; y++) {
+						// y and z factor
+						final double cyz = phy[2 * y] * phz[2 * z] - phy[2 * y + 1] * phz[2 * z + 1];
+						final double syz = phy[2 * y] * phz[2 * z + 1] + phy[2 * y + 1] * phz[2 * z];
 						for (int x = 0; x < w; x++) {
-
-							float phaVal = (float) (2 * Math.PI * (x * kx / w + y * ky / h + z * kz / d));
-
-							float si, co;
-							if (fast) {
-								co = (float) MTool.fcos(phaVal);
-								si = (float) MTool.fsin(phaVal);
-							} else {
-								co = (float) Math.cos(phaVal);
-								si = (float) Math.sin(phaVal);
-							}
-							// get
-							float re = val[(z * w * h + y * w + x) * 2 + 0];
-							float im = val[(z * w * h + y * w + x) * 2 + 1];
-							// set
-							val[(z * w * h + y * w + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-							val[(z * w * h + y * w + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
+							final double co = phx[2 * x] * cyz - phx[2 * x + 1] * syz;
+							final double si = phx[2 * x] * syz + phx[2 * x + 1] * cyz;
+							final int i = (z * w * h + y * w + x) * 2;
+							final double re = val[i], im = val[i + 1];
+							val[i] = (float) (re * co - im * si);
+							val[i + 1] = (float) (re * si + im * co);
 						}
+					}
 				}
 			};
-
+			syncBuffer();
 		}
 
 	}

@@ -237,7 +237,8 @@ public final class Vec2d {
 		public void paste(Vec2d.Cplx xIn, int ulx, int uly, boolean zero);
 
 		/**
-		 * Copy a freq-space vector into this one.
+		 * Copy a freq-space vector into this one, zero-padding: each signed
+		 * frequency keeps its value, shifted by the offset. Output must not be smaller.
 		 * 
 		 * @param xIn  The vector to copy into this one
 		 * @param xOff The offset in x-direction
@@ -249,10 +250,11 @@ public final class Vec2d {
 		public void pasteFreq(Vec2d.Cplx xIn);
 
 		/**
-		 * Multiply a vector with Fourier shift theorem phases.
+		 * Multiply with Fourier shift theorem phases exp(2 pi i (kx x/w + ky y/h)).
+		 * After a forward FFT, content at index k moves to k + (kx, ky).
 		 * 
-		 * @param kx x-coordinate of shift
-		 * @param ky y-coordinate of shift
+		 * @param kx x-coordinate of shift, in Fourier pixels
+		 * @param ky y-coordinate of shift, in Fourier pixels
 		 */
 		public void fourierShift(double kx, double ky);
 
