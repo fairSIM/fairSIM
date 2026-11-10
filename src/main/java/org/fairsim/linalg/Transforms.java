@@ -46,7 +46,7 @@ public abstract class Transforms {
 		// see if we have an instance already, otherwise make one
 		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h));
 		float[] dat = in.vectorData();
-		ffti.fftTransform(dat, inverse);
+		transform(ffti, dat, inverse);
 		in.syncBuffer();
 	}
 
@@ -58,7 +58,7 @@ public abstract class Transforms {
 		// see if we have an instance already, otherwise make one
 		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(w, h, d));
 		float[] dat = in.vectorData();
-		ffti.fftTransform(dat, inverse);
+		transform(ffti, dat, inverse);
 		in.syncBuffer();
 	}
 
@@ -67,7 +67,7 @@ public abstract class Transforms {
 		final int len = in.vectorSize();
 		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(len));
 		float[] dat = in.vectorData();
-		ffti.fftTransform(dat, inverse);
+		transform(ffti, dat, inverse);
 		in.syncBuffer();
 	}
 
@@ -79,7 +79,7 @@ public abstract class Transforms {
 	static public void fft1d(float[] in, boolean inverse) {
 		final int len = in.length / 2;
 		FftProvider.Instance ffti = getOrCreateInstance(new FFTkey(len));
-		ffti.fftTransform(in, inverse);
+		transform(ffti, in, inverse);
 	}
 
 	// -----------------------------------------------------------
@@ -134,8 +134,15 @@ public abstract class Transforms {
 		}
 	}
 
+	/** runs a cached instance, one transform at a time: JTransforms instances are not thread-safe */
+	static private void transform(FftProvider.Instance ffti, float[] dat, boolean inverse) {
+		synchronized (ffti) {
+			ffti.fftTransform(dat, inverse);
+		}
+	}
+
 	/** returns an instance, creates one if none exists */
-	static protected FftProvider.Instance getOrCreateInstance(final FFTkey k) {
+	static synchronized protected FftProvider.Instance getOrCreateInstance(final FFTkey k) {
 		FftProvider.Instance ffti = instances.get(k);
 		if (ffti != null)
 			return ffti;
