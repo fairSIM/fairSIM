@@ -369,10 +369,10 @@ public class MatrixComplex {
 		for (int i = 0; i < vals.length; i++) {
 			ret += " [";
 			for (int j = 0; j < vals[i].length; j++)
-				ret += vals[i][j];
+				ret += ((j > 0) ? ", " : "") + vals[i][j];
 			ret += "]";
 		}
-		return ret;
+		return ret + " ]";
 
 	}
 

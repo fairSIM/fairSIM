@@ -54,8 +54,8 @@ public final class Vec {
 	 * the static 'create' functions.
 	 */
 	public static void setVectorFactory(VectorFactory invf) {
-		if (vf == null)
-			throw new java.lang.NullPointerException("vf was null, not set");
+		if (invf == null)
+			throw new java.lang.NullPointerException("vector factory is null, not set");
 		vf = invf;
 	}
 
@@ -414,7 +414,7 @@ public final class Vec {
 		/** Return the sum of all vector elements */
 		public org.fairsim.linalg.Cplx.Double sumElements();
 
-		/** Compute this += x^2 */
+		/** Compute this += |x|^2, added to the real part */
 		public void addSqr(Vec.Cplx xIn);
 
 		/** Access to the internal vector array */

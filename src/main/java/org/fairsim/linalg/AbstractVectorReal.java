@@ -362,7 +362,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 	public String first10Elem() {
 		this.readyBuffer();
 		String ret = "";
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < Math.min(10, elemCount); i++) {
 			ret += String.format("[ %8.5e ] ", data[i]);
 		}
 		return ret;

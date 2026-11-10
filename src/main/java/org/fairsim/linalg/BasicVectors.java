@@ -245,6 +245,12 @@ class BasicVector implements VectorFactory {
 			height = h;
 		}
 
+		/** keeps the shape for duplicateReal, duplicateImag, ... */
+		@Override
+		public BReal createAsReal(int n) {
+			return new BReal2D(width, height);
+		}
+
 		@Override
 		public BCplx2D duplicate() {
 			BCplx2D ret = new BCplx2D(width, height);
@@ -480,6 +486,12 @@ class BasicVector implements VectorFactory {
 			width = w;
 			height = h;
 			depth = d;
+		}
+
+		/** keeps the shape for duplicateReal, duplicateImag, ... */
+		@Override
+		public BReal createAsReal(int n) {
+			return new BReal3D(width, height, depth);
 		}
 
 		@Override
