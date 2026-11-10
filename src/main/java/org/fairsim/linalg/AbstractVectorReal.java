@@ -241,7 +241,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 		this.readyBuffer();
 		// calculate min and max for scaling
 		float min = Float.MAX_VALUE;
-		float max = Float.MIN_VALUE;
+		float max = -Float.MAX_VALUE;
 		for (float i : data) {
 			if (i < min)
 				min = i;
@@ -249,7 +249,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 				max = i;
 		}
 		for (int i = 0; i < data.length; i++)
-			data[i] = (data[i] - min) / (max - min);
+			data[i] = (data[i] - min) / ((max > min) ? (max - min) : 1);
 		this.syncBuffer();
 	}
 
@@ -259,7 +259,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 		this.readyBuffer();
 		// calculate min and max for scaling
 		float min = Float.MAX_VALUE;
-		float max = Float.MIN_VALUE;
+		float max = -Float.MAX_VALUE;
 		for (float i : data) {
 			if (i < min)
 				min = i;
@@ -267,7 +267,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 				max = i;
 		}
 		for (int i = 0; i < data.length; i++)
-			data[i] = vmin + (((data[i] - min) / (max - min)) * (vmax - vmin));
+			data[i] = vmin + (((data[i] - min) / ((max > min) ? (max - min) : 1)) * (vmax - vmin));
 		this.syncBuffer();
 	}
 
@@ -309,13 +309,14 @@ public abstract class AbstractVectorReal implements Vec.Real {
 	 */
 	public double median() {
 
+		this.readyBuffer();
 		float[] dataCopy = new float[elemCount];
 
 		System.arraycopy(data, 0, dataCopy, 0, data.length);
 		Arrays.sort(dataCopy);
 
 		if (elemCount % 2 == 0) {
-			return (dataCopy[elemCount / 2 - 1] + dataCopy[elemCount / 2]);
+			return (dataCopy[elemCount / 2 - 1] + (double) dataCopy[elemCount / 2]) / 2;
 		} else {
 			return dataCopy[elemCount / 2];
 		}
@@ -335,7 +336,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 
 	/** Get the maximum value in the vector */
 	public float max() {
-		float ret = Float.MIN_VALUE;
+		float ret = -Float.MAX_VALUE;
 		this.readyBuffer();
 		for (float i : data) {
 			if (i > ret) {
@@ -375,7 +376,7 @@ public abstract class AbstractVectorReal implements Vec.Real {
 		int idx[] = new int[n];
 
 		for (int i = 0; i < n; i++) {
-			vals[i] = Double.MIN_VALUE;
+			vals[i] = -Double.MAX_VALUE;
 			idx[i] = -1;
 		}
 

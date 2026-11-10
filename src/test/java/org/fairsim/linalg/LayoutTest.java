@@ -121,7 +121,6 @@ public class LayoutTest {
 
 	/** complex project / slice keep the imaginary part */
 	@Test
-	@Tag("defect")
 	void cplxProjectAndSlice() {
 		Vec3d.Cplx v = randomCplx(5, 4, 3, 1);
 		double[] in = toDouble(v.vectorData());

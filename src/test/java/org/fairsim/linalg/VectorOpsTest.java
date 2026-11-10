@@ -136,23 +136,39 @@ public class VectorOpsTest {
 
 	/** an op with the vector itself as argument */
 	@Test
-	@Tag("defect")
 	void cplxTimesSelf() {
 		Vec2d.Cplx a = randomCplx(W, H, 1);
 		double[] x = toDouble(a.vectorData());
 		a.times(a);
 		assertClose(a.vectorData(), mult(x, x, false), TOL, "times(self)");
+
+		Vec2d.Cplx b = randomCplx(W, H, 2);
+		double[] y = toDouble(b.vectorData());
+		b.timesConj(b);
+		assertClose(b.vectorData(), mult(y, y, true), TOL, "timesConj(self)");
+
+		Vec2d.Cplx c = randomCplx(W, H, 3);
+		double[] z = toDouble(c.vectorData()), ref = new double[z.length];
+		for (int i = 0; i < N; i++) {
+			// z + (0.5 - 2i) z
+			ref[2 * i] = 1.5 * z[2 * i] + 2 * z[2 * i + 1];
+			ref[2 * i + 1] = 1.5 * z[2 * i + 1] - 2 * z[2 * i];
+		}
+		c.axpy(new Cplx.Float(0.5f, -2f), c);
+		assertClose(c.vectorData(), ref, TOL, "axpy(self)");
 	}
 
 	/** 1/z for large and small |z| (|z|^2 leaves the float range) */
 	@Test
-	@Tag("defect")
 	void cplxReciprocRange() {
 		Vec2d.Cplx a = Vec2d.createCplx(2, 1);
 		a.set(0, 0, new Cplx.Float(1e20f, 1e20f));
 		a.set(1, 0, new Cplx.Float(1e-25f, -1e-25f));
 		a.reciproc();
 		assertClose(a.vectorData(), new double[] { 0.5e-20, -0.5e-20, 0.5e25, 0.5e25 }, 1e-5, "reciproc range");
+
+		Cplx.Float r = Cplx.reciproc(new Cplx.Float(1e20f, 1e20f));
+		assertClose(new float[] { r.re, r.im }, new double[] { 0.5e-20, -0.5e-20 }, 1e-5, "scalar reciproc");
 	}
 
 	// --- real ---
@@ -189,7 +205,6 @@ public class VectorOpsTest {
 
 	/** median of an even count is the mean of the two middle values */
 	@Test
-	@Tag("defect")
 	void realMedianEven() {
 		Vec.Real a = Vec.createReal(4);
 		float[] d = a.vectorData();
@@ -203,7 +218,6 @@ public class VectorOpsTest {
 
 	/** max and normalize on all-negative data */
 	@Test
-	@Tag("defect")
 	void realMaxNormalizeNegative() {
 		Vec.Real a = Vec.createReal(3);
 		float[] d = a.vectorData();
@@ -214,5 +228,15 @@ public class VectorOpsTest {
 		assertEquals(-1f, a.max(), "max");
 		a.normalize();
 		assertClose(a.vectorData(), new double[] { 0, 0.5, 1 }, 1e-6, "normalize");
+	}
+
+	/** normalize maps constant input to the lower bound, not NaN */
+	@Test
+	void realNormalizeConstant() {
+		Vec.Real a = Vec.createReal(3);
+		java.util.Arrays.fill(a.vectorData(), 2.5f);
+		a.syncBuffer();
+		a.normalize(1, 3);
+		assertClose(a.vectorData(), new double[] { 1, 1, 1 }, 0, "normalize constant");
 	}
 }

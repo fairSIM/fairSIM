@@ -204,8 +204,10 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
 		float[] id = x.vectorData();
 
 		for (int i = 0; i < elemCount; i++) {
-			data[Rl(i)] += multReal(a.re, a.im, id[Rl(i)], id[Ig(i)]);
-			data[Ig(i)] += multImag(a.re, a.im, id[Rl(i)], id[Ig(i)]);
+			// read first, x may be this vector
+			final float xr = id[Rl(i)], xi = id[Ig(i)];
+			data[Rl(i)] += multReal(a.re, a.im, xr, xi);
+			data[Ig(i)] += multImag(a.re, a.im, xr, xi);
 		}
 		this.syncBuffer();
 	}
@@ -224,9 +226,11 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
 	public void reciproc() {
 		this.readyBuffer();
 		for (int i = 0; i < elemCount; i++) {
-			float s = data[2 * i] * data[2 * i] + data[2 * i + 1] * data[2 * i + 1];
-			data[2 * i] = data[2 * i] / s;
-			data[2 * i + 1] = -data[2 * i + 1] / s;
+			// |z|^2 in double, it leaves the float range for |z| > 1e19 or < 1e-19
+			final double re = data[2 * i], im = data[2 * i + 1];
+			final double s = re * re + im * im;
+			data[2 * i] = (float) (re / s);
+			data[2 * i + 1] = (float) (-im / s);
 		}
 		this.syncBuffer();
 	}
@@ -309,14 +313,11 @@ public abstract class AbstractVectorCplx implements Vec.Cplx {
 		this.readyBuffer();
 		float[] x = in.vectorData(), y = data;
 		for (int i = 0; i < elemCount; i++) {
-			float y1R = y[Rl(i)], y1I = y[Ig(i)];
-			if (!conj) {
-				y[Rl(i)] = multReal(x[Rl(i)], x[Ig(i)], y1R, y1I);
-				y[Ig(i)] = multImag(x[Rl(i)], x[Ig(i)], y1R, y1I);
-			} else {
-				y[Rl(i)] = multReal(x[Rl(i)], -x[Ig(i)], y1R, y1I);
-				y[Ig(i)] = multImag(x[Rl(i)], -x[Ig(i)], y1R, y1I);
-			}
+			// read first, 'in' may be this vector
+			final float y1R = y[Rl(i)], y1I = y[Ig(i)];
+			final float xR = x[Rl(i)], xI = (conj) ? (-x[Ig(i)]) : (x[Ig(i)]);
+			y[Rl(i)] = multReal(xR, xI, y1R, y1I);
+			y[Ig(i)] = multImag(xR, xI, y1R, y1I);
 		}
 		this.syncBuffer();
 	}
