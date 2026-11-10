@@ -29,40 +29,62 @@ import org.junit.jupiter.params.provider.CsvSource;
 /** Layout ops: pasteFreq, project / slice, quadrant swap, size checks */
 public class LayoutTest {
 
-	/** reference zero-padding: signed frequency index kept, unshifted layout */
-	static double[] pasteFreqRef(double[] in, int wi, int hi, int wo, int ho) {
+	/** reference zero-padding: signed frequency index kept, plus offset, unshifted layout */
+	static double[] pasteFreqRef(double[] in, int wi, int hi, int wo, int ho, int xOff, int yOff) {
 		double[] out = new double[2 * wo * ho];
 		for (int y = 0; y < hi; y++)
 			for (int x = 0; x < wi; x++) {
-				int fx = (x < (wi + 1) / 2) ? x : x - wi;
-				int fy = (y < (hi + 1) / 2) ? y : y - hi;
-				int o = (fx + wo) % wo + wo * ((fy + ho) % ho);
+				int fx = ((x < (wi + 1) / 2) ? x : x - wi) + xOff;
+				int fy = ((y < (hi + 1) / 2) ? y : y - hi) + yOff;
+				int o = (fx % wo + wo) % wo + wo * ((fy % ho + ho) % ho);
 				out[2 * o] = in[2 * (x + wi * y)];
 				out[2 * o + 1] = in[2 * (x + wi * y) + 1];
 			}
 		return out;
 	}
 
-	static void checkPasteFreq(int wi, int hi, int wo, int ho) {
+	static void checkPasteFreq(int wi, int hi, int wo, int ho, int xOff, int yOff) {
 		Vec2d.Cplx in = randomCplx(wi, hi, 1);
 		Vec2d.Cplx out = Vec2d.createCplx(wo, ho);
-		double[] ref = pasteFreqRef(toDouble(in.vectorData()), wi, hi, wo, ho);
-		out.pasteFreq(in);
+		double[] ref = pasteFreqRef(toDouble(in.vectorData()), wi, hi, wo, ho, xOff, yOff);
+		out.pasteFreq(in, xOff, yOff);
 		assertClose(out.vectorData(), ref, 0, "pasteFreq " + wi + "x" + hi + " -> " + wo + "x" + ho);
 	}
 
-	/** 2x, even sizes: the case the reconstruction uses */
-	@Test
-	void pasteFreqDouble() {
-		checkPasteFreq(8, 6, 16, 12);
+	/** 2x even (the reconstruction case), odd sizes, other factors, offsets */
+	@ParameterizedTest(name = "{0}x{1} -> {2}x{3}, offset ({4},{5})")
+	@CsvSource({ "8,6,16,12,0,0", "7,5,14,10,0,0", "8,6,24,18,0,0", "8,6,16,12,3,-2", "7,5,14,10,-9,4", "8,6,8,6,0,0" })
+	void pasteFreqGeneral(int wi, int hi, int wo, int ho, int xOff, int yOff) {
+		checkPasteFreq(wi, hi, wo, ho, xOff, yOff);
 	}
 
-	/** pasteFreq with odd input sizes, and factors other than 2 */
-	@ParameterizedTest(name = "{0}x{1} -> {2}x{3}")
-	@CsvSource({ "7,5,14,10", "8,6,24,18" })
-	@Tag("defect")
-	void pasteFreqGeneral(int wi, int hi, int wo, int ho) {
-		checkPasteFreq(wi, hi, wo, ho);
+	@Test
+	void pasteFreqTooSmallThrows() {
+		final Vec2d.Cplx in = randomCplx(8, 6, 1), out = Vec2d.createCplx(6, 6);
+		assertThrows(IllegalArgumentException.class, () -> out.pasteFreq(in));
+	}
+
+	/** 3D, same signed-frequency rule on all three axes */
+	@ParameterizedTest(name = "{0}x{1}x{2} -> {3}x{4}x{5}")
+	@CsvSource({ "8,6,4,16,12,4", "7,5,3,14,10,6" })
+	void pasteFreq3d(int wi, int hi, int ti, int wo, int ho, int to) {
+		Vec3d.Cplx in = randomCplx(wi, hi, ti, 1);
+		Vec3d.Cplx out = Vec3d.createCplx(wo, ho, to);
+		double[] d = toDouble(in.vectorData());
+		double[] ref = new double[2 * wo * ho * to];
+		for (int z = 0; z < ti; z++)
+			for (int y = 0; y < hi; y++)
+				for (int x = 0; x < wi; x++) {
+					int fx = (x < (wi + 1) / 2) ? x : x - wi;
+					int fy = (y < (hi + 1) / 2) ? y : y - hi;
+					int fz = (z < (ti + 1) / 2) ? z : z - ti;
+					int o = (fx + wo) % wo + wo * ((fy + ho) % ho + ho * ((fz + to) % to));
+					int i = x + wi * (y + hi * z);
+					ref[2 * o] = d[2 * i];
+					ref[2 * o + 1] = d[2 * i + 1];
+				}
+		out.pasteFreq(in);
+		assertClose(out.vectorData(), ref, 0, "pasteFreq 3D");
 	}
 
 	/** project sums z planes, slice extracts one */

@@ -204,7 +204,8 @@ public final class Vec2d {
 		public void paste(Vec2d.Cplx xIn, int ulx, int uly, boolean zero);
 
 		/**
-		 * Copy a freq-space vector into this one.
+		 * Copy a freq-space vector into this one, zero-padding: each signed
+		 * frequency keeps its value, shifted by the offset. Output must not be smaller.
 		 * 
 		 * @param xIn  The vector to copy into this one
 		 * @param xOff The offset in x-direction

@@ -296,25 +296,29 @@ class BasicVector implements VectorFactory {
 			final int wo = this.vectorWidth();
 			final int ho = this.vectorHeight();
 
+			// check some inputs
+			if (wo < wi || ho < hi)
+				throw new IllegalArgumentException("pasteFreq: output " + wo + "x" + ho
+						+ " smaller than input " + wi + "x" + hi);
+			if (inV == this)
+				inV = inV.duplicate();
+
 			final float[] out = this.vectorData();
 			final float[] in = inV.vectorData();
 
-			// while (xOffset<0) xOffset += wo;
-			// while (yOffset<0) yOffset += ho;
-
 			this.zero();
 
-			// loop output
+			// keep each signed frequency, add offset, wrap into the output
 			for (int y = 0; y < hi; y++)
 				for (int x = 0; x < wi; x++) {
-					int xo = (x < wi / 2) ? (x) : (x + wo / 2);
-					int yo = (y < hi / 2) ? (y) : (y + ho / 2);
-					xo = (xo + xOffset + wo) % wo;
-					yo = (yo + yOffset + ho) % ho;
+					int xo = (x < (wi + 1) / 2) ? (x) : (x - wi);
+					int yo = (y < (hi + 1) / 2) ? (y) : (y - hi);
+					xo = ((xo + xOffset) % wo + wo) % wo;
+					yo = ((yo + yOffset) % ho + ho) % ho;
 					out[(xo + (wo * yo)) * 2 + 0] = in[(x + wi * y) * 2 + 0];
 					out[(xo + (wo * yo)) * 2 + 1] = in[(x + wi * y) * 2 + 1];
 				}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -558,9 +562,6 @@ class BasicVector implements VectorFactory {
 		@Override
 		public void pasteFreq(Vec3d.Cplx inV) {
 
-			// TODO: This currently only works for the very specific case of
-			// the output vector size being 2*w, 2*h, z (as typ. in SIM)
-
 			final int wi = inV.vectorWidth();
 			final int hi = inV.vectorHeight();
 			final int ti = inV.vectorDepth();
@@ -568,24 +569,29 @@ class BasicVector implements VectorFactory {
 			final int ho = this.vectorHeight();
 			final int to = this.vectorDepth();
 
+			// check some inputs
+			if (wo < wi || ho < hi || to < ti)
+				throw new IllegalArgumentException("pasteFreq: output " + wo + "x" + ho + "x" + to
+						+ " smaller than input " + wi + "x" + hi + "x" + ti);
+			if (inV == this)
+				inV = inV.duplicate();
+
 			final float[] out = this.vectorData();
 			final float[] in = inV.vectorData();
 
 			this.zero();
 
-			// loop output
+			// keep each signed frequency, wrap into the output
 			for (int z = 0; z < ti; z++)
 				for (int y = 0; y < hi; y++)
 					for (int x = 0; x < wi; x++) {
-						int xo = (x < wi / 2) ? (x) : (x + wo / 2);
-						int yo = (y < hi / 2) ? (y) : (y + ho / 2);
-						int zo = (z < ti / 2) ? (z) : (z + to / 2);
-						// out[ (xo + wo*yo + wo*ho*zo)*2+0 ] = in[ (x + wi*y + wi*hi*z)*2+0];
-						// out[ (xo + wo*yo + wo*ho*zo)*2+1 ] = in[ (x + wi*y + wi*hi*z)*2+1];
-						out[(xo + wo * yo + wo * ho * z) * 2 + 0] = in[(x + wi * y + wi * hi * z) * 2 + 0];
-						out[(xo + wo * yo + wo * ho * z) * 2 + 1] = in[(x + wi * y + wi * hi * z) * 2 + 1];
+						int xo = (x < (wi + 1) / 2) ? (x) : (x - wi + wo);
+						int yo = (y < (hi + 1) / 2) ? (y) : (y - hi + ho);
+						int zo = (z < (ti + 1) / 2) ? (z) : (z - ti + to);
+						out[(xo + wo * yo + wo * ho * zo) * 2 + 0] = in[(x + wi * y + wi * hi * z) * 2 + 0];
+						out[(xo + wo * yo + wo * ho * zo) * 2 + 1] = in[(x + wi * y + wi * hi * z) * 2 + 1];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
