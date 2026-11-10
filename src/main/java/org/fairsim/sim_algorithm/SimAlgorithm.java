@@ -273,7 +273,7 @@ public class SimAlgorithm {
 						"--> Physical pattern: dir (%d) cycle/micron %6.4f angle(deg) %6.4f phase(deg) %6.4f [%s]",
 						angIdx,
 						Math.hypot(peak[0], peak[1]) * param.pxlSizeCyclesMicron(),
-						Math.atan2(peak[1], peak[0]) * 180 / Math.PI,
+						Math.atan2(-peak[1], -peak[0]) * 180 / Math.PI, // same sign as stored below
 						p1.phase() * 180 / Math.PI,
 						contextForLogging));
 
@@ -298,7 +298,7 @@ public class SimAlgorithm {
 						"--> Physical pattern: dir (%d) cycle/micron %6.4f angle(deg) %6.4f phase(deg) %6.4f [%s]",
 						angIdx,
 						Math.hypot(peak[0], peak[1]) * param.pxlSizeCyclesMicron(),
-						Math.atan2(peak[1], peak[0]) * 180 / Math.PI,
+						Math.atan2(-peak[1], -peak[0]) * 180 / Math.PI, // same sign as stored below
 						p1.phase() * 180 / Math.PI,
 						contextForLogging));
 
