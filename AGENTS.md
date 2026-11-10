@@ -49,6 +49,7 @@ fairSIM is GPL-licensed (see `LICENSE`). Keep provenance clean:
 
 ## Git
 
+- Versions are git tags, semver-ish: `vMAJOR.MINOR.PATCH`, pre-releases like `v1.4.2-beta1`. Both builds record the tag on the built commit (first of `git tag --points-at HEAD`), or `n/a` if there is none. The pom version is a placeholder and is not maintained.
 - Branch model:
   - Specific work branches split off from more general ones (e.g. `develop` → `develop-3D-SIM`).
   - Merge regularly from the more general branch.

@@ -11,7 +11,8 @@
 
   <groupId>org.fairsim</groupId>
   <artifactId>fairSIM</artifactId>
-  <version>1.5.1</version>
+  <!-- placeholder, not maintained: the version is the git tag on the built commit -->
+  <version>0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>fairSIM</name>
@@ -191,6 +192,42 @@
                   </excludes>
                 </filter>
               </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- version: the git tag on HEAD, or 'n/a' (same as the Makefile) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>git-tag-version</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <exportAntProperties>true</exportAntProperties>
+              <target>
+                <exec executable="git" outputproperty="git.tags" failifexecutionfails="false">
+                  <arg value="tag" />
+                  <arg value="--points-at" />
+                  <arg value="HEAD" />
+                </exec>
+                <loadresource property="git.tag" quiet="true">
+                  <propertyresource name="git.tags" />
+                  <filterchain>
+                    <headfilter lines="1" />
+                    <striplinebreaks />
+                  </filterchain>
+                </loadresource>
+                <condition property="fairsim.version" value="${git.tag}" else="n/a">
+                  <isset property="git.tag" />
+                </condition>
+              </target>
             </configuration>
           </execution>
         </executions>
