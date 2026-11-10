@@ -132,6 +132,29 @@ public class LayoutTest {
 		assertClose(p.vectorData(), projectRef(in, 5, 4, 1, 1), 0, "slice");
 	}
 
+	/** Vec2d.paste with input and output the same vector: overlapping region, and zeroing */
+	@Test
+	void pasteOntoItself() {
+		Vec2d.Real v = randomReal(4, 3, 1);
+		double[] in = toDouble(v.vectorData());
+		double[] ref = in.clone();
+		for (int y = 0; y < 2; y++)
+			for (int x = 0; x < 2; x++)
+				ref[(x + 1) + 4 * (y + 1)] = in[x + 4 * y];
+		Vec2d.paste(v, v, 0, 0, 2, 2, 1, 1, false);
+		assertClose(v.vectorData(), ref, 0, "overlapping paste");
+
+		Vec2d.Cplx c = randomCplx(4, 3, 2);
+		double[] cin = toDouble(c.vectorData()), cref = new double[cin.length];
+		for (int y = 0; y < 2; y++)
+			for (int x = 0; x < 2; x++) {
+				cref[2 * ((x + 2) + 4 * (y + 1))] = cin[2 * (x + 4 * y)];
+				cref[2 * ((x + 2) + 4 * (y + 1)) + 1] = cin[2 * (x + 4 * y) + 1];
+			}
+		Vec2d.paste(c, c, 0, 0, 2, 2, 2, 1, true);
+		assertClose(c.vectorData(), cref, 0, "zeroing paste onto itself");
+	}
+
 	/** reference fftshift: element (x,y) moves to ((x + w/2) % w, (y + h/2) % h) */
 	static double[] fftshiftRef(double[] in, int w, int h) {
 		double[] out = new double[in.length];
