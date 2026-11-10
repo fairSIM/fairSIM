@@ -216,10 +216,11 @@ public final class Vec2d {
 		public void pasteFreq(Vec2d.Cplx xIn);
 
 		/**
-		 * Multiply a vector with Fourier shift theorem phases.
+		 * Multiply with Fourier shift theorem phases exp(2 pi i (kx x/w + ky y/h)).
+		 * After a forward FFT, content at index k moves to k + (kx, ky).
 		 * 
-		 * @param kx x-coordinate of shift
-		 * @param ky y-coordinate of shift
+		 * @param kx x-coordinate of shift, in Fourier pixels
+		 * @param ky y-coordinate of shift, in Fourier pixels
 		 */
 		public void fourierShift(double kx, double ky);
 

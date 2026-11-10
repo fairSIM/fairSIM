@@ -33,6 +33,17 @@ class BasicVector implements VectorFactory {
 	};
 
 	/** Get the factory (singleton) for BasicVectors */
+	/** exp(2 pi i k j/n) for j = 0..n-1, interleaved re/im, computed in double */
+	static double[] shiftPhases(final double k, final int n) {
+		double[] ret = new double[2 * n];
+		for (int j = 0; j < n; j++) {
+			final double a = 2 * Math.PI * ((k * j / n) % 1.0);
+			ret[2 * j] = Math.cos(a);
+			ret[2 * j + 1] = Math.sin(a);
+		}
+		return ret;
+	}
+
 	public static BasicVector getFactory() {
 		if (instance == null)
 			instance = new BasicVector();
@@ -330,34 +341,24 @@ class BasicVector implements VectorFactory {
 		@Override
 		public void fourierShift(final double kx, final double ky) {
 
-			final boolean fast = true; // TODO: make this user-settable??
-
 			final float[] val = vectorData();
-			final int N = Vec2d.checkSquare(this);
+			final int w = vectorWidth(), h = vectorHeight();
+			final double[] phx = shiftPhases(kx, w), phy = shiftPhases(ky, h);
 
 			// run outer loop in parallel
-			new SimpleMT.PFor(0, N) {
+			new SimpleMT.PFor(0, h) {
 				public void at(int y) {
-					for (int x = 0; x < N; x++) {
-						float phaVal = (float) (2 * Math.PI * (kx * x + ky * y) / N);
-						float si, co;
-						if (fast) {
-							co = (float) MTool.fcos(phaVal);
-							si = (float) MTool.fsin(phaVal);
-						} else {
-							co = (float) Math.cos(phaVal);
-							si = (float) Math.sin(phaVal);
-						}
-						// get
-						float re = val[(y * N + x) * 2 + 0];
-						float im = val[(y * N + x) * 2 + 1];
-						// set
-						val[(y * N + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-						val[(y * N + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
+					for (int x = 0; x < w; x++) {
+						final double co = phx[2 * x] * phy[2 * y] - phx[2 * x + 1] * phy[2 * y + 1];
+						final double si = phx[2 * x] * phy[2 * y + 1] + phx[2 * x + 1] * phy[2 * y];
+						final int i = (y * w + x) * 2;
+						final double re = val[i], im = val[i + 1];
+						val[i] = (float) (re * co - im * si);
+						val[i + 1] = (float) (re * si + im * co);
 					}
 				}
 			};
-
+			syncBuffer();
 		}
 
 		@Override
@@ -591,37 +592,31 @@ class BasicVector implements VectorFactory {
 		public void fourierShift(
 				final double kx, final double ky, final double kz) {
 
-			final boolean fast = true; // TODO: user-settable??, see above
 			final float[] val = vectorData();
 			final int w = vectorWidth();
 			final int h = vectorHeight();
 			final int d = vectorDepth();
+			final double[] phx = shiftPhases(kx, w), phy = shiftPhases(ky, h), phz = shiftPhases(kz, d);
 
 			// run outer loop in parallel
 			new SimpleMT.PFor(0, d) {
 				public void at(int z) {
-					for (int y = 0; y < h; y++)
+					for (int y = 0; y < h; y++) {
+						// y and z factor
+						final double cyz = phy[2 * y] * phz[2 * z] - phy[2 * y + 1] * phz[2 * z + 1];
+						final double syz = phy[2 * y] * phz[2 * z + 1] + phy[2 * y + 1] * phz[2 * z];
 						for (int x = 0; x < w; x++) {
-							float phaVal = (float) (2 * Math.PI
-									* (((float) x * kx) / w + ((float) y * ky) / h + ((float) z * kz) / d));
-							float si, co;
-							if (fast) {
-								co = (float) MTool.fcos(phaVal);
-								si = (float) MTool.fsin(phaVal);
-							} else {
-								co = (float) Math.cos(phaVal);
-								si = (float) Math.sin(phaVal);
-							}
-							// get
-							float re = val[(z * w * h + y * w + x) * 2 + 0];
-							float im = val[(z * w * h + y * w + x) * 2 + 1];
-							// set
-							val[(z * w * h + y * w + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-							val[(z * w * h + y * w + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
+							final double co = phx[2 * x] * cyz - phx[2 * x + 1] * syz;
+							final double si = phx[2 * x] * syz + phx[2 * x + 1] * cyz;
+							final int i = (z * w * h + y * w + x) * 2;
+							final double re = val[i], im = val[i + 1];
+							val[i] = (float) (re * co - im * si);
+							val[i + 1] = (float) (re * si + im * co);
 						}
+					}
 				}
 			};
-
+			syncBuffer();
 		}
 
 	}

@@ -413,12 +413,11 @@ public abstract class Transforms {
 	 */
 
 	/**
-	 * Multiply a vector with Fourier shift theorem phases.
-	 * Vector has to be of square size (w==h).
+	 * Multiply a vector with Fourier shift theorem phases, see {@link Vec2d.Cplx#fourierShift}.
 	 * 
 	 * @param kx   x-coordinate of shift
 	 * @param ky   y-coordinate of shift
-	 * @param fast Use faster, but less precise sin/cos (see {@link MTool#fsin})
+	 * @param fast ignored, phases are always computed in double precision
 	 */
 	@Deprecated
 	static public void timesShiftVector(final Vec2d.Cplx vec,
@@ -426,38 +425,7 @@ public abstract class Transforms {
 		vec.fourierShift(kx, ky);
 	}
 
-	static public void runTimesShiftVector(final Vec2d.Cplx vec,
-			final double kx, final double ky, final boolean fast) {
-		final float[] val = vec.vectorData();
-		final int N = Vec2d.checkSquare(vec);
-
-		// run outer loop in parallel
-		new SimpleMT.PFor(0, N) {
-			public void at(int y) {
-				for (int x = 0; x < N; x++) {
-					float phaVal = (float) (2 * Math.PI * (kx * x + ky * y) / N);
-					float si, co;
-					if (fast) {
-						co = (float) MTool.fcos(phaVal);
-						si = (float) MTool.fsin(phaVal);
-					} else {
-						co = (float) Math.cos(phaVal);
-						si = (float) Math.sin(phaVal);
-					}
-					// get
-					float re = val[(y * N + x) * 2 + 0];
-					float im = val[(y * N + x) * 2 + 1];
-					// set
-					val[(y * N + x) * 2 + 0] = Cplx.multReal(re, im, co, si);
-					val[(y * N + x) * 2 + 1] = Cplx.multImag(re, im, co, si);
-				}
-			}
-		};
-
-		vec.syncBuffer();
-	}
-
-	/** See {@link #timesShiftVector}, with fast='false' */
+	/** See {@link #timesShiftVector} */
 	static public void timesShiftVector(final Vec2d.Cplx vec, double kx, double ky) {
 		timesShiftVector(vec, kx, ky, false);
 	}
