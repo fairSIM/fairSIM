@@ -83,7 +83,7 @@ public class BeadsCreator implements PlugIn {
 
 				double dist = Math.hypot(x - xPos, y - yPos) / (rad / pxlSize);
 
-				if (y < 0 || y >= height || x < 0 || x >= height)
+				if (y < 0 || y >= height || x < 0 || x >= width)
 					continue;
 
 				if (dist > 1) {
