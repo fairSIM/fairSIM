@@ -29,9 +29,11 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
+import javax.swing.JScrollPane;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.event.HyperlinkEvent;
 import java.awt.Desktop;
+import java.awt.Dimension;
 import java.util.Scanner;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -230,7 +232,7 @@ public class FairSim_ImageJplugin implements PlugIn {
 		String line;
 		try {
 			while ((line = br.readLine()) != null)
-				text.append(line);
+				text.append(line).append('\n');
 		} catch (java.io.IOException e) {
 			text = new StringBuffer("failed to read about information");
 		}
@@ -252,11 +254,18 @@ public class FairSim_ImageJplugin implements PlugIn {
 
 		// String text = new Scanner( is, "UTF-8" ).useDelimiter("\\A").next();
 
-		String htmlContent = "<html>" + text + "<h2>Version</h2>" +
+		String versionInfo = "<h2>Version</h2>" +
 				"version: " + version.substring(0, Math.min(12, version.length())) +
 				"<br />git build id: " +
 				gitCommit.substring(0, Math.min(10, gitCommit.length())) + " " + buildType +
-				"<br /><br />Please include version and git id when reporting bugs.</html>";
+				"<br /><br />Please include version and git id when reporting bugs.";
+
+		// version goes to the marker in about.html, or to the end if there is none
+		final String marker = "<!-- version -->";
+		String about = text.toString();
+		String htmlContent = (about.contains(marker))
+				? "<html>" + about.replace(marker, versionInfo) + "</html>"
+				: "<html>" + about + versionInfo + "</html>";
 
 		JEditorPane jep = new JEditorPane("text/html", htmlContent);
 		jep.setEditable(false);
@@ -277,8 +286,13 @@ public class FairSim_ImageJplugin implements PlugIn {
 			}
 		});
 
+		// fixed size, so long paragraphs wrap and the license text scrolls
+		jep.setCaretPosition(0);
+		JScrollPane scroll = new JScrollPane(jep);
+		scroll.setPreferredSize(new Dimension(640, 560));
+
 		JOptionPane.showMessageDialog(IJ.getInstance(),
-				jep,
+				scroll,
 				"About fairSIM",
 				JOptionPane.INFORMATION_MESSAGE);
 

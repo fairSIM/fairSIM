@@ -6,31 +6,45 @@ on:
       - develop
       - develop-3D-SIM
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: linux-java 
+    runs-on: linux
+    strategy:
+      fail-fast: false
+      matrix:
+        # JDK 8 builds the shipped jar (Fiji stable); 21 (Fiji latest) and 25 (current LTS)
+        # build natively against a current ImageJ via the modern-jdk profile, as a check
+        jdk: [8, 21, 25]
+    container:
+      # built from ci/fairsim-build/Dockerfile; CI_REGISTRY is set on the forge
+      image: ${{ vars.CI_REGISTRY }}/fairsim/fairsim-build:jdk${{ matrix.jdk }}-2
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: List files
-        run: ls -la
-      - name: Build with Maven
-        run: mvn compile
-      - name: Package with Maven
-        run: mvn package
+        with:
+          # full history and tags, for the version from git describe
+          fetch-depth: 0
+      - name: Show toolchain
+        run: java -version && mvn -v && node -v
+      - name: Build, test and package with Maven
+        run: mvn -B package
       - name: Upload JAR artifact
+        if: matrix.jdk == 8
         uses: actions/upload-artifact@v3
         with:
           name: fairSIM-jar
           path: target/*.jar
           if-no-files-found: error
       - name: Rename the JAR file
+        if: matrix.jdk == 8
         run: |
-          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ) ./fairSIM_plugin.jar
+          mv $( find ./target -name "*.jar" ! -name "*sources.jar" ! -name "original-*" ) ./fairSIM_plugin.jar
           ls -lah ./fairSIM_plugin.jar
       - name: Verify Package Publish Token
+        if: matrix.jdk == 8
         run: |
           if [ -z "${{ secrets.FAIRSIM_PACKAGE_TOKEN }}" ]; then
             echo "Error: FAIRSIM_PACKAGE_TOKEN secret is not set." && exit 1
@@ -39,6 +53,7 @@ jobs:
           fi
 
       - name: Upload plain JAR to Forgejo Packages
+        if: matrix.jdk == 8
         run: |
           if [ -f ./fairSIM_plugin.jar ]; then
             COMMIT_HASH=$(git rev-parse --short HEAD)

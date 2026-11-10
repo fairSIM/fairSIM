@@ -1,2 +1,2 @@
 ${buildNumber}
-${project.version}
+${fairsim.version}

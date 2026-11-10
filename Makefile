@@ -48,7 +48,7 @@ copy-resources: build-dir
 # misc rules
 git-version : build-dir
 	git rev-parse HEAD > $(BUILDDIR)/org/fairsim/git-version.txt  ; \
-	git tag --contains >> $(BUILDDIR)/org/fairsim/git-version.txt ; \
+	git tag --points-at HEAD | head -n 1 >> $(BUILDDIR)/org/fairsim/git-version.txt ; \
 	echo "n/a" >> $(BUILDDIR)/org/fairsim/git-version.txt
 	 	
 
