@@ -14,11 +14,12 @@ fairSIM reconstructs structured illumination microscopy (SIM) data. It is writte
 
 ## Build
 
-- `mvn package` builds the plugin jar into `target/`. Build with a 1.8 JDK: the plugin targets the Java 8 runtime of Fiji stable.
+- `mvn package` builds the plugin jar into `target/`. The shipped jar is built with a 1.8 JDK: it targets the Java 8 runtime of Fiji stable.
+- On JDK 21 and newer, the `modern-jdk` profile compiles for the running JDK against a current ImageJ and adds a `-jdkNN` suffix to the jar. CI uses it to check the code on Java 21 (Fiji latest) and 25 (current LTS); these jars are not for Fiji stable.
 - The `Makefile` is a legacy build. It needs the jars that `external/get-dependencies.sh` fetches.
 - Both builds produce a self-contained jar. Maven bundles JTransforms and its dependencies, relocated to `org.fairsim.extern.shaded`; the Makefile bundles the fairSIM JTransforms fork. Their licence notices are in `src/main/resources/third-party-licenses.txt` and the about dialog. Keep both build paths working.
 - `doc/` is javadoc output only, and `make clean` deletes it. Never put hand-written files there.
-- CI (`.forgejo/workflows/ci.yml`) builds in the image defined in `ci/fairsim-build/`. Bump the image tag with every Dockerfile change, push the image, and update `ci.yml`.
+- CI (`.forgejo/workflows/ci.yml`) builds on JDK 8, 21 and 25, in images built from `ci/fairsim-build/` with `--build-arg JDK=<n>`, tagged `jdk<n>-<revision>`. Only the JDK 8 job publishes the jar. With every Dockerfile change, bump the revision for all three, push the images, and update `ci.yml`.
 - `mvn test` runs the JUnit tests in `src/test/`, including a full 2D reconstruction of simulated data. Coverage is still thin: a successful build says little about correctness.
 
 ## Changing reconstruction code
