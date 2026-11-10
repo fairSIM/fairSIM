@@ -84,6 +84,18 @@ public class SyntheticReconstructionTest {
 		}
 	}
 
+	/** Pins SimParam's frame: y up, i.e. (px, py) = +-(kx, -ky) for a pattern with y = image row */
+	@Test
+	void patternVectorConvention() {
+		for (int a = 0; a < sim.nrDirs; a++) {
+			double[] k = sim.kPixels(a);
+			double px = param.dir(a).px(1), py = param.dir(a).py(1);
+			double sign = Math.signum(px * k[0] - py * k[1]);
+			assertEquals(sign * k[0], px, 0.05, "px, dir " + a);
+			assertEquals(-sign * k[1], py, 0.05, "py, dir " + a);
+		}
+	}
+
 	/** Isolated beads appear at their true positions (catches flips and transposes) */
 	@Test
 	void beadPositions() {

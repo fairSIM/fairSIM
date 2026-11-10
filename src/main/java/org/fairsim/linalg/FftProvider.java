@@ -42,32 +42,28 @@ public abstract class FftProvider {
 
 	// this code pokes classes to add them to the factory system
 	static {
-
-		// poke an instance of the connector to original JTransforms
-		try {
-			Class.forName("org.fairsim.linalg.JTransformsConnector").newInstance();
-		} catch (ClassNotFoundException e) {
-			Tool.trace("Original JTransforms not available");
-		} catch (InstantiationException e) {
-			Tool.trace("Original JTransforms could not be initialized");
-		} catch (IllegalAccessException e) {
-			Tool.trace("Original JTransforms could not be accessed");
-		}
-
-		// poke an instance of the connector to forked JTransforms
-		try {
-			Class.forName("org.fairsim.linalg.JTransformsForkConnector").newInstance();
-		} catch (ClassNotFoundException e) {
-			Tool.trace("forked/internal JTransforms not available");
-		} catch (InstantiationException e) {
-			Tool.trace("forked/internal JTransforms could not be initialized");
-		} catch (IllegalAccessException e) {
-			Tool.trace("forked/internal JTransforms could not be accessed");
-		}
+		poke("org.fairsim.linalg.JTransformsConnector", "Original JTransforms");
+		poke("org.fairsim.linalg.JTransformsForkConnector", "forked/internal JTransforms");
 
 		// see if any of those have succeeded in setting an FFT factory
 		if (isFftFactorySet() == false) {
 			Tool.error("No FFT implementation available!", true);
+		}
+	}
+
+	/** instantiate a connector by name; it registers itself if its library is present */
+	private static void poke(String cls, String name) {
+		try {
+			Class.forName(cls).getDeclaredConstructor().newInstance();
+		} catch (ClassNotFoundException e) {
+			Tool.trace(name + " not available");
+		} catch (java.lang.reflect.InvocationTargetException e) {
+			if (e.getCause() instanceof ClassNotFoundException)
+				Tool.trace(name + " not available");
+			else
+				Tool.trace(name + " could not be initialized: " + e.getCause());
+		} catch (ReflectiveOperationException e) {
+			Tool.trace(name + " could not be initialized: " + e);
 		}
 	}
 

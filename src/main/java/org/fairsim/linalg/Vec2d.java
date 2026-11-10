@@ -304,6 +304,10 @@ public final class Vec2d {
 			final int ulxin, final int ulyin, final int w, final int h,
 			final int ulxout, final int ulyout, boolean zeroOutput) {
 
+		// same vector: copy the input first, zeroing or an overlap would destroy it
+		if (xIn == yOut)
+			xIn = xIn.duplicate();
+
 		float[] in = xIn.vectorData();
 		float[] out = yOut.vectorData();
 
@@ -349,6 +353,10 @@ public final class Vec2d {
 	public static void paste(Vec2d.Cplx xIn, Vec2d.Cplx yOut,
 			final int ulxin, final int ulyin, final int w, final int h,
 			final int ulxout, final int ulyout, boolean zeroOutput) {
+
+		// same vector: copy the input first, zeroing or an overlap would destroy it
+		if (xIn == yOut)
+			xIn = xIn.duplicate();
 
 		float[] in = xIn.vectorData();
 		float[] out = yOut.vectorData();

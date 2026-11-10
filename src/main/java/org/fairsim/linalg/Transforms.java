@@ -213,7 +213,7 @@ public abstract class Transforms {
 
 	/** checks if input is 2^n */
 	static public boolean powerOf2(int l) {
-		int i = 2;
+		int i = 1;
 		while (i < l)
 			i *= 2;
 		return (i == l);

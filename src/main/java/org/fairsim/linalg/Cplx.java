@@ -58,8 +58,7 @@ public class Cplx {
 
 		/**
 		 * Returns the absolute value, fast (see {@link #hypot}).
-		 * This just returns Math.sqrt(re*re+im*im), o.k. in most cases,
-		 * but might become imprecise or even overflow for large re or im.
+		 * Computed with Math.hypot, so it does not overflow for large re or im.
 		 */
 		public double abs() {
 			return Math.hypot(re, im);

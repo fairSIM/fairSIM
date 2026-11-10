@@ -56,29 +56,9 @@ public class MatrixComplex {
 		return vals[i][j];
 	}
 
-	/** Returns a pivoted copy of the matrix. */
+	/** Returns the row permutation P of the LU decomposition, P A = L U. */
 	public MatrixComplex pivot() {
-
-		if (m != n)
-			throw new RuntimeException("not a square matrix");
-		MatrixComplex p = MatrixComplex.unity(n);
-
-		for (int i = 0; i < n; i++) {
-			int max_j = i;
-			for (int j = i; j < n; j++)
-				if (vals[j][i].hypot() > vals[max_j][i].hypot())
-					max_j = j;
-
-			if (max_j != i) {
-				for (int k = 0; k < n; k++) {
-					Cplx.Double tmp = p.vals[i][k];
-					p.vals[i][k] = p.vals[max_j][k];
-					p.vals[max_j][k] = tmp;
-				}
-			}
-
-		}
-		return p;
+		return decomposeLU()[2];
 	}
 
 	/**
@@ -90,28 +70,49 @@ public class MatrixComplex {
 		if (m != n)
 			throw new RuntimeException("not a square matrix");
 
-		MatrixComplex U = new MatrixComplex(n, n);
-		MatrixComplex L = MatrixComplex.unity(n);
-		MatrixComplex P = this.pivot();
-		MatrixComplex Aprime = mult(P, this);
-
+		// Gaussian elimination with partial pivoting on a copy, P A = L U
+		Cplx.Double[][] a = new Cplx.Double[n][];
 		for (int i = 0; i < n; i++)
-			for (int j = 0; j < n; j++) {
-				if (j <= i) {
-					Cplx.Double s = Cplx.Double.zero();
-					for (int k = 0; k < j; k++) {
-						s = Cplx.add(s, Cplx.mult(L.vals[j][k], U.vals[k][i]));
-					}
-					U.vals[j][i] = Cplx.sub(Aprime.vals[j][i], s);
-				}
-				if (j >= i) {
-					Cplx.Double s = Cplx.Double.zero();
-					for (int k = 0; k < i; k++)
-						s = Cplx.add(s, Cplx.mult(L.vals[j][k], U.vals[k][i]));
-					L.vals[j][i] = Cplx.div(Cplx.sub(Aprime.vals[j][i], s), U.vals[i][i]);
+			a[i] = vals[i].clone();
+		int[] perm = new int[n];
+		for (int i = 0; i < n; i++)
+			perm[i] = i;
 
-				}
+		for (int k = 0; k < n; k++) {
+			// largest magnitude at or below the diagonal in column k
+			int p = k;
+			for (int i = k + 1; i < n; i++)
+				if (a[i][k].hypot() > a[p][k].hypot())
+					p = i;
+			if (p != k) {
+				Cplx.Double[] tr = a[p];
+				a[p] = a[k];
+				a[k] = tr;
+				int tp = perm[p];
+				perm[p] = perm[k];
+				perm[k] = tp;
 			}
+			for (int i = k + 1; i < n; i++) {
+				Cplx.Double f = Cplx.div(a[i][k], a[k][k]);
+				a[i][k] = f;
+				for (int j = k + 1; j < n; j++)
+					a[i][j] = Cplx.sub(a[i][j], Cplx.mult(f, a[k][j]));
+			}
+		}
+
+		// split into L (unit diagonal), U and P
+		MatrixComplex L = MatrixComplex.unity(n);
+		MatrixComplex U = new MatrixComplex(n, n);
+		MatrixComplex P = new MatrixComplex(n, n);
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (j < i)
+					L.vals[i][j] = a[i][j];
+				else
+					U.vals[i][j] = a[i][j];
+			}
+			P.vals[i][perm[i]] = Cplx.Double.one();
+		}
 		return new MatrixComplex[] { L, U, P };
 	}
 
@@ -128,7 +129,7 @@ public class MatrixComplex {
 		MatrixComplex ret = new MatrixComplex(m, n);
 		for (int i = 0; i < m; i++)
 			for (int j = 0; j < n; j++)
-				ret.vals[i][j] = new Cplx.Double(dat[i * m + j]);
+				ret.vals[i][j] = new Cplx.Double(dat[i * n + j]);
 		return ret;
 	}
 
@@ -172,7 +173,7 @@ public class MatrixComplex {
 		if (a.n != b.length)
 			throw new RuntimeException("vector dimension mismatch");
 
-		Cplx.Double[] c = new Cplx.Double[a.n];
+		Cplx.Double[] c = new Cplx.Double[a.m];
 		for (int i = 0; i < c.length; i++)
 			c[i] = Cplx.Double.zero();
 		for (int i = 0; i < a.m; i++)
@@ -264,16 +265,14 @@ public class MatrixComplex {
 
 	/**
 	 * Returns the Moore-Penrose pseudo-inverse.
-	 * This is calculated directly by A+ = (A* A)^-1 A*
+	 * Calculated directly, for a matrix of full column or row rank.
 	 */
 	public MatrixComplex pseudoInverse() {
 		MatrixComplex adj = this.conjTranspose();
-		// output(adj);
-		MatrixComplex adjxa = adj.mult(this);
-		// output(adjxa);
-
-		MatrixComplex inv = adjxa.inverse();
-		return inv.mult(adj);
+		// full column rank: (A* A)^-1 A*, full row rank: A* (A A*)^-1
+		if (m >= n)
+			return adj.mult(this).inverse().mult(adj);
+		return adj.mult(this.mult(adj).inverse());
 	}
 
 	/* @deprecated Not sure why this is here */
@@ -370,10 +369,10 @@ public class MatrixComplex {
 		for (int i = 0; i < vals.length; i++) {
 			ret += " [";
 			for (int j = 0; j < vals[i].length; j++)
-				ret += vals[i][j];
+				ret += ((j > 0) ? ", " : "") + vals[i][j];
 			ret += "]";
 		}
-		return ret;
+		return ret + " ]";
 
 	}
 

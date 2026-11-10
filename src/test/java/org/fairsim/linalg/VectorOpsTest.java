@@ -170,6 +170,35 @@ public class VectorOpsTest {
 		assertClose(new float[] { r.re, r.im }, new double[] { 0.5e-20, -0.5e-20 }, 1e-5, "scalar reciproc");
 	}
 
+	/** duplicateReal and friends keep the 2D / 3D shape */
+	@Test
+	void duplicatePartsKeepShape() {
+		Vec2d.Cplx a = randomCplx(W, H, 1);
+		Vec.Real[] parts = { a.duplicateReal(), a.duplicateImag(), a.duplicateMagnitude(), a.duplicatePhase() };
+		for (Vec.Real p : parts) {
+			Vec2d.Real p2 = (Vec2d.Real) p;
+			assertEquals(W, p2.vectorWidth());
+			assertEquals(H, p2.vectorHeight());
+		}
+		assertEquals(a.vectorData()[2 * 3 + 1], ((Vec2d.Real) a.duplicateImag()).get(3, 0), 0);
+
+		Vec3d.Cplx b = randomCplx(W, H, 3, 2);
+		assertEquals(3, ((Vec3d.Real) b.duplicateReal()).vectorDepth());
+	}
+
+	/** small API edge cases */
+	@Test
+	void smallApiEdgeCases() {
+		Vec.createReal(3).first10Elem();
+		Vec.createCplx(3).first10Elem();
+		org.junit.jupiter.api.Assertions.assertTrue(Transforms.powerOf2(1));
+		org.junit.jupiter.api.Assertions.assertFalse(Transforms.powerOf2(6));
+		org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class, () -> Vec.setVectorFactory(null));
+
+		String m = MatrixComplex.unity(2).toString();
+		assertEquals(m.chars().filter(c -> c == '[').count(), m.chars().filter(c -> c == ']').count(), m);
+	}
+
 	// --- real ---
 
 	@Test

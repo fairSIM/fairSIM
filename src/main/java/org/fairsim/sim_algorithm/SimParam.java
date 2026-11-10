@@ -643,6 +643,8 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		/**
 		 * Set shift px, py (from estimate for highest band).
 		 * Lower bands are set equidistant in between.
+		 * Convention: Fourier pixels, y up (image rows negated), so a pattern
+		 * cos(2 pi (kx x + ky y)), y = row, has (px, py) = +-(kx, -ky).
 		 * 
 		 * @param cor Either an array (x[0],y[1]) or 2 numbers: x,y
 		 */
@@ -679,7 +681,7 @@ public class SimParam implements Vec2d.Size, Vec3d.Size {
 		}
 
 		/**
-		 * Return angle of shift of band n (atan2).
+		 * Return angle of shift of band n (atan2), counterclockwise on screen (y up).
 		 * Bands count from 0.
 		 */
 		public double getPxPyAngle(int band) {

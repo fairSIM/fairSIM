@@ -435,6 +435,13 @@ public class OtfProvider {
 		if (strengths.length > 10)
 			throw new IllegalArgumentException("too many strenght values");
 
+		for (int i = 0; i < strengths.length; i++) {
+			if (!(strengths[i] >= 0 && strengths[i] <= 1))
+				throw new IllegalArgumentException("attenuation strength must be in 0..1: " + strengths[i]);
+			if (!(fwhms[i] > 0))
+				throw new IllegalArgumentException("attenuation FWHM must be > 0: " + fwhms[i]);
+		}
+
 		attStrength[band] = Tool.copy(strengths);
 		attFWHM[band] = Tool.copy(fwhms);
 

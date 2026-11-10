@@ -209,7 +209,7 @@ class BasicVector implements VectorFactory {
 					for (int x = 0; x < width; x++) {
 						out[y * width + x] += in[z * width * height + y * width + x];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -232,7 +232,7 @@ class BasicVector implements VectorFactory {
 					for (int x = 0; x < width; x++) {
 						out[y * width + x] += in[2 * (z * width * height + y * width + x)];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -265,6 +265,7 @@ class BasicVector implements VectorFactory {
 			float[] inputData = in.vectorData();
 			for (int x = 0; x < width; x++)
 				data[x + l * width] = inputData[x];
+			this.syncBuffer();
 		}
 
 		@Override
@@ -275,6 +276,7 @@ class BasicVector implements VectorFactory {
 			for (int y = 0; y < height; y++)
 				for (int x = 0; x < width; x++)
 					out[x + y * width] = in[x + y * width] & 0xFFFF;
+			this.syncBuffer();
 		}
 
 	}
@@ -287,6 +289,12 @@ class BasicVector implements VectorFactory {
 			super(w * h);
 			width = w;
 			height = h;
+		}
+
+		/** keeps the shape for duplicateReal, duplicateImag, ... */
+		@Override
+		public BReal createAsReal(int n) {
+			return new BReal2D(width, height);
 		}
 
 		@Override
@@ -380,6 +388,7 @@ class BasicVector implements VectorFactory {
 					out[2 * (x + y * width) + 0] = (in[x + y * width] & 0xFFFF);
 					out[2 * (x + y * width) + 1] = 0;
 				}
+			this.syncBuffer();
 		}
 
 		@Override
@@ -431,7 +440,7 @@ class BasicVector implements VectorFactory {
 						out[(y * width + x) * 2 + 0] += in[(z * width * height + y * width + x) * 2 + 0];
 						out[(y * width + x) * 2 + 1] += in[(z * width * height + y * width + x) * 2 + 1];
 					}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -455,6 +464,7 @@ class BasicVector implements VectorFactory {
 				data[2 * (x + l * width) + 0] = inputData[2 * x + 0];
 				data[2 * (x + l * width) + 1] = inputData[2 * x + 1];
 			}
+			this.syncBuffer();
 		}
 
 		@Override
@@ -468,6 +478,7 @@ class BasicVector implements VectorFactory {
 				data[2 * (x + l * width) + 0] = inputData[x];
 				data[2 * (x + l * width) + 1] = 0f;
 			}
+			this.syncBuffer();
 		}
 
 	}
@@ -518,10 +529,11 @@ class BasicVector implements VectorFactory {
 		@Override
 		public void setSlice(int z, Vec2d.Real vec) {
 
-			if (z < 0 || z > depth || vec.vectorWidth() != width || vec.vectorHeight() != height)
+			if (z < 0 || z >= depth || vec.vectorWidth() != width || vec.vectorHeight() != height)
 				throw new RuntimeException("Vector dimension mismatch");
 
 			System.arraycopy(vec.vectorData(), 0, data, z * width * height, width * height);
+			this.syncBuffer();
 		}
 
 	}
@@ -535,6 +547,12 @@ class BasicVector implements VectorFactory {
 			width = w;
 			height = h;
 			depth = d;
+		}
+
+		/** keeps the shape for duplicateReal, duplicateImag, ... */
+		@Override
+		public BReal createAsReal(int n) {
+			return new BReal3D(width, height, depth);
 		}
 
 		@Override
@@ -595,7 +613,7 @@ class BasicVector implements VectorFactory {
 					data[2 * (x + width * y + z * width * height) + 0] = in[2 * (x + width * y) + 0];
 					data[2 * (x + width * y + z * width * height) + 1] = in[2 * (x + width * y) + 1];
 				}
-
+			this.syncBuffer();
 		}
 
 		@Override
@@ -612,6 +630,7 @@ class BasicVector implements VectorFactory {
 					data[2 * (x + width * y + z * width * height) + 0] = in[x + width * y];
 					data[2 * (x + width * y + z * width * height) + 1] = 0;
 				}
+			this.syncBuffer();
 		}
 
 		/** Look into source code for usage */
