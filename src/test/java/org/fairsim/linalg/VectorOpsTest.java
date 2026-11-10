@@ -21,7 +21,6 @@ package org.fairsim.linalg;
 import static org.fairsim.linalg.LinalgFixtures.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** Element-wise ops and reductions against plain loops in double */

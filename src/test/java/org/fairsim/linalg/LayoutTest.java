@@ -21,7 +21,6 @@ package org.fairsim.linalg;
 import static org.fairsim.linalg.LinalgFixtures.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -154,13 +153,46 @@ public class LayoutTest {
 	}
 
 	/** swapQuadrant on odd sizes (display only) */
-	@Test
-	@Tag("defect")
-	void swapQuadrantOdd() {
-		Vec2d.Cplx v = randomCplx(5, 4, 1);
-		double[] ref = fftshiftRef(toDouble(v.vectorData()), 5, 4);
+	@ParameterizedTest(name = "{0}x{1}")
+	@CsvSource({ "5,4", "4,5", "5,5" })
+	void swapQuadrantOdd(int w, int h) {
+		Vec2d.Cplx v = randomCplx(w, h, 1);
+		double[] ref = fftshiftRef(toDouble(v.vectorData()), w, h);
 		Transforms.swapQuadrant(v);
-		assertClose(v.vectorData(), ref, 0, "swapQuadrant 5x4");
+		assertClose(v.vectorData(), ref, 0, "swapQuadrant cplx");
+
+		Vec2d.Real r = randomReal(w, h, 2);
+		double[] rd = toDouble(r.vectorData()), rref = new double[rd.length];
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++)
+				rref[(x + w / 2) % w + w * ((y + h / 2) % h)] = rd[x + w * y];
+		Transforms.swapQuadrant(r);
+		assertClose(r.vectorData(), rref, 0, "swapQuadrant real");
+	}
+
+	/** power spectrum scales by magnitudes: the largest |z| maps to 1, also if it has negative components */
+	@Test
+	void powerSpectrumScaling() {
+		Vec2d.Cplx v = Vec2d.createCplx(5, 4);
+		java.util.Arrays.fill(v.vectorData(), 0.01f);
+		v.syncBuffer();
+		v.set(0, 0, new Cplx.Float(-5f, 0f));
+		v.set(1, 0, new Cplx.Float(1f, 0f));
+		Vec2d.Real out = Vec2d.createReal(5, 4), sw = Vec2d.createReal(5, 4);
+		Transforms.computePowerSpectrum(v, out, false);
+		Transforms.computePowerSpectrum(v, sw, true);
+
+		float[] o = out.vectorData();
+		assertClose(new float[] { o[0] }, new double[] { 1 }, 1e-6, "max at the largest magnitude");
+		for (float f : o)
+			org.junit.jupiter.api.Assertions.assertTrue(f >= 0 && f <= 1, "range 0..1: " + f);
+
+		// swapped output is the same values, moved
+		double[] ref = new double[o.length];
+		for (int y = 0; y < 4; y++)
+			for (int x = 0; x < 5; x++)
+				ref[(x + 2) % 5 + 5 * ((y + 2) % 4)] = o[x + 5 * y];
+		assertClose(sw.vectorData(), ref, 0, "swapped power spectrum");
 	}
 
 	/** element-wise ops on 2D vectors of different shape but equal element count */

@@ -249,14 +249,16 @@ public abstract class Transforms {
 		if ((w != outV.vectorWidth()) || (h != outV.vectorHeight()))
 			throw new RuntimeException("Vector size mismatch");
 
-		// calculate min and max for scaling
+		// magnitudes, and their min and max for scaling
+		final float[] mag = new float[w * h];
 		float min = Float.MAX_VALUE;
-		float max = Float.MIN_VALUE;
-		for (float i : in) {
-			if (i < min)
-				min = i;
-			if (i > max)
-				max = i;
+		float max = 0;
+		for (int i = 0; i < w * h; i++) {
+			mag[i] = (float) Math.hypot(in[2 * i], in[2 * i + 1]);
+			if (mag[i] < min)
+				min = mag[i];
+			if (mag[i] > max)
+				max = mag[i];
 		}
 
 		// reduce the range
@@ -267,16 +269,12 @@ public abstract class Transforms {
 
 		for (int y = 0; y < h; y++)
 			for (int x = 0; x < w; x++) {
-				float r = (float) Math.sqrt(
-						Math.pow(in[2 * (y * w + x) + 0], 2) + Math.pow(in[2 * (y * w + x) + 1], 2));
-				r = (float) (((Math.log(r) - min) / (max - min)));
+				float r = (float) ((Math.log(mag[y * w + x]) - min) / (max - min));
 				if (Float.isNaN(r) || r < 0)
 					r = 0f;
 
 				if (swap_quad) {
-					int xo = (x < w / 2) ? (x + w / 2) : (x - w / 2);
-					int yo = (y < h / 2) ? (y + h / 2) : (y - h / 2);
-					out[yo * w + xo] = r;
+					out[((y + h / 2) % h) * w + (x + w / 2) % w] = r;
 				} else {
 					out[y * w + x] = r;
 				}
@@ -286,42 +284,31 @@ public abstract class Transforms {
 
 	}
 
-	/** Swap quadrands. */
+	/** Swap quadrants: element (x,y) moves to ((x+w/2)%w, (y+h/2)%h), DC to the centre, also for odd sizes */
 	static public void swapQuadrant(Vec2d.Cplx in) {
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
-		for (int y = 0; y < h / 2; y++)
-			for (int x = 0; x < w / 2; x++) {
-				// 1 <-> 3
-				Cplx.Float tmp1 = in.get(x, y);
-				Cplx.Float tmp3 = in.get(x + w / 2, y + h / 2);
-				in.set(x, y, tmp3);
-				in.set(x + w / 2, y + h / 2, tmp1);
-				// 2 <-> 3
-				Cplx.Float tmp2 = in.get(x, y + h / 2);
-				Cplx.Float tmp4 = in.get(x + w / 2, y);
-				in.set(x, y + h / 2, tmp4);
-				in.set(x + w / 2, y, tmp2);
+		final float[] dat = in.vectorData();
+		final float[] tmp = dat.clone();
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++) {
+				final int o = ((y + h / 2) % h) * w + (x + w / 2) % w;
+				dat[2 * o] = tmp[2 * (y * w + x)];
+				dat[2 * o + 1] = tmp[2 * (y * w + x) + 1];
 			}
+		in.syncBuffer();
 	}
 
-	/** Swap quadrands. */
+	/** Swap quadrants, see {@link #swapQuadrant(Vec2d.Cplx)} */
 	static public void swapQuadrant(Vec2d.Real in) {
 		final int w = in.vectorWidth();
 		final int h = in.vectorHeight();
-		for (int y = 0; y < h / 2; y++)
-			for (int x = 0; x < w / 2; x++) {
-				// 1 <-> 3
-				float tmp1 = in.get(x, y);
-				float tmp3 = in.get(x + w / 2, y + h / 2);
-				in.set(x, y, tmp3);
-				in.set(x + w / 2, y + h / 2, tmp1);
-				// 2 <-> 3
-				float tmp2 = in.get(x, y + h / 2);
-				float tmp4 = in.get(x + w / 2, y);
-				in.set(x, y + h / 2, tmp4);
-				in.set(x + w / 2, y, tmp2);
-			}
+		final float[] dat = in.vectorData();
+		final float[] tmp = dat.clone();
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; x++)
+				dat[((y + h / 2) % h) * w + (x + w / 2) % w] = tmp[y * w + x];
+		in.syncBuffer();
 	}
 
 	/** Swap quadrands. */
