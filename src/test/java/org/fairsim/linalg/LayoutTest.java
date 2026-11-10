@@ -163,11 +163,16 @@ public class LayoutTest {
 		assertClose(v.vectorData(), ref, 0, "swapQuadrant 5x4");
 	}
 
-	/** element-wise ops on vectors of different shape but equal element count */
+	/** element-wise ops on 2D vectors of different shape but equal element count */
 	@Test
-	@Tag("defect")
 	void shapeMismatchThrows() {
 		final Vec2d.Cplx a = randomCplx(6, 4, 1), b = randomCplx(4, 6, 2);
 		assertThrows(RuntimeException.class, () -> a.times(b));
+		final Vec3d.Cplx c = randomCplx(6, 4, 2, 1), d = randomCplx(4, 6, 2, 2);
+		assertThrows(RuntimeException.class, () -> c.add(d));
+
+		// a plain vector of the same length still combines with a 2D one
+		Vec.Cplx e = Vec.createCplx(24);
+		a.times(e);
 	}
 }

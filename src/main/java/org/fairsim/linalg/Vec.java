@@ -96,16 +96,28 @@ public final class Vec {
 
 	// ================================================================
 
+	/** Throw runtime exception if two 2D or two 3D vectors differ in shape, not only in element count */
+	static void failShape(Object a, Object b) {
+		if (a instanceof Vec2d.Size && b instanceof Vec2d.Size) {
+			Vec2d.failSize((Vec2d.Size) a, (Vec2d.Size) b);
+		}
+		if (a instanceof Vec3d.Size && b instanceof Vec3d.Size) {
+			Vec3d.failSize((Vec3d.Size) a, (Vec3d.Size) b);
+		}
+	}
+
 	/** Throw runtime exception if not all vectors are of same size. */
 	public static int failSize(Vec.Real v0, Vec.Real... v) {
 		if (v.length < 1)
 			return v0.vectorSize();
 
 		int len = v0.vectorSize();
-		for (int i = 0; i < v.length; i++)
+		for (int i = 0; i < v.length; i++) {
 			if (v[i].vectorSize() != len)
 				throw new RuntimeException("Vector len mismatch"
 						+ i + " " + len + " " + v[i].vectorSize());
+			failShape(v0, v[i]);
+		}
 		return len;
 	}
 
@@ -115,10 +127,12 @@ public final class Vec {
 			return v0.vectorSize();
 
 		int len = v0.vectorSize();
-		for (int i = 0; i < v.length; i++)
+		for (int i = 0; i < v.length; i++) {
 			if (v[i].vectorSize() != len)
 				throw new RuntimeException("Vector len mismatch"
 						+ i + " " + len + " " + v[i].vectorSize());
+			failShape(v0, v[i]);
+		}
 		return len;
 	}
 
@@ -128,10 +142,12 @@ public final class Vec {
 			return v0.vectorSize();
 
 		int len = v0.vectorSize();
-		for (int i = 0; i < v.length; i++)
+		for (int i = 0; i < v.length; i++) {
 			if (v[i].vectorSize() != len)
 				throw new RuntimeException("Vector len mismatch"
 						+ i + " " + len + " " + v[i].vectorSize());
+			failShape(v0, v[i]);
+		}
 		return len;
 	}
 
@@ -141,10 +157,12 @@ public final class Vec {
 			return v0.vectorSize();
 
 		int len = v0.vectorSize();
-		for (int i = 0; i < v.length; i++)
+		for (int i = 0; i < v.length; i++) {
 			if (v[i].vectorSize() != len)
 				throw new RuntimeException("Vector len mismatch"
 						+ i + " " + len + " " + v[i].vectorSize());
+			failShape(v0, v[i]);
+		}
 		return len;
 	}
 
